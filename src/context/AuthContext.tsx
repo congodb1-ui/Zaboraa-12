@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { offlineVaultService, VaultDataSnapshot } from '../services/offlineVaultService';
 
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'admin' | 'authorized' | 'public' | 'user';
 
 export interface AuthUserProfile {
   uid: string;
@@ -11,14 +12,14 @@ export interface AuthUserProfile {
   displayName: string | null;
   photoURL: string | null;
   licenseTier: SubscriptionTier;
-  role: UserRole;
-  provider: 'google' | 'password' | 'demo';
+  role: 'admin' | 'authorized' | 'public';
+  provider: 'google' | 'microsoft' | 'password' | 'demo' | 'offline_vault';
 }
 
 export interface ProfileRecord {
   id: string;
   email: string | null;
-  role: UserRole;
+  role: string;
   subscription_tier: SubscriptionTier;
   full_name: string | null;
   avatar_url: string | null;
@@ -28,11 +29,13 @@ export interface AuthContextType {
   user: AuthUserProfile | null;
   loading: boolean;
   isAdmin: boolean;
-  role: UserRole | null;
+  isAuthorized: boolean;
+  role: 'admin' | 'authorized' | 'public' | null;
   subscriptionTier: SubscriptionTier;
   setSubscriptionTier: (tier: SubscriptionTier) => void;
   signInWithGoogle: () => Promise<AuthUserProfile>;
   signInWithGoogleRedirect: () => Promise<void>;
+  signInWithMicrosoft: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<AuthUserProfile>;
   registerWithEmail: (email: string, pass: string, name: string) => Promise<AuthUserProfile>;
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
@@ -42,10 +45,17 @@ export interface AuthContextType {
   setIsCommercializeModalOpen: (open: boolean) => void;
   authError: string | null;
   clearAuthError: () => void;
+
+  // Offline Emergency Recovery Mode
+  isOfflineAdminSession: boolean;
+  offlineVaultData: VaultDataSnapshot | null;
+  unlockOfflineVaultWithKey: (key: string) => Promise<{ success: boolean; error?: string }>;
+  lockOfflineAdminSession: () => void;
+  reauthenticateAdmin: (password: string) => Promise<boolean>;
 }
 
-const STORAGE_USER_KEY = 'zaboraa_auth_user_v1';
-const STORAGE_TIER_KEY = 'zaboraa_license_tier_v1';
+const STORAGE_USER_KEY = 'zaboraa_auth_user_v2';
+const STORAGE_TIER_KEY = 'zaboraa_license_tier_v2';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -74,12 +84,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCommercializeModalOpen, setIsCommercializeModalOpen] = useState<boolean>(false);
   const [subscriptionTier, setSubscriptionTierState] = useState<SubscriptionTier>('free');
 
-  // Load and sync profile from public.profiles in Supabase
+  // Offline Emergency Admin State
+  const [isOfflineAdminSession, setIsOfflineAdminSession] = useState<boolean>(false);
+  const [offlineVaultData, setOfflineVaultData] = useState<VaultDataSnapshot | null>(null);
+
+  // Map Supabase auth record + profiles table to enterprise 3-tier role
   const mapSupabaseUserToProfile = useCallback(async (sbUser: SupabaseUser): Promise<AuthUserProfile> => {
-    let role: UserRole = sbUser.email === 'admin@zaboraa.com' ? 'admin' : 'user';
-    let tier: SubscriptionTier = sbUser.email === 'admin@zaboraa.com' ? 'enterprise' : 'free';
+    // Default to 'public' for zero-privilege security
+    let role: 'admin' | 'authorized' | 'public' = 'public';
+    let tier: SubscriptionTier = 'free';
     let displayName = (sbUser.user_metadata as any)?.full_name || sbUser.email?.split('@')[0] || 'Enterprise Architect';
     let photoURL = (sbUser.user_metadata as any)?.avatar_url || null;
+
+    // Hardcoded master admin email override if present
+    if (sbUser.email?.toLowerCase() === 'admin@zaboraa.com') {
+      role = 'admin';
+      tier = 'enterprise';
+    }
 
     if (supabase) {
       try {
@@ -90,9 +111,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
 
         if (!error && data) {
-          if (data.role === 'admin' || data.role === 'user') {
-            role = data.role;
+          if (data.role === 'admin') {
+            role = 'admin';
+          } else if (data.role === 'authorized' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'pro') {
+            role = 'authorized';
+          } else {
+            role = 'public';
           }
+
           if (data.subscription_tier === 'pro' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'free') {
             tier = data.subscription_tier;
           }
@@ -100,9 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (data.avatar_url) photoURL = data.avatar_url;
         }
       } catch (err) {
-        console.warn('Notice: Unable to query public.profiles (will use auth metadata):', err);
+        console.warn('Notice: Unable to query public.profiles (using verified auth metadata):', err);
       }
     }
+
+    const providerName = (sbUser.app_metadata?.provider as any);
+    const provider: AuthUserProfile['provider'] = providerName === 'google' 
+      ? 'google' 
+      : providerName === 'azure' || providerName === 'microsoft'
+      ? 'microsoft'
+      : 'password';
 
     const authProfile: AuthUserProfile = {
       uid: sbUser.id,
@@ -111,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       photoURL,
       licenseTier: tier,
       role,
-      provider: (sbUser.app_metadata?.provider as any) === 'google' ? 'google' : 'password'
+      provider
     };
 
     return authProfile;
@@ -154,8 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeSession();
 
-    // Pure Supabase Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT' || !session?.user) {
@@ -183,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(STORAGE_TIER_KEY, tier);
     } catch {}
     if (user) {
-      const updated = { ...user, licenseTier: tier };
+      const updated: AuthUserProfile = { ...user, licenseTier: tier };
       setUser(updated);
       saveLocalStoredUser(updated);
     }
@@ -201,7 +233,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (error) throw error;
         if (data?.url && typeof window !== 'undefined') {
-          // If URL is returned, navigate to OAuth URL
           window.location.href = data.url;
         }
       }
@@ -213,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: 'Enterprise Cloud Architect',
         photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
         licenseTier: 'enterprise',
-        role: 'user',
+        role: 'authorized',
         provider: 'google'
       };
       setUser(fallback);
@@ -246,11 +277,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithMicrosoft = async (): Promise<void> => {
+    setAuthError(null);
+    try {
+      if (supabase && isSupabaseConfigured) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'azure',
+          options: {
+            redirectTo: window.location.origin,
+            scopes: 'email openid profile'
+          }
+        });
+        if (error) throw error;
+        if (data?.url && typeof window !== 'undefined') {
+          window.location.href = data.url;
+        }
+      } else {
+        // Fallback for offline/preview
+        const msFallback: AuthUserProfile = {
+          uid: 'sb-msft-' + Date.now(),
+          email: 'cloud.executive@microsoft.enterprise',
+          displayName: 'Enterprise Microsoft Architect',
+          photoURL: null,
+          licenseTier: 'enterprise',
+          role: 'authorized',
+          provider: 'microsoft'
+        };
+        setUser(msFallback);
+        setSubscriptionTierState('enterprise');
+        saveLocalStoredUser(msFallback);
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Microsoft authentication failed.';
+      setAuthError(msg);
+      throw err;
+    }
+  };
+
   const loginWithEmail = async (email: string, pass: string): Promise<AuthUserProfile> => {
     setAuthError(null);
     const cleanEmail = email.trim().toLowerCase();
 
-    // Dedicated Hardcoded Enterprise Administrator Credentials
+    // Dedicated Hardcoded Enterprise Administrator Credentials for initial provisioning
     if (cleanEmail === 'admin@zaboraa.com' && pass === 'Zaboraa@123!') {
       const adminProfile: AuthUserProfile = {
         uid: 'admin-master-root',
@@ -284,8 +352,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Simulated local authentication when preview environment is offline
-      const simRole: UserRole = cleanEmail === 'admin@zaboraa.com' ? 'admin' : 'user';
-      const simTier: SubscriptionTier = cleanEmail === 'admin@zaboraa.com' ? 'enterprise' : 'pro';
+      const simRole: 'admin' | 'authorized' | 'public' = cleanEmail === 'admin@zaboraa.com' ? 'admin' : 'public';
+      const simTier: SubscriptionTier = cleanEmail === 'admin@zaboraa.com' ? 'enterprise' : 'free';
       const simProfile: AuthUserProfile = {
         uid: 'user-' + Math.random().toString(36).substring(2, 9),
         email: cleanEmail,
@@ -321,15 +389,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) throw error;
         if (data.user) {
           const profile = await mapSupabaseUserToProfile(data.user);
+          // Strictly force newly registered user to 'public'
+          profile.role = 'public';
+          profile.licenseTier = 'free';
           setUser(profile);
-          setSubscriptionTierState(profile.licenseTier);
+          setSubscriptionTierState('free');
           saveLocalStoredUser(profile);
           return profile;
         }
       }
 
-      // Newly registered users are always standard 'user' role with 'free' tier (never auto-elevated to admin)
-      const simRole: UserRole = 'user';
+      // Newly registered users are STRICTLY defaulted to 'public' with zero privileged permissions
+      const simRole: 'public' = 'public';
       const simTier: SubscriptionTier = 'free';
       const registered: AuthUserProfile = {
         uid: 'user-' + Date.now(),
@@ -406,15 +477,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setSubscriptionTierState('free');
       saveLocalStoredUser(null);
+      lockOfflineAdminSession();
       try {
         localStorage.removeItem(STORAGE_TIER_KEY);
       } catch {}
     }
   };
 
+  /**
+   * Unlock offline encrypted vault with emergency recovery key
+   * CRITICAL SECURITY: Does NOT grant live cloud production admin access!
+   */
+  const unlockOfflineVaultWithKey = async (key: string): Promise<{ success: boolean; error?: string }> => {
+    const res = await offlineVaultService.unlockVault(key);
+    if (res.success && res.data) {
+      setIsOfflineAdminSession(true);
+      setOfflineVaultData(res.data);
+      return { success: true };
+    }
+    return { success: false, error: res.error || 'Failed to unlock offline vault.' };
+  };
+
+  /**
+   * Lock the offline administrative session and clear in-memory snapshots
+   */
+  const lockOfflineAdminSession = () => {
+    offlineVaultService.lockVault();
+    setIsOfflineAdminSession(false);
+    setOfflineVaultData(null);
+  };
+
+  /**
+   * Re-authenticate administrator with live server before executing queued offline changes
+   * Requires live Supabase verification or master administrative password
+   */
+  const reauthenticateAdmin = async (password: string): Promise<boolean> => {
+    if (!password) return false;
+
+    // Check hardcoded master admin credentials
+    if (user?.email?.toLowerCase() === 'admin@zaboraa.com' && password === 'Zaboraa@123!') {
+      return true;
+    }
+
+    if (supabase && isSupabaseConfigured && user?.email) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password
+        });
+        if (error || !data.user) return false;
+
+        // Verify server-side role in public.profiles
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        return profileData?.role === 'admin' || user.email.toLowerCase() === 'admin@zaboraa.com';
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
+  };
+
   const clearAuthError = () => setAuthError(null);
 
+  // Live admin vs offline session separation
   const isAdmin = user?.role === 'admin' || user?.email === 'admin@zaboraa.com';
+  const isAuthorized = isAdmin || user?.role === 'authorized';
 
   return (
     <AuthContext.Provider
@@ -422,11 +555,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         loading,
         isAdmin,
+        isAuthorized,
         role: user?.role ?? null,
         subscriptionTier,
         setSubscriptionTier,
         signInWithGoogle,
         signInWithGoogleRedirect,
+        signInWithMicrosoft,
         loginWithEmail,
         registerWithEmail,
         requestPasswordReset,
@@ -435,7 +570,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isCommercializeModalOpen,
         setIsCommercializeModalOpen,
         authError,
-        clearAuthError
+        clearAuthError,
+
+        // Offline Emergency Mode
+        isOfflineAdminSession,
+        offlineVaultData,
+        unlockOfflineVaultWithKey,
+        lockOfflineAdminSession,
+        reauthenticateAdmin
       }}
     >
       {children}

@@ -37,12 +37,14 @@ export const Navbar: React.FC = () => {
     toggleTheme,
     isAdmin,
     setIsAdminLoginModalOpen,
+    setIsAdminDashboardOpen,
     setIsCustomizerOpen,
     setIsBriefingModalOpen,
     setIsSearchOpen
   } = useCustomization();
 
-  const { user: authUser, subscriptionTier: licenseTier, setIsCommercializeModalOpen } = useAuth();
+  const { user: authUser, subscriptionTier: licenseTier, setIsCommercializeModalOpen, isOfflineAdminSession } = useAuth();
+  const isAnyAdmin = isAdmin || isOfflineAdminSession;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'disciplines' | 'tools' | 'resources' | null>(null);
 
@@ -380,21 +382,30 @@ export const Navbar: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
-          {/* Admin Lock / Customizer Trigger */}
-          {isAdmin ? (
-            <button
-              onClick={() => setIsCustomizerOpen(true)}
-              className="hidden md:flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/60 rounded-lg transition-colors cursor-pointer shrink-0"
-              title="Open site customizer drawer"
-            >
-              <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Customize</span>
-            </button>
+          {/* Admin Lock / Console Trigger */}
+          {isAnyAdmin ? (
+            <div className="hidden md:flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setIsAdminDashboardOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 rounded-lg transition-colors cursor-pointer"
+                title="Open 12-section administrative dashboard"
+              >
+                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Console</span>
+              </button>
+              <button
+                onClick={() => setIsCustomizerOpen(true)}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors cursor-pointer"
+                title="Open site customizer drawer"
+              >
+                <span>Edit Site</span>
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => setIsAdminLoginModalOpen(true)}
               className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 text-slate-500 hover:text-slate-300 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 rounded-lg transition-colors cursor-pointer shrink-0"
-              title="Admin Mode login"
+              title="Admin Mode login & Emergency Offline Access"
             >
               <Lock className="w-3.5 h-3.5" />
             </button>

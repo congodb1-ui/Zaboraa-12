@@ -49,6 +49,12 @@ interface CustomizationContextType {
   setIsAdmin: (val: boolean) => void;
   isAdminLoginModalOpen: boolean;
   setIsAdminLoginModalOpen: (open: boolean) => void;
+  isAdminDashboardOpen: boolean;
+  setIsAdminDashboardOpen: (open: boolean) => void;
+  isReconciliationOpen: boolean;
+  setIsReconciliationOpen: (open: boolean) => void;
+  isOfflineEmergencyOpen: boolean;
+  setIsOfflineEmergencyOpen: (open: boolean) => void;
   isWatermarkModalOpen: boolean;
   setIsWatermarkModalOpen: (open: boolean) => void;
   verifyAdminPasscode: (passcode: string) => boolean;
@@ -241,6 +247,9 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     // Only real Supabase authentication modifies admin status
   };
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+  const [isReconciliationOpen, setIsReconciliationOpen] = useState(false);
+  const [isOfflineEmergencyOpen, setIsOfflineEmergencyOpen] = useState(false);
   const [isWatermarkModalOpen, setIsWatermarkModalOpen] = useState(false);
 
   const verifyAdminPasscode = (_passcode: string): boolean => {
@@ -868,6 +877,12 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsAdmin,
         isAdminLoginModalOpen,
         setIsAdminLoginModalOpen,
+        isAdminDashboardOpen,
+        setIsAdminDashboardOpen,
+        isReconciliationOpen,
+        setIsReconciliationOpen,
+        isOfflineEmergencyOpen,
+        setIsOfflineEmergencyOpen,
         isWatermarkModalOpen,
         setIsWatermarkModalOpen,
         verifyAdminPasscode,

@@ -88,39 +88,39 @@ export const EmergencyModeBanner: React.FC = () => {
   return (
     <aside
       aria-label="Offline and emergency administration status"
-      className={`w-full border-b text-xs transition-colors py-2 px-4 shadow-md ${
+      className={`w-full border-b text-xs transition-colors py-2.5 px-4 shadow-md font-sans ${
         !isOnline
-          ? 'bg-amber-950/95 border-amber-500/50 text-amber-200'
+          ? 'bg-amber-950 border-amber-500/80 text-amber-100'
           : isOfflineAdminSession
-          ? 'bg-slate-900/95 border-cyan-500/50 text-cyan-200'
-          : 'bg-slate-900/90 border-slate-700/60 text-slate-300'
+          ? 'bg-[#0a0f1d] border-cyan-500/70 text-cyan-200'
+          : 'bg-[#0f172a] border-slate-700 text-slate-200'
       }`}
     >
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Left: Connection & Mode Status */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <div
-            className={`p-1.5 rounded-md border ${
+            className={`p-1.5 rounded-lg border ${
               !isOnline
-                ? 'bg-amber-900/80 border-amber-500/60 text-amber-300'
-                : 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
+                ? 'bg-amber-900 border-amber-400 text-amber-200'
+                : 'bg-emerald-950 border-emerald-400 text-emerald-300'
             }`}
           >
-            {!isOnline ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
+            {!isOnline ? <WifiOff className="w-4 h-4" /> : <Wifi className="w-4 h-4" />}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="font-bold tracking-wide">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-black tracking-wider uppercase text-xs">
               {!isOnline ? 'NETWORK DISCONNECTED' : 'NETWORK RESTORED'}
             </span>
-            <span className="text-slate-400">·</span>
+            <span className="text-slate-400 font-bold">·</span>
             {isOfflineAdminSession ? (
-              <span className="flex items-center gap-1 font-mono text-[11px] text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2 py-0.5 rounded">
-                <Unlock className="w-3 h-3 text-cyan-400" />
+              <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-cyan-200 bg-cyan-950 border border-cyan-400/60 px-2.5 py-0.5 rounded-md">
+                <Unlock className="w-3.5 h-3.5 text-cyan-300" />
                 OFFLINE ADMIN VAULT ACTIVE ({snapshotAgeText})
               </span>
             ) : (
-              <span className="text-[11px] text-slate-300">
+              <span className="text-xs font-semibold text-slate-200">
                 {!isOnline
                   ? 'Running in disconnected mode. Local operations remain active.'
                   : 'Connected to live cloud services.'}
@@ -135,10 +135,10 @@ export const EmergencyModeBanner: React.FC = () => {
           {queuedActions.length > 0 && (
             <button
               onClick={() => setIsReconciliationOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-900/90 hover:bg-amber-800 border border-amber-500/70 text-amber-100 font-semibold text-[11px] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-sm uppercase tracking-wider"
               title="Review queued changes before syncing with production"
             >
-              <RefreshCw className="w-3 h-3 animate-spin" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
               <span>Review Sync Queue ({queuedActions.length})</span>
             </button>
           )}
@@ -148,18 +148,18 @@ export const EmergencyModeBanner: React.FC = () => {
             <>
               <button
                 onClick={() => setIsAdminDashboardOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-200 font-semibold text-[11px] transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-sm uppercase tracking-wider"
               >
-                <Sliders className="w-3 h-3 text-cyan-400" />
+                <Sliders className="w-3.5 h-3.5 text-slate-950" />
                 <span>Admin Console</span>
               </button>
 
               <button
                 onClick={lockOfflineAdminSession}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-[11px] transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-xs transition-colors cursor-pointer"
                 title="Lock local vault and purge decrypted memory"
               >
-                <Lock className="w-3 h-3 text-rose-400" />
+                <Lock className="w-3.5 h-3.5 text-rose-400" />
                 <span>Lock Vault</span>
               </button>
             </>
@@ -167,11 +167,11 @@ export const EmergencyModeBanner: React.FC = () => {
             /* If not yet unlocked offline */
             <button
               onClick={() => setIsAdminLoginModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 border border-amber-600/70 text-amber-200 font-semibold text-[11px] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-sm uppercase tracking-wider"
             >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+              <ShieldAlert className="w-4 h-4 text-slate-950" />
               <span>{isVaultInitialized ? 'Unlock Offline Vault' : 'Emergency Recovery'}</span>
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-950" />
             </button>
           )}
 
@@ -179,10 +179,10 @@ export const EmergencyModeBanner: React.FC = () => {
           {isOnline && isOfflineAdminSession && !isAdmin && (
             <button
               onClick={() => setIsAdminLoginModalOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/70 text-emerald-200 font-semibold text-[11px] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-sm uppercase tracking-wider"
               title="Authenticate with live cloud to execute verified changes"
             >
-              <ArrowRight className="w-3 h-3 text-emerald-400" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-950" />
               <span>Re-Authenticate Live</span>
             </button>
           )}

@@ -37,6 +37,7 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
     setSubscriptionTier,
     signInWithGoogle,
     signInWithGoogleRedirect,
+    signInWithMicrosoft,
     loginWithEmail,
     registerWithEmail,
     requestPasswordReset,
@@ -83,6 +84,18 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
     try {
       await signInWithGoogleRedirect();
     } catch {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMicrosoftSignIn = async () => {
+    setIsSubmitting(true);
+    clearAuthError();
+    try {
+      await signInWithMicrosoft();
+    } catch {
+      // Handled in context
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -311,21 +324,22 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
         ) : (
           /* Authentication Screen (when not signed in) */
           <div className="space-y-4">
-            {/* Primary Google Sign-In Action */}
-            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 shadow-inner">
+            {/* Primary Single Sign-On Options: Google & Microsoft */}
+            <div className="p-5 rounded-2xl bg-slate-950 border-2 border-slate-700 space-y-3.5 shadow-inner">
               <div className="text-center sm:text-left space-y-1">
-                <h3 className="font-bold text-white text-sm">Sign In to {brandName || 'Enterprise Architecture'}</h3>
-                <p className="text-slate-400 text-xs">
-                  Connect instantly using your verified enterprise Google account.
+                <h3 className="font-extrabold text-white text-base">Sign In to {brandName || 'Enterprise Architecture'}</h3>
+                <p className="text-slate-300 text-xs font-medium">
+                  Connect instantly using your enterprise credentials or single sign-on provider.
                 </p>
               </div>
 
-              <div className="pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                {/* Google Sign-In */}
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={isSubmitting}
-                  className="w-full py-3 px-5 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-bold text-xs flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer hover:scale-[1.01] disabled:opacity-50"
+                  className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99] border border-slate-300 disabled:opacity-50"
                 >
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -333,45 +347,61 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                   </svg>
-                  <span>{isSubmitting ? 'Authenticating...' : 'Continue with Google'}</span>
+                  <span>Continue with Google</span>
+                </button>
+
+                {/* Microsoft Sign-In */}
+                <button
+                  type="button"
+                  onClick={handleMicrosoftSignIn}
+                  disabled={isSubmitting}
+                  className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer hover:scale-[1.01] active:scale-[0.99] border-2 border-slate-600 disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 23 23">
+                    <path fill="#f35325" d="M1 1h10v10H1z" />
+                    <path fill="#81bc06" d="M12 1h10v10H12z" />
+                    <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                    <path fill="#ffba08" d="M12 12h10v10H12z" />
+                  </svg>
+                  <span>Continue with Microsoft</span>
                 </button>
               </div>
             </div>
 
             {/* Collapsible Email & Password Authentication Form */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
+            <div className="rounded-2xl border-2 border-slate-700 bg-slate-950 overflow-hidden shadow-md">
               <button
                 type="button"
                 onClick={() => {
                   setShowEmailForm(!showEmailForm);
                   setIsForgotPasswordMode(false);
                 }}
-                className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-900/60 transition-colors cursor-pointer"
+                className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-900 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2 text-slate-300">
+                <div className="flex items-center gap-2.5 text-white">
                   <Mail className="w-4 h-4 text-cyan-400" />
-                  <span className="font-semibold text-xs">Email & Password Access</span>
+                  <span className="font-bold text-xs sm:text-sm">Corporate Email & Password Access</span>
                 </div>
-                <div className="flex items-center gap-1 text-slate-400 text-xs">
-                  <span>{showEmailForm ? 'Hide' : 'Expand'}</span>
+                <div className="flex items-center gap-1.5 text-slate-300 text-xs font-semibold">
+                  <span>{showEmailForm ? 'Hide Form' : 'Show Form'}</span>
                   {showEmailForm ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </button>
 
               {showEmailForm && (
-                <div className="p-4 pt-1 border-t border-slate-800 space-y-4 animate-in fade-in duration-100">
+                <div className="p-5 pt-2 border-t border-slate-800 space-y-4 animate-in fade-in duration-100">
                   {/* Mode Selector */}
-                  <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-900 border border-slate-800">
                     <button
                       type="button"
                       onClick={() => {
                         setEmailMode('signin');
                         setIsForgotPasswordMode(false);
                       }}
-                      className={`text-xs font-semibold px-3 py-1 rounded-md transition-colors ${
+                      className={`text-xs font-bold py-2 px-3 rounded-lg transition-all ${
                         emailMode === 'signin' && !isForgotPasswordMode
-                          ? 'bg-cyan-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-cyan-400 text-slate-950 shadow-md'
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Sign In
@@ -382,10 +412,10 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
                         setEmailMode('register');
                         setIsForgotPasswordMode(false);
                       }}
-                      className={`text-xs font-semibold px-3 py-1 rounded-md transition-colors ${
+                      className={`text-xs font-bold py-2 px-3 rounded-lg transition-all ${
                         emailMode === 'register' && !isForgotPasswordMode
-                          ? 'bg-cyan-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-cyan-400 text-slate-950 shadow-md'
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Create Account
@@ -393,10 +423,10 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsForgotPasswordMode(true)}
-                      className={`text-xs font-semibold px-3 py-1 rounded-md transition-colors ${
+                      className={`text-xs font-bold py-2 px-3 rounded-lg transition-all ${
                         isForgotPasswordMode
-                          ? 'bg-cyan-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-cyan-400 text-slate-950 shadow-md'
+                          : 'text-slate-300 hover:text-white'
                       }`}
                     >
                       Reset Password
@@ -405,31 +435,33 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
 
                   {isForgotPasswordMode ? (
                     /* Password Reset Form */
-                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
+                    <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5">
                       <div>
-                        <label className="text-[11px] font-medium text-slate-300 block mb-1">Email for Recovery Link</label>
+                        <label className="text-xs font-bold text-slate-100 block mb-1.5 uppercase tracking-wide">
+                          Work Email for Recovery Link
+                        </label>
                         <input
                           type="email"
                           required
                           value={resetEmailInput}
                           onChange={(e) => setResetEmailInput(e.target.value)}
                           placeholder="architect@enterprise.com"
-                          className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-white text-xs outline-none focus:border-cyan-500"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border-2 border-slate-600 text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-cyan-400"
                         />
                       </div>
 
                       {resetFeedback && (
                         <div
-                          className={`p-2.5 rounded-lg text-xs flex items-center gap-2 ${
+                          className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
                             resetFeedback.success
-                              ? 'bg-emerald-950/80 border border-emerald-500 text-emerald-300'
-                              : 'bg-rose-950/80 border border-rose-500 text-rose-300'
+                              ? 'bg-emerald-950 border border-emerald-500 text-emerald-100'
+                              : 'bg-rose-950 border border-rose-500 text-rose-100'
                           }`}
                         >
                           {resetFeedback.success ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                           ) : (
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                           )}
                           <span>{resetFeedback.text}</span>
                         </div>
@@ -438,59 +470,59 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
                       <button
                         type="submit"
                         disabled={isResetSubmitting}
-                        className="w-full py-2.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                        className="w-full py-3 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs transition-colors cursor-pointer disabled:opacity-50 shadow-md uppercase tracking-wider"
                       >
                         {isResetSubmitting ? 'Sending Link...' : 'Send Password Reset Email'}
                       </button>
                     </form>
                   ) : (
                     /* Email & Password Sign In / Register Form */
-                    <form onSubmit={handleEmailAuth} className="space-y-3">
+                    <form onSubmit={handleEmailAuth} className="space-y-3.5">
                       {emailMode === 'register' && (
                         <div>
-                          <label className="text-[11px] font-medium text-slate-300 block mb-1">Full Name</label>
+                          <label className="text-xs font-bold text-slate-100 block mb-1.5 uppercase tracking-wide">Full Name</label>
                           <input
                             type="text"
                             required
                             value={nameInput}
                             onChange={(e) => setNameInput(e.target.value)}
                             placeholder="David Henderson"
-                            className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-white text-xs outline-none focus:border-cyan-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border-2 border-slate-600 text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-cyan-400"
                           />
                         </div>
                       )}
 
                       <div>
-                        <label className="text-[11px] font-medium text-slate-300 block mb-1">Work Email</label>
+                        <label className="text-xs font-bold text-slate-100 block mb-1.5 uppercase tracking-wide">Work Email</label>
                         <input
                           type="email"
                           required
                           value={emailInput}
                           onChange={(e) => setEmailInput(e.target.value)}
                           placeholder="architect@enterprise.com"
-                          className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-white text-xs outline-none focus:border-cyan-500"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border-2 border-slate-600 text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-cyan-400"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-slate-300 block mb-1">Password</label>
+                        <label className="text-xs font-bold text-slate-100 block mb-1.5 uppercase tracking-wide">Password</label>
                         <input
                           type="password"
                           required
                           value={passwordInput}
                           onChange={(e) => setPasswordInput(e.target.value)}
                           placeholder="••••••••••••"
-                          className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-white text-xs outline-none focus:border-cyan-500"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border-2 border-slate-600 text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-cyan-400"
                         />
                       </div>
 
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-2.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        className="w-full py-3 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 shadow-md uppercase tracking-wider"
                       >
-                        <span>{isSubmitting ? 'Processing...' : emailMode === 'register' ? 'Register Account' : 'Sign In'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>{isSubmitting ? 'Processing...' : emailMode === 'register' ? 'Register Account' : 'Sign In with Email'}</span>
+                        <ArrowRight className="w-4 h-4" />
                       </button>
                     </form>
                   )}

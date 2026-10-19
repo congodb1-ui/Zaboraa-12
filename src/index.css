@@ -525,7 +525,7 @@ html, body {
 .light-high-contrast .dark-feature-container .bg-slate-950,
 .light-high-contrast [data-theme-container="dark"] .bg-slate-950\/60,
 .light-high-contrast [data-theme-container="dark"] .bg-slate-950\/80,
-.light-high-container [data-theme-container="dark"] .bg-slate-950,
+.light-high-contrast [data-theme-container="dark"] .bg-slate-950,
 .light-high-contrast .hero-dark-card .bg-slate-950\/60,
 .light-high-contrast .hero-dark-card .bg-slate-950\/80,
 .light-high-contrast .hero-dark-card .bg-slate-950,
@@ -533,7 +533,7 @@ html, body {
 .light-high-contrast [class*="from-slate-900"] .bg-slate-950\/80,
 .light-high-contrast [class*="bg-gradient-to"][class*="slate-900"] .bg-slate-950\/60,
 .light-high-contrast [class*="bg-gradient-to"][class*="slate-900"] .bg-slate-950\/80 {
-  background-color: rgba(2, 6, 23, 0.7) !important;
+  background-color: rgba(2, 6, 23, 0.85) !important;
 }
 
 .light-high-contrast .dark-card .bg-cyan-500\/10,

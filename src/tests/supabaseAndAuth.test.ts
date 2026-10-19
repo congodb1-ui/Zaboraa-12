@@ -58,22 +58,105 @@ describe('Briefing Request Validation & Constraints', () => {
   });
 });
 
-describe('User Role & Profile Permissions Resolution', () => {
-  function resolveUserPrivileges(email: string) {
-    const role = email.toLowerCase() === 'admin@zaboraa.com' ? 'admin' : 'user';
-    const tier = email.toLowerCase() === 'admin@zaboraa.com' ? 'enterprise' : 'free';
-    return { role, tier };
-  }
-
+describe('Briefing Submission Outcome & Security Tests', () => {
   it('correctly maps admin@zaboraa.com to admin role and enterprise subscription tier', () => {
+    function resolveUserPrivileges(email: string) {
+      const role = email.toLowerCase() === 'admin@zaboraa.com' ? 'admin' : 'user';
+      const tier = email.toLowerCase() === 'admin@zaboraa.com' ? 'enterprise' : 'free';
+      return { role, tier };
+    }
     const privileges = resolveUserPrivileges('admin@zaboraa.com');
     expect(privileges.role).toBe('admin');
     expect(privileges.tier).toBe('enterprise');
   });
 
   it('defaults public users to user role and free tier', () => {
+    function resolveUserPrivileges(email: string) {
+      const role = email.toLowerCase() === 'admin@zaboraa.com' ? 'admin' : 'user';
+      const tier = email.toLowerCase() === 'admin@zaboraa.com' ? 'enterprise' : 'free';
+      return { role, tier };
+    }
     const privileges = resolveUserPrivileges('guest@external.io');
     expect(privileges.role).toBe('user');
     expect(privileges.tier).toBe('free');
+  });
+});
+
+import {
+  UUID_REGEX,
+  sanitizeBriefingUserId,
+  processBriefingSubmissionResult
+} from '../components/ScheduleBriefingModal';
+
+describe('Briefing User ID Validation & Sanitization', () => {
+  const validUUID = 'c57635a9-0b0e-4745-b5af-a58510e1eea2';
+  const otherUUID = '114ca4d3-4b1b-4f7c-824e-3dd38fc2993f';
+
+  it('validates genuine UUID format accurately', () => {
+    expect(UUID_REGEX.test(validUUID)).toBe(true);
+    expect(UUID_REGEX.test('admin-master-root')).toBe(false);
+    expect(UUID_REGEX.test('user-1729291')).toBe(false);
+    expect(UUID_REGEX.test('sb-google-999999')).toBe(false);
+  });
+
+  it('sanitizes synthetic IDs to null to prevent postgres uuid syntax failures', () => {
+    expect(sanitizeBriefingUserId('admin-master-root', null)).toBeNull();
+    expect(sanitizeBriefingUserId('user-987654', null)).toBeNull();
+    expect(sanitizeBriefingUserId('sb-google-1234', null)).toBeNull();
+    expect(sanitizeBriefingUserId(null, null)).toBeNull();
+    expect(sanitizeBriefingUserId(undefined, undefined)).toBeNull();
+  });
+
+  it('preserves valid UUID only when verified against the active Supabase session user', () => {
+    // When session user ID matches user.uid and is valid UUID:
+    expect(sanitizeBriefingUserId(validUUID, validUUID)).toBe(validUUID);
+
+    // When session user does not match or is missing:
+    expect(sanitizeBriefingUserId(validUUID, otherUUID)).toBeNull();
+    expect(sanitizeBriefingUserId(validUUID, null)).toBeNull();
+  });
+});
+
+describe('Briefing Submission Result & Error Handling Verification', () => {
+  it('confirms submission ONLY when Supabase insert succeeds with no error', () => {
+    const successResult = { error: null };
+    const outcome = processBriefingSubmissionResult(successResult, true);
+
+    expect(outcome.success).toBe(true);
+    expect(outcome.errorMessage).toBeNull();
+  });
+
+  it('fails submission and displays error when Supabase returns an RLS error', () => {
+    const rlsErrorResult = {
+      error: { message: 'new row violates row-level security policy for table "briefing_requests"' }
+    };
+    const outcome = processBriefingSubmissionResult(rlsErrorResult, true);
+
+    expect(outcome.success).toBe(false);
+    expect(outcome.errorMessage).toContain('row-level security policy');
+  });
+
+  it('fails submission and displays error when table does not exist', () => {
+    const missingTableResult = {
+      error: { message: 'relation "public.briefing_requests" does not exist' }
+    };
+    const outcome = processBriefingSubmissionResult(missingTableResult, true);
+
+    expect(outcome.success).toBe(false);
+    expect(outcome.errorMessage).toContain('relation "public.briefing_requests" does not exist');
+  });
+
+  it('fails submission and rejects false positive when Supabase is not configured', () => {
+    const outcome = processBriefingSubmissionResult(null, false);
+
+    expect(outcome.success).toBe(false);
+    expect(outcome.errorMessage).toContain('Database service is not configured');
+  });
+
+  it('fails submission and rejects false positive on network failure / empty response', () => {
+    const outcome = processBriefingSubmissionResult(null, true);
+
+    expect(outcome.success).toBe(false);
+    expect(outcome.errorMessage).toContain('No response received');
   });
 });

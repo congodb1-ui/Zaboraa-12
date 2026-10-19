@@ -1,8 +1,61 @@
 import React, { useState } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { X, Calendar, Phone, CheckCircle2, ShieldCheck, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function sanitizeBriefingUserId(userUid?: string | null, sessionUserId?: string | null): string | null {
+  if (!userUid || typeof userUid !== 'string' || !UUID_REGEX.test(userUid)) {
+    return null;
+  }
+  if (sessionUserId && sessionUserId === userUid && UUID_REGEX.test(sessionUserId)) {
+    return sessionUserId;
+  }
+  return null;
+}
+
+export function processBriefingSubmissionResult(
+  insertResult: { error: { message: string } | null } | null,
+  isConfigured: boolean
+): { success: boolean; errorMessage: string | null } {
+  if (!isConfigured) {
+    return {
+      success: false,
+      errorMessage: 'Database service is not configured (Supabase credentials missing). Please contact Wasim Sayyed directly by phone or email.'
+    };
+  }
+  if (!insertResult) {
+    return {
+      success: false,
+      errorMessage: 'No response received from database service. Please check your connection and try again.'
+    };
+  }
+  if (insertResult.error) {
+    return {
+      success: false,
+      errorMessage: insertResult.error.message || 'Failed to submit briefing request to database. Please try again.'
+    };
+  }
+  return {
+    success: true,
+    errorMessage: null
+  };
+}
+
+async function getVerifiedSupabaseUserId(userUid?: string | null): Promise<string | null> {
+  if (!userUid || typeof userUid !== 'string' || !UUID_REGEX.test(userUid)) {
+    return null;
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    const sessionUserId = data?.session?.user?.id;
+    return sanitizeBriefingUserId(userUid, sessionUserId);
+  } catch {
+    return null;
+  }
+}
 
 export const ScheduleBriefingModal: React.FC = () => {
   const { siteConfig, isBriefingModalOpen, setIsBriefingModalOpen } = useCustomization();
@@ -55,37 +108,43 @@ export const ScheduleBriefingModal: React.FC = () => {
       return;
     }
 
+    if (!isSupabaseConfigured || !supabase) {
+      setErrorMessage('Database service is not configured (Supabase credentials missing). Please contact Wasim Sayyed directly by phone or email.');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const payload = {
-      name: name.trim(),
-      email: email.trim(),
-      company: company.trim(),
-      phone: phone.trim() || null,
-      cloud_focus: cloudFocus,
-      vm_scale: vmScale,
-      urgency,
-      notes: notes.trim() || null,
-      status: 'new',
-      user_id: user?.uid || null
-    };
-
     try {
-      if (supabase) {
-        const { error } = await supabase
-          .from('briefing_requests')
-          .insert([payload]);
+      const verifiedUserId = await getVerifiedSupabaseUserId(user?.uid);
 
-        if (error) {
-          console.warn('Supabase briefing insert note:', error.message);
-          // If table not yet created in Supabase SQL editor, provide helpful advisory note in console
-        }
+      const payload = {
+        name: name.trim(),
+        email: email.trim(),
+        company: company.trim(),
+        phone: phone.trim() || null,
+        cloud_focus: cloudFocus,
+        vm_scale: vmScale,
+        urgency,
+        notes: notes.trim() || null,
+        status: 'new',
+        user_id: verifiedUserId
+      };
+
+      const result = await supabase
+        .from('briefing_requests')
+        .insert([payload]);
+
+      const outcome = processBriefingSubmissionResult(result, isSupabaseConfigured);
+      if (!outcome.success) {
+        setErrorMessage(outcome.errorMessage);
+        return;
       }
+
       setSubmitted(true);
     } catch (err: any) {
-      console.warn('Briefing submission notice:', err?.message || err);
-      // Fallback submission confirmation for preview environments
-      setSubmitted(true);
+      const msg = err?.message || 'A network error occurred while submitting your briefing request. Please try again.';
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }

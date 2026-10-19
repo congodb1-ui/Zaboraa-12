@@ -10,8 +10,6 @@ import {
   X,
   Sun,
   Moon,
-  Lock,
-  Unlock,
   ChevronDown,
   Layers,
   Cpu,
@@ -23,7 +21,8 @@ import {
   FileText,
   ExternalLink,
   Network,
-  Sparkles
+  Sparkles,
+  LayoutDashboard
 } from 'lucide-react';
 import { ZaboraaLogoMark } from './ZaboraaLogo';
 import { useAuth } from '../context/AuthContext';
@@ -36,15 +35,13 @@ export const Navbar: React.FC = () => {
     theme,
     toggleTheme,
     isAdmin,
-    setIsAdminLoginModalOpen,
     setIsAdminDashboardOpen,
     setIsCustomizerOpen,
     setIsBriefingModalOpen,
     setIsSearchOpen
   } = useCustomization();
 
-  const { user: authUser, subscriptionTier: licenseTier, setIsCommercializeModalOpen, isOfflineAdminSession } = useAuth();
-  const isAnyAdmin = isAdmin || isOfflineAdminSession;
+  const { user: authUser, subscriptionTier: licenseTier, setIsCommercializeModalOpen } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'disciplines' | 'tools' | 'resources' | null>(null);
 
@@ -355,6 +352,24 @@ export const Navbar: React.FC = () => {
           <NavLink to="/about" className={navLinkClass}>
             About
           </NavLink>
+
+          {/* Admin Console Tab (Visible whenever user logs in with admin account) */}
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `whitespace-nowrap shrink-0 transition-colors text-xs font-bold py-1.5 px-3 rounded-md flex items-center gap-1.5 ${
+                  isActive
+                    ? 'text-cyan-300 bg-cyan-950/90 border border-cyan-500/60 shadow-sm'
+                    : 'text-cyan-400 hover:text-cyan-200 hover:bg-cyan-950/40 border border-cyan-500/30'
+                }`
+              }
+              title="Enterprise Administrative Control Center"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Admin Console</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* Zone 3: Primary Actions & Admin & Theme & Mobile Hamburger */}
@@ -382,33 +397,26 @@ export const Navbar: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
-          {/* Admin Lock / Console Trigger */}
-          {isAnyAdmin ? (
+          {/* Admin Controls (When logged in with admin account) */}
+          {isAdmin && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => setIsAdminDashboardOpen(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 rounded-lg transition-colors cursor-pointer"
-                title="Open 12-section administrative dashboard"
+              <Link
+                to="/admin"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 rounded-lg transition-colors cursor-pointer"
+                title="Open Administrative Console"
               >
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Console</span>
-              </button>
+              </Link>
               <button
                 onClick={() => setIsCustomizerOpen(true)}
-                className="flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors cursor-pointer"
-                title="Open site customizer drawer"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors cursor-pointer"
+                title="Open site customizer drawer (Watermark & Hotspot controls)"
               >
+                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Edit Site</span>
               </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setIsAdminLoginModalOpen(true)}
-              className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 text-slate-500 hover:text-slate-300 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 rounded-lg transition-colors cursor-pointer shrink-0"
-              title="Admin Mode login & Emergency Offline Access"
-            >
-              <Lock className="w-3.5 h-3.5" />
-            </button>
           )}
 
           {/* User Account / Sign In Trigger (Zero Tiers) */}
@@ -477,16 +485,26 @@ export const Navbar: React.FC = () => {
             </button>
 
             {isAdmin && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setIsCustomizerOpen(true);
-                }}
-                className="w-full h-10 flex items-center justify-center gap-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-bold text-xs transition-colors cursor-pointer"
-              >
-                <Sliders className="w-4 h-4 text-emerald-400" />
-                <span>Admin Studio & Customizer</span>
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="h-10 flex items-center justify-center gap-1.5 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-200 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-cyan-400" />
+                  <span>Admin Console</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setIsCustomizerOpen(true);
+                  }}
+                  className="h-10 flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  <Sliders className="w-4 h-4 text-cyan-400" />
+                  <span>Edit Site</span>
+                </button>
+              </div>
             )}
           </div>
 

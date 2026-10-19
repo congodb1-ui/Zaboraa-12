@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useCustomization } from '../../context/CustomizationContext';
 import { AdminSidebar, AdminViewId } from '../../components/admin/AdminSidebar';
 import { AdminTopBar } from '../../components/admin/AdminTopBar';
-import { AdminLoginModal } from '../../components/AdminLoginModal';
 import {
   adminService,
   AdminUserProfile,
@@ -28,7 +27,6 @@ import { AdminAnalyticsView } from '../../components/admin/views/AdminAnalyticsV
 import { AdminSecurityView } from '../../components/admin/views/AdminSecurityView';
 import { AdminBackupsView } from '../../components/admin/views/AdminBackupsView';
 import { AdminIntegrationsView } from '../../components/admin/views/AdminIntegrationsView';
-import { AdminVaultView } from '../../components/admin/views/AdminVaultView';
 
 import { ShieldAlert, Lock, LogIn, ArrowRight } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -46,17 +44,16 @@ const VALID_VIEWS: AdminViewId[] = [
   'content',
   'seo',
   'analytics',
-  'integrations',
-  'vault'
+  'integrations'
 ];
 
 export const AdminControlCenterPage: React.FC = () => {
-  const { user, isAdmin, isOfflineAdminSession, lockOfflineAdminSession, signOut } = useAuth();
-  const { theme, toggleTheme, siteConfig, setIsAdminLoginModalOpen } = useCustomization();
+  const { user, isAdmin, signOut, setIsCommercializeModalOpen } = useAuth();
+  const { theme, toggleTheme, siteConfig } = useCustomization();
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
 
-  const isAccessAllowed = isAdmin || isOfflineAdminSession;
+  const isAccessAllowed = isAdmin;
 
   const initialView: AdminViewId = (tab && VALID_VIEWS.includes(tab as AdminViewId)) ? (tab as AdminViewId) : 'overview';
   const [activeView, setActiveView] = useState<AdminViewId>(initialView);
@@ -161,7 +158,7 @@ export const AdminControlCenterPage: React.FC = () => {
     }
   }, [isAccessAllowed]);
 
-  const currentUserEmail = user?.email || (isOfflineAdminSession ? 'vault-admin@zaboraa.local' : 'admin@zaboraa.com');
+  const currentUserEmail = user?.email || 'admin@zaboraa.com';
 
   // Handle Global Search
   const handleGlobalSearch = (term: string) => {
@@ -216,11 +213,11 @@ export const AdminControlCenterPage: React.FC = () => {
 
           <div className="pt-2 flex flex-col gap-3">
             <button
-              onClick={() => setIsAdminLoginModalOpen(true)}
+              onClick={() => setIsCommercializeModalOpen(true)}
               className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >
               <LogIn className="w-4 h-4" />
-              <span>Sign In with Admin Credentials</span>
+              <span>Sign In with Admin Account</span>
             </button>
 
             <a
@@ -269,8 +266,6 @@ export const AdminControlCenterPage: React.FC = () => {
           theme={theme}
           onToggleTheme={toggleTheme}
           isOnline={isOnline}
-          isOfflineAdminSession={isOfflineAdminSession}
-          onLockVault={lockOfflineAdminSession}
           onSignOut={signOut}
           notifications={notifications}
           onRefreshNotifications={loadAllAdminData}
@@ -373,14 +368,6 @@ export const AdminControlCenterPage: React.FC = () => {
             <AdminIntegrationsView
               integrations={integrations}
               onRefreshIntegrations={loadAllAdminData}
-              currentUserEmail={currentUserEmail}
-            />
-          )}
-
-          {activeView === 'vault' && (
-            <AdminVaultView
-              isOfflineAdminSession={isOfflineAdminSession}
-              onLockVault={lockOfflineAdminSession}
               currentUserEmail={currentUserEmail}
             />
           )}

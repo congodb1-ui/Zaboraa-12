@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
-import { useAuth } from './AuthContext';
+import { useAuth, isUserAdminEmail } from './AuthContext';
 
 const STORAGE_KEY = 'zaboraa_site_config_v8';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
@@ -241,8 +241,8 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const { user, isAdmin: isAuthAdmin, signOut: authSignOut } = useAuth();
 
-  // Authoritative admin verification: only true when authenticated through Supabase with admin role
-  const isAdmin = Boolean(isAuthAdmin || user?.role === 'admin' || user?.email === 'admin@zaboraa.com');
+  // Authoritative admin verification: true when authenticated through Supabase with admin role or admin email
+  const isAdmin = Boolean(isAuthAdmin || user?.role === 'admin' || isUserAdminEmail(user?.email));
   const setIsAdmin = (_val: boolean) => {
     // Only real Supabase authentication modifies admin status
   };

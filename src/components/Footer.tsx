@@ -5,7 +5,7 @@ import { ShieldCheck, Phone, Mail, ArrowUp, FolderGit2 } from 'lucide-react';
 import { ZaboraaLogoMark } from './ZaboraaLogo';
 
 export const Footer: React.FC = () => {
-  const { siteConfig, brandName, setIsBriefingModalOpen, setIsCustomizerOpen, setIsAdminLoginModalOpen, isAdmin } = useCustomization();
+  const { siteConfig, brandName, setIsBriefingModalOpen, setIsCustomizerOpen, isAdmin } = useCustomization();
   const { founder } = siteConfig;
 
   const scrollToTop = () => {
@@ -150,20 +150,21 @@ export const Footer: React.FC = () => {
             <Link to="/case-studies" className="hover:text-white transition-colors">
               Case Studies
             </Link>
-            {isAdmin ? (
-              <button
-                onClick={() => setIsCustomizerOpen(true)}
-                className="hover:text-emerald-400 transition-colors font-mono cursor-pointer"
-              >
-                [Admin Customizer]
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsAdminLoginModalOpen(true)}
-                className="hover:text-slate-300 transition-colors text-slate-600 cursor-pointer"
-              >
-                Admin
-              </button>
+            {isAdmin && (
+              <>
+                <Link
+                  to="/admin"
+                  className="hover:text-cyan-400 transition-colors font-mono"
+                >
+                  [Admin Console]
+                </Link>
+                <button
+                  onClick={() => setIsCustomizerOpen(true)}
+                  className="hover:text-emerald-400 transition-colors font-mono cursor-pointer"
+                >
+                  [Edit Site]
+                </button>
+              </>
             )}
             <button
               onClick={scrollToTop}

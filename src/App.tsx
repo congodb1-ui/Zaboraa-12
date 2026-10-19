@@ -9,15 +9,12 @@ import { PhotoEditorModal } from './components/PhotoEditorModal';
 import { PlatformEditorModal } from './components/PlatformEditorModal';
 import { ScheduleBriefingModal } from './components/ScheduleBriefingModal';
 import { SearchCommandModal } from './components/SearchCommandModal';
-import { AdminLoginModal } from './components/AdminLoginModal';
 import { WatermarkSettingsModal } from './components/WatermarkSettingsModal';
 import { CommercializeModal } from './components/CommercializeModal';
 import { AuthErrorBoundary } from './components/AuthErrorBoundary';
 import { TelemetryBackground } from './components/TelemetryBackground';
 import { useAuth } from './context/AuthContext';
-import { EmergencyModeBanner } from './components/offline/EmergencyModeBanner';
 import { AdminDashboardModal } from './components/admin/AdminDashboardModal';
-import { ReconciliationDrawer } from './components/offline/ReconciliationDrawer';
 import { PWAInstallPrompt } from './components/offline/PWAInstallPrompt';
 import { TrackRecordEditorModal } from './components/TrackRecordEditorModal';
 import { FounderCredentialsModal } from './components/FounderCredentialsModal';
@@ -71,14 +68,11 @@ const MainLayout: React.FC = () => {
     isAdmin,
     signOutAdmin,
     setIsCustomizerOpen,
-    setIsWatermarkModalOpen,
     setIsBriefingModalOpen,
-    setIsAdminDashboardOpen,
-    updateEnableHotspots
+    setIsAdminDashboardOpen
   } = useCustomization();
 
-  const { isOfflineAdminSession, lockOfflineAdminSession } = useAuth();
-  const isAnyAdminActive = isAdmin || isOfflineAdminSession;
+  const { user } = useAuth();
 
   return (
     <div
@@ -90,9 +84,6 @@ const MainLayout: React.FC = () => {
         theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       } theme-root flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative`}
     >
-      {/* Persistent Emergency & Offline Mode Banner */}
-      <EmergencyModeBanner />
-
       {/* Live Ambient Telemetry Particles */}
       <TelemetryBackground />
 
@@ -112,13 +103,13 @@ const MainLayout: React.FC = () => {
         </div>
       )}
 
-      {/* Admin Mode Top Status Bar (Visible when Live Admin or Decrypted Offline Vault is active) */}
-      {isAnyAdminActive && (
+      {/* Admin Mode Top Status Bar (Visible when logged in with admin account) */}
+      {isAdmin && (
         <div className="sticky top-0 z-50 bg-emerald-950/95 border-b border-emerald-500/40 px-4 py-2 text-xs font-mono text-emerald-200 flex items-center justify-between backdrop-blur-md shadow-lg">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-bold tracking-wide">
-              {isOfflineAdminSession ? 'OFFLINE ADMIN MODE (VAULT ACTIVE)' : 'ADMIN MODE: Wasim Sayyed'}
+              ADMIN MODE: {user?.displayName || user?.email || 'Wasim Sayyed'}
             </span>
             <span className="hidden md:inline text-emerald-300/80">· Enterprise Operations Active</span>
           </div>
@@ -132,53 +123,20 @@ const MainLayout: React.FC = () => {
               <span>Admin Console</span>
             </Link>
             <button
-              onClick={() => updateEnableHotspots(!siteConfig.enableHotspots)}
-              className={`px-2.5 py-1 rounded border text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
-                siteConfig.enableHotspots
-                  ? 'bg-emerald-900/90 hover:bg-emerald-800 border-emerald-500 text-emerald-100'
-                  : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-300'
-              }`}
-              title="Globally toggle diagram interactive hotspots across entire site"
-            >
-              {siteConfig.enableHotspots ? (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Hotspots: ON</span>
-                </>
-              ) : (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Hotspots: OFF</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => setIsWatermarkModalOpen(true)}
-              className="px-2.5 py-1 rounded bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-600/70 text-emerald-100 font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Watermarks</span>
-            </button>
-            <button
               onClick={() => setIsCustomizerOpen(true)}
               className="px-2.5 py-1 rounded bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-600/70 text-emerald-100 font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Open site customizer drawer (Watermark & Hotspots settings)"
             >
               <Sliders className="w-3.5 h-3.5 text-cyan-400" />
               <span>Edit Site</span>
             </button>
             <button
-              onClick={() => {
-                if (isOfflineAdminSession) {
-                  lockOfflineAdminSession();
-                } else {
-                  void signOutAdmin();
-                }
-              }}
+              onClick={() => void signOutAdmin()}
               className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-emerald-700/70 text-slate-300 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-              title="Exit administrative view"
+              title="Sign out of administrative account"
             >
               <LogOut className="w-3 h-3 text-rose-400" />
-              <span>Exit Admin</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
@@ -238,25 +196,14 @@ const MainLayout: React.FC = () => {
 
         {/* Admin-Only Floating Customizer Control */}
         {isAdmin && (
-          <>
-            <button
-              onClick={() => setIsWatermarkModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/50 text-cyan-300 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
-              title="Watermark customization"
-            >
-              <ShieldCheck className="w-4 h-4 text-cyan-400" />
-              <span className="hidden sm:inline">Watermark</span>
-            </button>
-
-            <button
-              onClick={() => setIsCustomizerOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
-              title="Open Site Customizer"
-            >
-              <Sliders className="w-4 h-4 text-emerald-400" />
-              <span>Customize Site</span>
-            </button>
-          </>
+          <button
+            onClick={() => setIsCustomizerOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+            title="Open Site Customizer"
+          >
+            <Sliders className="w-4 h-4 text-emerald-400" />
+            <span>Customize Site</span>
+          </button>
         )}
 
         <button
@@ -274,9 +221,7 @@ const MainLayout: React.FC = () => {
       <PlatformEditorModal />
       <ScheduleBriefingModal />
       <SearchCommandModal />
-      <AdminLoginModal />
       <AdminDashboardModal />
-      <ReconciliationDrawer />
       <PWAInstallPrompt />
       <WatermarkSettingsModal />
       <TrackRecordEditorModal />

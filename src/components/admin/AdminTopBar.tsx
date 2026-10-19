@@ -28,8 +28,6 @@ interface AdminTopBarProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   isOnline: boolean;
-  isOfflineAdminSession: boolean;
-  onLockVault: () => void;
   onSignOut: () => void;
   notifications: AdminNotification[];
   onRefreshNotifications: () => void;
@@ -44,8 +42,6 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
   theme,
   onToggleTheme,
   isOnline,
-  isOfflineAdminSession,
-  onLockVault,
   onSignOut,
   notifications,
   onRefreshNotifications,
@@ -93,8 +89,7 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
     content: { title: 'Website Content CMS', category: 'Platform & Growth' },
     seo: { title: 'SEO & Growth Center', category: 'Platform & Growth' },
     analytics: { title: 'Analytics & Reporting', category: 'Platform & Growth' },
-    integrations: { title: 'System Health & Integrations', category: 'Platform & Growth' },
-    vault: { title: 'Emergency Offline Vault', category: 'Platform & Growth' }
+    integrations: { title: 'System Health & Integrations', category: 'Platform & Growth' }
   };
 
   const currentMeta = viewTitles[activeView] || { title: 'Admin Console', category: 'Administration' };
@@ -313,19 +308,6 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
               </div>
 
               <div className="py-1">
-                {isOfflineAdminSession && (
-                  <button
-                    onClick={() => {
-                      onLockVault();
-                      setIsProfileOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-rose-300 hover:bg-rose-950/40 flex items-center gap-2 cursor-pointer"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Lock Offline Vault</span>
-                  </button>
-                )}
-
                 <button
                   onClick={() => {
                     onSignOut();

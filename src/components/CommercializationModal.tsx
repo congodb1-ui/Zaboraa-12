@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth, SubscriptionTier } from '../context/AuthContext';
 import { useCustomization } from '../context/CustomizationContext';
+import { Link } from 'react-router-dom';
 import {
   X,
   CheckCircle2,
@@ -15,7 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
-  ExternalLink
+  ExternalLink,
+  LayoutDashboard
 } from 'lucide-react';
 
 interface CommercializationModalProps {
@@ -272,6 +274,16 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={onClose}
+                    className="px-3.5 py-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Admin Console</span>
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={async () => {

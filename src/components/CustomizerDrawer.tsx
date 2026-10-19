@@ -50,6 +50,7 @@ export const CustomizerDrawer: React.FC = () => {
     setIsCustomizerOpen,
     setIsPhotoEditorOpen,
     setIsWatermarkModalOpen,
+    updateWatermarkConfig,
     updateEnableHotspots,
     updateAdminSettings,
     setActiveEditPlatformId,
@@ -434,6 +435,131 @@ export const CustomizerDrawer: React.FC = () => {
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          {/* Quick Display Controls: Watermark Option & Hotspot Option */}
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 shadow-md">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-cyan-400" />
+                <span className="font-bold text-white text-xs uppercase tracking-wider font-mono">
+                  Site Overlays & Display Controls
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
+                Edit Site
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 1. Hotspot Option (Hotspot On or Off) */}
+              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between gap-2.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      {siteConfig.enableHotspots ? (
+                        <Eye className="w-4 h-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <EyeOff className="w-4 h-4 text-slate-400 shrink-0" />
+                      )}
+                      <span className="font-bold text-white text-xs">Hotspot Option</span>
+                    </div>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
+                      siteConfig.enableHotspots
+                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800'
+                    }`}>
+                      {siteConfig.enableHotspots ? 'Hotspots: ON' : 'Hotspots: OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-snug">
+                    Turn diagram interactive inspection hotspot pins on or off across the site.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !siteConfig.enableHotspots;
+                    updateEnableHotspots(nextVal);
+                    showNotification(nextVal ? 'Hotspots globally enabled!' : 'Hotspots globally disabled!');
+                  }}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    siteConfig.enableHotspots
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                  }`}
+                >
+                  {siteConfig.enableHotspots ? (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Hotspots: ON (Click to Turn Off)</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Hotspots: OFF (Click to Turn On)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* 2. Watermark Option */}
+              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between gap-2.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span className="font-bold text-white text-xs">Watermark Option</span>
+                    </div>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
+                      siteConfig.watermark?.enabled
+                        ? 'bg-cyan-950 text-cyan-400 border border-cyan-800'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800'
+                    }`}>
+                      {siteConfig.watermark?.enabled ? 'Watermark: ON' : 'Watermark: OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-snug truncate">
+                    {siteConfig.watermark?.text || 'Custom enterprise blueprint overlay'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentEnabled = siteConfig.watermark?.enabled ?? true;
+                      updateWatermarkConfig({
+                        enabled: !currentEnabled,
+                        type: siteConfig.watermark?.type || 'text',
+                        text: siteConfig.watermark?.text || `${(brandName || siteConfig.brand || 'ENTERPRISE').toUpperCase()} · HYBRID CLOUD BLUEPRINT`,
+                        position: siteConfig.watermark?.position || 'bottom-right',
+                        opacity: siteConfig.watermark?.opacity ?? 0.35,
+                        imageUrl: siteConfig.watermark?.imageUrl
+                      });
+                      showNotification(!currentEnabled ? 'Watermark turned ON!' : 'Watermark turned OFF!');
+                    }}
+                    className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      siteConfig.watermark?.enabled
+                        ? 'bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                    }`}
+                  >
+                    <span>{siteConfig.watermark?.enabled ? 'Watermark: ON' : 'Watermark: OFF'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsWatermarkModalOpen(true)}
+                    className="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Configure watermark text, position, opacity and logo"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Configure</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* TAB 0: UI DESIGNS & APPEARANCE SYSTEM */}
           {activeTab === 'appearance' && (
             <div className="space-y-6 text-xs">

@@ -33,8 +33,7 @@ export type AdminViewId =
   | 'content'
   | 'seo'
   | 'analytics'
-  | 'integrations'
-  | 'vault';
+  | 'integrations';
 
 interface AdminSidebarProps {
   activeView: AdminViewId;
@@ -101,8 +100,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         { id: 'content', label: 'Website Content CMS', icon: FileText },
         { id: 'seo', label: 'SEO & Growth Center', icon: Search },
         { id: 'analytics', label: 'Analytics & Reporting', icon: BarChart3 },
-        { id: 'integrations', label: 'System Health & Integrations', icon: Activity },
-        { id: 'vault', label: 'Emergency Offline Vault', icon: KeyRound }
+        { id: 'integrations', label: 'System Health & Integrations', icon: Activity }
       ]
     }
   ];

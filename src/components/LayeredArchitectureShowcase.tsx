@@ -21,7 +21,6 @@ import {
   Edit3,
   ExternalLink,
   CheckCircle2,
-  Maximize2,
   Gauge,
   Workflow
 } from 'lucide-react';
@@ -31,7 +30,6 @@ interface PlatformTheme {
   accentColor: string;
   accentBorder: string;
   accentBg: string;
-  accentGlow: string;
   accentHex: string;
   badgeLabel: string;
   benchmarkMetrics: {
@@ -43,12 +41,11 @@ interface PlatformTheme {
 
 const PLATFORM_THEMES: Record<string, PlatformTheme> = {
   avs: {
-    icon: <Server className="w-5 h-5 text-cyan-400" />,
-    accentColor: 'text-cyan-400',
-    accentBorder: 'border-cyan-500/40',
-    accentBg: 'bg-cyan-950/40',
-    accentGlow: 'rgba(6, 182, 212, 0.25)',
-    accentHex: '#06b6d4',
+    icon: <Server className="w-5 h-5 text-sky-700 dark:text-cyan-400" />,
+    accentColor: 'text-sky-700 dark:text-cyan-400',
+    accentBorder: 'border-sky-300 dark:border-cyan-500/40',
+    accentBg: 'bg-sky-50 dark:bg-cyan-950/40',
+    accentHex: '#0284c7',
     badgeLabel: 'AZURE VMWARE SOLUTION',
     benchmarkMetrics: [
       { label: 'Latency Boundary', value: '< 2.0 ms', note: 'ExpressRoute FastPath directly to ESXi kernel' },
@@ -58,12 +55,11 @@ const PLATFORM_THEMES: Record<string, PlatformTheme> = {
     ]
   },
   gcve: {
-    icon: <Cloud className="w-5 h-5 text-blue-400" />,
-    accentColor: 'text-blue-400',
-    accentBorder: 'border-blue-500/40',
-    accentBg: 'bg-blue-950/40',
-    accentGlow: 'rgba(59, 130, 246, 0.25)',
-    accentHex: '#3b82f6',
+    icon: <Cloud className="w-5 h-5 text-blue-700 dark:text-blue-400" />,
+    accentColor: 'text-blue-700 dark:text-blue-400',
+    accentBorder: 'border-blue-300 dark:border-blue-500/40',
+    accentBg: 'bg-blue-50 dark:bg-blue-950/40',
+    accentHex: '#2563eb',
     badgeLabel: 'GOOGLE CLOUD VMWARE ENGINE',
     benchmarkMetrics: [
       { label: 'VPC Interconnect', value: '100 Gbps', note: 'Private Services Access private fiber peering' },
@@ -73,12 +69,11 @@ const PLATFORM_THEMES: Record<string, PlatformTheme> = {
     ]
   },
   'vmc-dr': {
-    icon: <Layers className="w-5 h-5 text-amber-400" />,
-    accentColor: 'text-amber-400',
-    accentBorder: 'border-amber-500/40',
-    accentBg: 'bg-amber-950/40',
-    accentGlow: 'rgba(245, 158, 11, 0.25)',
-    accentHex: '#f59e0b',
+    icon: <Layers className="w-5 h-5 text-amber-700 dark:text-amber-400" />,
+    accentColor: 'text-amber-700 dark:text-amber-400',
+    accentBorder: 'border-amber-300 dark:border-amber-500/40',
+    accentBg: 'bg-amber-50 dark:bg-amber-950/40',
+    accentHex: '#d97706',
     badgeLabel: 'VMWARE CLOUD ON AWS',
     benchmarkMetrics: [
       { label: 'RPO Target', value: '0 sec', note: 'Synchronous cross-AZ write mirroring' },
@@ -88,12 +83,11 @@ const PLATFORM_THEMES: Record<string, PlatformTheme> = {
     ]
   },
   nsx: {
-    icon: <Shield className="w-5 h-5 text-emerald-400" />,
-    accentColor: 'text-emerald-400',
-    accentBorder: 'border-emerald-500/40',
-    accentBg: 'bg-emerald-950/40',
-    accentGlow: 'rgba(16, 185, 129, 0.25)',
-    accentHex: '#10b981',
+    icon: <Shield className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />,
+    accentColor: 'text-emerald-700 dark:text-emerald-400',
+    accentBorder: 'border-emerald-300 dark:border-emerald-500/40',
+    accentBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    accentHex: '#059669',
     badgeLabel: 'NSX-T SDN & DISTRIBUTED FIREWALL',
     benchmarkMetrics: [
       { label: 'Inspection Latency', value: '0 ms wire', note: 'Kernel-level hypervisor vNIC microsegmentation' },
@@ -103,12 +97,11 @@ const PLATFORM_THEMES: Record<string, PlatformTheme> = {
     ]
   },
   srm: {
-    icon: <Repeat className="w-5 h-5 text-rose-400" />,
-    accentColor: 'text-rose-400',
-    accentBorder: 'border-rose-500/40',
-    accentBg: 'bg-rose-950/40',
-    accentGlow: 'rgba(244, 63, 94, 0.25)',
-    accentHex: '#f43f5e',
+    icon: <Repeat className="w-5 h-5 text-rose-700 dark:text-rose-400" />,
+    accentColor: 'text-rose-700 dark:text-rose-400',
+    accentBorder: 'border-rose-300 dark:border-rose-500/40',
+    accentBg: 'bg-rose-50 dark:bg-rose-950/40',
+    accentHex: '#e11d48',
     badgeLabel: 'SITE RECOVERY MANAGER & HCX',
     benchmarkMetrics: [
       { label: 'Granular RPO', value: '5 min - 0s', note: 'vSphere Replication & Array-Based SRA' },
@@ -118,12 +111,11 @@ const PLATFORM_THEMES: Record<string, PlatformTheme> = {
     ]
   },
   'nutanix-nc2-azure': {
-    icon: <Cpu className="w-5 h-5 text-teal-400" />,
-    accentColor: 'text-teal-400',
-    accentBorder: 'border-teal-500/40',
-    accentBg: 'bg-teal-950/40',
-    accentGlow: 'rgba(45, 212, 191, 0.25)',
-    accentHex: '#2dd4bf',
+    icon: <Cpu className="w-5 h-5 text-teal-700 dark:text-teal-400" />,
+    accentColor: 'text-teal-700 dark:text-teal-400',
+    accentBorder: 'border-teal-300 dark:border-teal-500/40',
+    accentBg: 'bg-teal-50 dark:bg-teal-950/40',
+    accentHex: '#0d9488',
     badgeLabel: 'NUTANIX NC2 ON AZURE',
     benchmarkMetrics: [
       { label: 'Bare-Metal Node SKUs', value: 'AN36 - AN100', note: 'Native AHV without nested virtualization penalty' },
@@ -135,12 +127,11 @@ const PLATFORM_THEMES: Record<string, PlatformTheme> = {
 };
 
 const DEFAULT_THEME: PlatformTheme = {
-  icon: <Server className="w-5 h-5 text-cyan-400" />,
-  accentColor: 'text-cyan-400',
-  accentBorder: 'border-cyan-500/40',
-  accentBg: 'bg-cyan-950/40',
-  accentGlow: 'rgba(6, 182, 212, 0.25)',
-  accentHex: '#06b6d4',
+  icon: <Server className="w-5 h-5 text-sky-700 dark:text-cyan-400" />,
+  accentColor: 'text-sky-700 dark:text-cyan-400',
+  accentBorder: 'border-sky-300 dark:border-cyan-500/40',
+  accentBg: 'bg-sky-50 dark:bg-cyan-950/40',
+  accentHex: '#0284c7',
   badgeLabel: 'ENTERPRISE ARCHITECTURE',
   benchmarkMetrics: [
     { label: 'Architecture SLA', value: '99.99%', note: 'Verified multi-cloud deployment pattern' },
@@ -166,7 +157,6 @@ export const LayeredArchitectureShowcase: React.FC = () => {
   const [selectedDesignIndex, setSelectedDesignIndex] = useState<number>(0);
   const [direction, setDirection] = useState<number>(0);
 
-  // Active showcase item
   const currentShowcase = showcases[currentIndex] || showcases[0];
   const platformKey = currentShowcase?.id || 'avs';
   const theme = PLATFORM_THEMES[platformKey] || DEFAULT_THEME;
@@ -175,7 +165,6 @@ export const LayeredArchitectureShowcase: React.FC = () => {
   const activeDesign: ArchitectureDesignItem | undefined =
     designs[selectedDesignIndex] || designs[0];
 
-  // Reset selected design when switching platform
   useEffect(() => {
     setSelectedDesignIndex(0);
   }, [currentIndex]);
@@ -198,10 +187,8 @@ export const LayeredArchitectureShowcase: React.FC = () => {
     setCurrentIndex(index);
   };
 
-  // Keyboard navigation support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       const target = e.target as HTMLElement;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
 
@@ -224,27 +211,23 @@ export const LayeredArchitectureShowcase: React.FC = () => {
 
   const slideVariants = {
     enter: (dir: number) => ({
-      x: dir > 0 ? 30 : -30,
-      opacity: 0,
-      scale: 0.98
+      x: dir > 0 ? 25 : -25,
+      opacity: 0
     }),
     center: {
       x: 0,
       opacity: 1,
-      scale: 1,
       transition: {
-        x: { type: 'spring' as const, stiffness: 300, damping: 30 },
-        opacity: { duration: 0.25 },
-        scale: { duration: 0.25 }
+        x: { type: 'spring' as const, stiffness: 350, damping: 35 },
+        opacity: { duration: 0.2 }
       }
     },
     exit: (dir: number) => ({
-      x: dir > 0 ? -30 : 30,
+      x: dir > 0 ? -25 : 25,
       opacity: 0,
-      scale: 0.98,
       transition: {
-        x: { type: 'spring' as const, stiffness: 300, damping: 30 },
-        opacity: { duration: 0.2 }
+        x: { type: 'spring' as const, stiffness: 350, damping: 35 },
+        opacity: { duration: 0.15 }
       }
     })
   };
@@ -254,42 +237,35 @@ export const LayeredArchitectureShowcase: React.FC = () => {
       id="architecture-showcase"
       role="region"
       aria-label="Multi-Cloud Architecture Solution Showcase"
-      className="py-16 lg:py-24 bg-slate-950 border-b border-slate-800 relative overflow-hidden scroll-mt-14"
+      className="py-16 lg:py-24 bg-slate-50/70 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden scroll-mt-14"
     >
-      {/* Ambient Responsive Backdrop Glow responding to active platform palette */}
-      <div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full blur-[140px] pointer-events-none transition-all duration-700 opacity-20"
-        style={{ backgroundColor: theme.accentHex }}
-      />
-      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
-
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Top Header & Context */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-slate-800/80">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="max-w-3xl space-y-3">
-            <div className="flex items-center gap-2 text-xs font-mono font-semibold tracking-wider text-cyan-400">
+            <div className="flex items-center gap-2 text-xs font-mono font-semibold tracking-wider text-sky-700 dark:text-cyan-400">
               <span>INTERACTIVE ARCHITECTURE SHOWCASE</span>
-              <span aria-hidden="true" className="text-slate-600">·</span>
-              <span className="text-slate-400">LAYERED MULTI-CLOUD EXPLORER</span>
-              <span aria-hidden="true" className="text-slate-600">·</span>
-              <span className="text-emerald-400 font-semibold">PRODUCTION VERIFIED PATTERNS</span>
+              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-slate-500 dark:text-slate-400">LAYERED MULTI-CLOUD EXPLORER</span>
+              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-teal-700 dark:text-emerald-400 font-semibold">PRODUCTION VERIFIED PATTERNS</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
               Enterprise Cloud Topologies & Migration Blueprints
             </h2>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
               Inspect production-grade network paths, decoupled external storage pools, and zero-downtime cutover pipelines across major hyperscaler private clouds.
             </p>
           </div>
 
           {/* Navigation Controls: Pagination & Arrows */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
-              <span className="text-white font-bold tabular-nums">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300">
+              <span className="text-slate-900 dark:text-white font-bold tabular-nums">
                 {String(currentIndex + 1).padStart(2, '0')}
               </span>
-              <span className="text-slate-600">/</span>
-              <span className="text-slate-400 tabular-nums">
+              <span className="text-slate-400">/</span>
+              <span className="text-slate-500 tabular-nums">
                 {String(showcases.length).padStart(2, '0')}
               </span>
             </div>
@@ -299,7 +275,7 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                 type="button"
                 onClick={handlePrev}
                 aria-label="Previous architecture platform"
-                className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition cursor-pointer focus-visible:ring-2 focus-visible:ring-cyan-400"
+                className="p-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -307,7 +283,7 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                 type="button"
                 onClick={handleNext}
                 aria-label="Next architecture platform"
-                className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition cursor-pointer focus-visible:ring-2 focus-visible:ring-cyan-400"
+                className="p-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -315,7 +291,7 @@ export const LayeredArchitectureShowcase: React.FC = () => {
           </div>
         </div>
 
-        {/* Platform Quick-Selector Strip (Nike Slider Style Horizontal Navigator) */}
+        {/* Platform Quick-Selector Strip */}
         <div className="overflow-x-auto pb-2 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-max">
             {showcases.map((platform, idx) => {
@@ -327,25 +303,19 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                   onClick={() => handleSelectPlatform(idx)}
                   className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border ${
                     isActive
-                      ? 'bg-slate-900 text-white border-cyan-400/80 shadow-lg shadow-cyan-500/10'
-                      : 'bg-slate-950/80 hover:bg-slate-900/80 text-slate-400 hover:text-slate-200 border-slate-800/80'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-sm'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-800'
                   }`}
                 >
                   <span className="shrink-0">{pTheme.icon}</span>
                   <span>{platform.platform}</span>
-                  {isActive && (
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: pTheme.accentHex }}
-                    />
-                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Animated Choreographed Stage (Motion for React) */}
+        {/* Animated Choreographed Stage */}
         <AnimatePresence custom={direction} mode="wait">
           <motion.div
             key={currentShowcase.id}
@@ -358,14 +328,14 @@ export const LayeredArchitectureShowcase: React.FC = () => {
           >
             {/* Left Column (7 Cols): High-Resolution Architecture Canvas with Hotspots */}
             <div className="lg:col-span-7 space-y-4">
-              <div className="relative rounded-2xl border border-slate-800 bg-slate-900/95 overflow-hidden shadow-2xl">
+              <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 overflow-hidden shadow-sm">
                 {/* Top Diagram Toolbar */}
-                <div className="px-4 py-3 bg-slate-950/80 border-b border-slate-800/80 flex items-center justify-between gap-4">
+                <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2 truncate">
-                    <span className="p-1 rounded bg-slate-900 text-cyan-400 border border-slate-800">
+                    <span className="p-1 rounded bg-white dark:bg-slate-900 text-sky-700 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">
                       {theme.icon}
                     </span>
-                    <span className="text-xs font-bold text-white truncate">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
                       {activeDesign?.title || currentShowcase.title}
                     </span>
                   </div>
@@ -375,21 +345,21 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setActiveEditPlatformId(currentShowcase.id)}
-                        className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[10px] font-mono flex items-center gap-1 border border-slate-700 cursor-pointer"
+                        className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-sky-700 dark:text-cyan-300 text-[10px] font-mono flex items-center gap-1 border border-slate-300 dark:border-slate-700 cursor-pointer"
                         title="Edit platform content (Admin)"
                       >
-                        <Edit3 className="w-3 h-3 text-cyan-400" />
+                        <Edit3 className="w-3 h-3 text-sky-600 dark:text-cyan-400" />
                         <span>Edit</span>
                       </button>
                     )}
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                       VECTOR HOTSPOTS ACTIVE
                     </span>
                   </div>
                 </div>
 
                 {/* Diagram Viewport with Hotspots and Pan/Zoom */}
-                <div className="relative aspect-[16/10] bg-slate-950">
+                <div className="relative aspect-[16/10] bg-slate-100 dark:bg-slate-950">
                   <InteractiveHotspotImage
                     imageUrl={currentImage}
                     designId={activeDesign?.id || `${currentShowcase.id}-design-1`}
@@ -400,20 +370,20 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                   />
                 </div>
 
-                {/* Sub-Design Selector Pills (if platform contains multiple architecture variants) */}
+                {/* Sub-Design Selector Pills */}
                 {designs.length > 1 && (
-                  <div className="p-3 bg-slate-950/90 border-t border-slate-800 flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold mr-1">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950/90 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold mr-1">
                       Architecture Variants:
                     </span>
                     {designs.map((design, dIdx) => (
                       <button
                         key={design.id}
                         onClick={() => setSelectedDesignIndex(dIdx)}
-                        className={`px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
                           dIdx === selectedDesignIndex
-                            ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 font-semibold'
-                            : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+                            ? 'bg-slate-900 text-white dark:bg-cyan-500/20 dark:text-cyan-200 border border-slate-900 dark:border-cyan-500/40 font-semibold'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-400 hover:bg-slate-100 border border-slate-200 dark:border-slate-800'
                         }`}
                       >
                         {design.badge || `Variant ${dIdx + 1}`}
@@ -424,8 +394,8 @@ export const LayeredArchitectureShowcase: React.FC = () => {
               </div>
 
               {/* Technical Description Box */}
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 text-xs text-slate-300 leading-relaxed space-y-2">
-                <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300 leading-relaxed space-y-2 shadow-sm">
+                <div className="flex items-center gap-1.5 text-sky-700 dark:text-cyan-400 font-semibold">
                   <Workflow className="w-3.5 h-3.5" />
                   <span>Architecture Rationale & Flow</span>
                 </div>
@@ -445,25 +415,25 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                   >
                     {theme.badgeLabel}
                   </span>
-                  <span className="text-slate-600">·</span>
-                  <span className="text-xs text-slate-400 font-mono">
+                  <span className="text-slate-400">·</span>
+                  <span className="text-xs text-slate-500 font-mono">
                     DISCIPLINE 0{currentIndex + 1}
                   </span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                   {currentShowcase.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                   {currentShowcase.description}
                 </p>
               </div>
 
-              {/* Architectural Benchmark Baseline Strip (Honest Telemetry) */}
-              <div className="space-y-2.5 p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800/80 pb-2">
-                  <span className="flex items-center gap-1.5 text-cyan-300">
-                    <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+              {/* Architectural Benchmark Baseline Strip */}
+              <div className="space-y-2.5 p-4 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="flex items-center gap-1.5 text-sky-700 dark:text-cyan-300">
+                    <Gauge className="w-3.5 h-3.5 text-sky-600 dark:text-cyan-400" />
                     <span>Architectural Benchmark Baseline</span>
                   </span>
                   <span className="text-slate-500 font-normal">Design Targets</span>
@@ -472,10 +442,10 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                   {theme.benchmarkMetrics.map((metric, mIdx) => (
                     <div key={mIdx} className="space-y-0.5">
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-slate-500">
                         {metric.label}
                       </div>
-                      <div className="text-sm font-bold text-white font-mono tabular-nums">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white font-mono tabular-nums">
                         {metric.value}
                       </div>
                       <div className="text-[10px] text-slate-500 truncate" title={metric.note}>
@@ -488,13 +458,13 @@ export const LayeredArchitectureShowcase: React.FC = () => {
 
               {/* Key Architecture Deliverables */}
               <div className="space-y-2">
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-semibold block">
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider font-semibold block">
                   Core Architectural Deliverables
                 </span>
-                <ul className="space-y-2 text-xs text-slate-300">
+                <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
                   {currentShowcase.keyDeliverables.slice(0, 4).map((deliv, dIdx) => (
                     <li key={dIdx} className="flex items-start gap-2 leading-relaxed">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                       <span>{deliv}</span>
                     </li>
                   ))}
@@ -506,7 +476,7 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                 {currentShowcase.techTags.map((tag, tIdx) => (
                   <span
                     key={tIdx}
-                    className="px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800 text-[11px] font-mono"
+                    className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-400 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
                   >
                     {tag}
                   </span>
@@ -514,11 +484,11 @@ export const LayeredArchitectureShowcase: React.FC = () => {
               </div>
 
               {/* Action Center Buttons */}
-              <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row lg:flex-col gap-2.5">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row lg:flex-col gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsBriefingModalOpen(true)}
-                  className="w-full px-4 py-3 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-cyan-400"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Calendar className="w-4 h-4" />
                   <span>Schedule Architecture Briefing</span>
@@ -528,17 +498,17 @@ export const LayeredArchitectureShowcase: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <Link
                     to={`/disciplines/${currentShowcase.id}`}
-                    className="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-semibold transition text-center flex items-center justify-center gap-1.5"
+                    className="px-3 py-2 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition text-center flex items-center justify-center gap-1.5"
                   >
                     <span>Full Discipline</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                    <ExternalLink className="w-3.5 h-3.5 text-sky-600 dark:text-cyan-400" />
                   </Link>
 
                   <Link
                     to="/tools/design-generator"
-                    className="px-3 py-2 rounded-lg bg-gradient-to-r from-slate-900 to-indigo-950 hover:to-indigo-900 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition text-center flex items-center justify-center gap-1.5"
+                    className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 text-xs font-semibold transition text-center flex items-center justify-center gap-1.5"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-sky-600 dark:text-cyan-400" />
                     <span>Run Blueprint</span>
                   </Link>
                 </div>

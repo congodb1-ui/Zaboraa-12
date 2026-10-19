@@ -14,8 +14,9 @@ export const TelemetryBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { theme, siteConfig } = useCustomization();
 
-  // If animations disabled via admin, render subtle static mesh
-  const animationsEnabled = siteConfig.adminSettings?.imageAnimationsEnabled ?? true;
+  // If animations disabled via admin or prefers-reduced-motion is active, disable canvas rendering
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const animationsEnabled = (siteConfig.adminSettings?.imageAnimationsEnabled ?? true) && !prefersReducedMotion;
 
   useEffect(() => {
     if (!animationsEnabled) return;

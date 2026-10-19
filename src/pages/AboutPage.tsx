@@ -39,44 +39,38 @@ export const AboutPage: React.FC = () => {
             data-theme-container="dark"
             className="dark-card dark-feature-container relative rounded-2xl border border-slate-800 bg-slate-900/95 p-6 sm:p-8 shadow-2xl backdrop-blur-md overflow-hidden text-center flex flex-col items-center"
           >
-            {/* Subtle pulsating cyber-glow backdrop aura */}
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-tr from-cyan-500/30 via-emerald-500/25 to-blue-500/30 blur-2xl animate-cyber-glow pointer-events-none" />
-
-            {/* Circular Expanded Avatar with Dynamic Radial Cyber Border */}
+            {/* Circular Expanded Avatar with Clean Executive Framing */}
             <div
               className={`relative group/avatar ${isAdmin ? 'cursor-pointer' : ''}`}
               onClick={isAdmin ? () => setIsPhotoEditorOpen(true) : undefined}
               title={isAdmin ? "Click to customize founder profile photo" : undefined}
             >
-              <div className="relative w-56 h-56 sm:w-64 sm:h-64 rounded-full p-[3.5px] animate-ring-breathe overflow-hidden flex items-center justify-center transition-transform duration-300 group-hover/avatar:scale-[1.02]">
-                <div className="absolute inset-[-50%] cyber-radial-border animate-radial-spin" />
-                <div className="relative w-full h-full rounded-full overflow-hidden bg-slate-950 p-1">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-slate-950 relative">
-                    <img
-                      src={resolvedPortrait}
-                      alt={founder.name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover/avatar:scale-105"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/images/Wasim-Pic-02.png';
-                      }}
-                    />
-                    {/* Hover / Click Overlay to Change Photo - Only visible for Admin */}
-                    {isAdmin && (
-                      <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center gap-1.5 text-xs font-semibold text-cyan-300 transition-opacity backdrop-blur-[2px]">
-                        <Sliders className="w-6 h-6 text-cyan-400" />
-                        <span>Edit Portrait</span>
-                      </div>
-                    )}
-                  </div>
+              <div className="relative w-56 h-56 sm:w-64 sm:h-64 rounded-full p-1 bg-white dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center transition-transform duration-300">
+                <div className="relative w-full h-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900">
+                  <img
+                    src={resolvedPortrait}
+                    alt={founder.name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover/avatar:scale-105"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/assets/images/Wasim-Pic-02.png';
+                    }}
+                  />
+                  {/* Hover / Click Overlay to Change Photo - Only visible for Admin */}
+                  {isAdmin && (
+                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center gap-1.5 text-xs font-semibold text-white transition-opacity backdrop-blur-[2px]">
+                      <Sliders className="w-6 h-6 text-white" />
+                      <span>Edit Portrait</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div
-                className="absolute bottom-3 right-3 p-2 rounded-full bg-slate-900 border-2 border-cyan-400 text-cyan-400 shadow-xl shadow-cyan-500/30 z-20"
+                className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-teal-600 dark:text-emerald-400 shadow-md"
                 title="Verified Principal VMware Architect"
               >
-                <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                <CheckCircle2 className="w-4 h-4 fill-current text-white dark:text-slate-900" />
               </div>
             </div>
 

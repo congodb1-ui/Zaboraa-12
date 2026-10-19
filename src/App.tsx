@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
@@ -39,6 +39,7 @@ import { RoadmapPage } from './pages/RoadmapPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { CaseStudiesPage } from './pages/CaseStudiesPage';
 import { AboutPage } from './pages/AboutPage';
+import { AdminControlCenterPage } from './pages/admin/AdminControlCenterPage';
 
 import {
   Sliders,
@@ -122,14 +123,14 @@ const MainLayout: React.FC = () => {
             <span className="hidden md:inline text-emerald-300/80">· Enterprise Operations Active</span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsAdminDashboardOpen(true)}
-              className="px-2.5 py-1 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-200 font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
-              title="Open full-screen 12-section administrative console"
+            <Link
+              to="/admin"
+              className="px-2.5 py-1 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-200 font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm text-xs"
+              title="Open full enterprise administrative console"
             >
               <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Admin Dashboard</span>
-            </button>
+              <span>Admin Console</span>
+            </Link>
             <button
               onClick={() => updateEnableHotspots(!siteConfig.enableHotspots)}
               className={`px-2.5 py-1 rounded border text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
@@ -211,6 +212,10 @@ const MainLayout: React.FC = () => {
           <Route path="/resources/:tab" element={<ResourcesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
           <Route path="/about" element={<AboutPage />} />
+
+          {/* 5. Enterprise Admin Control Center */}
+          <Route path="/admin" element={<AdminControlCenterPage />} />
+          <Route path="/admin/:tab" element={<AdminControlCenterPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<HomePage />} />

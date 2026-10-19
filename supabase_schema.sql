@@ -157,7 +157,68 @@ CREATE INDEX IF NOT EXISTS idx_briefing_requests_created_at ON public.briefing_r
 CREATE INDEX IF NOT EXISTS idx_briefing_requests_status ON public.briefing_requests (status);
 CREATE INDEX IF NOT EXISTS idx_briefing_requests_email ON public.briefing_requests (email);
 
--- 3. VERIFY ADMIN USER
+
+-- 3. USER-LINKED PERSISTENCE: GENERATED IMAGES & BLUEPRINTS TABLE
+CREATE TABLE IF NOT EXISTS public.generated_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  image_name TEXT NOT NULL CHECK (char_length(trim(image_name)) >= 1 AND char_length(image_name) <= 255),
+  image_type TEXT NOT NULL DEFAULT 'blueprint_3d' CHECK (image_type IN ('blueprint_3d', 'architecture_diagram', 'topology_render', 'user_asset', 'node_sizing_bom')),
+  storage_path TEXT NOT NULL,
+  storage_url TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_email TEXT,
+  user_name TEXT,
+  file_size_bytes BIGINT DEFAULT 0,
+  mime_type TEXT DEFAULT 'image/png',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+ALTER TABLE public.generated_images ENABLE ROW LEVEL SECURITY;
+
+-- Generated Images RLS Policies
+DROP POLICY IF EXISTS "Users can view own generated images or admins view all" ON public.generated_images;
+CREATE POLICY "Users can view own generated images or admins view all"
+  ON public.generated_images
+  FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert own generated images" ON public.generated_images;
+CREATE POLICY "Users can insert own generated images"
+  ON public.generated_images
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    auth.uid() = user_id
+  );
+
+DROP POLICY IF EXISTS "Users can delete own generated images or admins delete" ON public.generated_images;
+CREATE POLICY "Users can delete own generated images or admins delete"
+  ON public.generated_images
+  FOR DELETE
+  TO authenticated
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.role = 'admin'
+    )
+  );
+
+CREATE INDEX IF NOT EXISTS idx_generated_images_user_id ON public.generated_images (user_id);
+CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON public.generated_images (created_at DESC);
+
+-- 4. VERIFY ADMIN USER
 SELECT 
   u.id AS auth_user_id,
   u.email,

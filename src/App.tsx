@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { WorkspaceProvider } from './context/WorkspaceContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CustomizerDrawer } from './components/CustomizerDrawer';
@@ -13,14 +14,13 @@ import { WatermarkSettingsModal } from './components/WatermarkSettingsModal';
 import { CommercializeModal } from './components/CommercializeModal';
 import { AuthErrorBoundary } from './components/AuthErrorBoundary';
 import { TelemetryBackground } from './components/TelemetryBackground';
-import { useAuth } from './context/AuthContext';
 import { AdminDashboardModal } from './components/admin/AdminDashboardModal';
 import { PWAInstallPrompt } from './components/offline/PWAInstallPrompt';
 import { TrackRecordEditorModal } from './components/TrackRecordEditorModal';
 import { FounderCredentialsModal } from './components/FounderCredentialsModal';
 import { HeroStatsModal } from './components/HeroStatsModal';
-import { WorkspaceProvider } from './context/WorkspaceContext';
 import { UserWorkspaceDrawer } from './components/workspace/UserWorkspaceDrawer';
+import { AdminLayout } from './components/admin/AdminLayout';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -43,12 +43,7 @@ import {
   Calendar,
   Sun,
   Moon,
-  ShieldCheck,
-  LogOut,
-  Eye,
-  EyeOff,
-  Sparkles,
-  LayoutDashboard
+  Sparkles
 } from 'lucide-react';
 
 // Scroll to top automatically on route changes
@@ -60,19 +55,19 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
-const MainLayout: React.FC = () => {
+/**
+ * Public Layout:
+ * Strictly contains the public header/navbar, main site routes, public footer, and public floating widgets.
+ */
+const PublicLayout: React.FC = () => {
   const {
     siteConfig,
     theme,
     toggleTheme,
     isAdmin,
-    signOutAdmin,
     setIsCustomizerOpen,
-    setIsBriefingModalOpen,
-    setIsAdminDashboardOpen
+    setIsBriefingModalOpen
   } = useCustomization();
-
-  const { user } = useAuth();
 
   return (
     <div
@@ -103,87 +98,18 @@ const MainLayout: React.FC = () => {
         </div>
       )}
 
-      {/* Admin Mode Top Status Bar (Visible when logged in with admin account) */}
-      {isAdmin && (
-        <div className="sticky top-0 z-50 bg-emerald-950/95 border-b border-emerald-500/40 px-4 py-2 text-xs font-mono text-emerald-200 flex items-center justify-between backdrop-blur-md shadow-lg">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-bold tracking-wide">
-              ADMIN MODE: {user?.displayName || user?.email || 'Wasim Sayyed'}
-            </span>
-            <span className="hidden md:inline text-emerald-300/80">· Enterprise Operations Active</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/admin"
-              className="px-2.5 py-1 rounded bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/70 text-cyan-200 font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm text-xs"
-              title="Open full enterprise administrative console"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Admin Console</span>
-            </Link>
-            <button
-              onClick={() => setIsCustomizerOpen(true)}
-              className="px-2.5 py-1 rounded bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-600/70 text-emerald-100 font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Open site customizer drawer (Watermark & Hotspots settings)"
-            >
-              <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Edit Site</span>
-            </button>
-            <button
-              onClick={() => void signOutAdmin()}
-              className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-emerald-700/70 text-slate-300 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-              title="Sign out of administrative account"
-            >
-              <LogOut className="w-3 h-3 text-rose-400" />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Top Navigation */}
+      {/* Public Top Navigation */}
       <Navbar />
 
-      {/* Viewport Routes */}
+      {/* Viewport Content */}
       <main className="flex-1">
-        <ScrollToTop />
-        <Routes>
-          {/* 1. Home Page Overview */}
-          <Route path="/" element={<HomePage />} />
-
-          {/* 2. Dynamic Standalone Discipline Page for EVERY item in platformShowcases */}
-          <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
-
-          {/* 3. Interactive Engineering Workbench Suite */}
-          <Route path="/tools" element={<WorkbenchHubPage />} />
-          <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
-          <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
-          <Route path="/tools/nutanix-nc2-assessment" element={<NutanixNC2AssessmentPage />} />
-          <Route path="/tools/aria-networks" element={<AriaNetworksToolPage />} />
-          <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
-          <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
-
-          {/* 4. Standalone Dedicated Roadmap, Resources, Case Studies, About */}
-          <Route path="/roadmap" element={<RoadmapPage />} />
-          <Route path="/resources" element={<ResourcesPage />} />
-          <Route path="/resources/:tab" element={<ResourcesPage />} />
-          <Route path="/case-studies" element={<CaseStudiesPage />} />
-          <Route path="/about" element={<AboutPage />} />
-
-          {/* 5. Enterprise Admin Control Center */}
-          <Route path="/admin" element={<AdminControlCenterPage />} />
-          <Route path="/admin/:tab" element={<AdminControlCenterPage />} />
-
-          {/* Fallback */}
-          <Route path="*" element={<HomePage />} />
-        </Routes>
+        <Outlet />
       </main>
 
       {/* Global Footer */}
       <Footer />
 
-      {/* Floating Action Controls */}
+      {/* Floating Action Controls strictly in Public Layout */}
       <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2">
         <button
           onClick={toggleTheme}
@@ -215,7 +141,7 @@ const MainLayout: React.FC = () => {
         </button>
       </div>
 
-      {/* Global Modals & Drawers */}
+      {/* Global Public Modals & Drawers */}
       <CustomizerDrawer />
       <PhotoEditorModal />
       <PlatformEditorModal />
@@ -242,7 +168,37 @@ export default function App() {
         <WorkspaceProvider>
           <CustomizationProvider>
             <BrowserRouter>
-              <MainLayout />
+              <ScrollToTop />
+              <Routes>
+                {/* 1. Public Site Routes (Isolated from Admin Layout) */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
+                  <Route path="/tools" element={<WorkbenchHubPage />} />
+                  <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
+                  <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
+                  <Route path="/tools/nutanix-nc2-assessment" element={<NutanixNC2AssessmentPage />} />
+                  <Route path="/tools/aria-networks" element={<AriaNetworksToolPage />} />
+                  <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
+                  <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
+                  <Route path="/roadmap" element={<RoadmapPage />} />
+                  <Route path="/resources" element={<ResourcesPage />} />
+                  <Route path="/resources/:tab" element={<ResourcesPage />} />
+                  <Route path="/case-studies" element={<CaseStudiesPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="*" element={<HomePage />} />
+                </Route>
+
+                {/* 2. Dedicated Admin Console Routes (Completely Isolated Layout) */}
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminControlCenterPage />} />
+                  <Route path=":tab" element={<AdminControlCenterPage />} />
+                </Route>
+                <Route path="/console" element={<AdminLayout />}>
+                  <Route index element={<AdminControlCenterPage />} />
+                  <Route path=":tab" element={<AdminControlCenterPage />} />
+                </Route>
+              </Routes>
             </BrowserRouter>
           </CustomizationProvider>
         </WorkspaceProvider>

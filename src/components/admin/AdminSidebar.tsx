@@ -198,6 +198,19 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           ))}
         </div>
 
+        {/* Administrator Profile Card in Sidebar */}
+        <div className={`p-3 border-t border-slate-800 shrink-0 bg-slate-950/60 flex items-center ${isCollapsed ? 'justify-center' : 'justify-start gap-3'}`}>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 via-sky-500 to-emerald-400 flex items-center justify-center font-bold text-slate-950 text-xs shrink-0 shadow-sm overflow-hidden">
+            <span className="flex items-center justify-center w-full h-full text-center leading-none">WS</span>
+          </div>
+          {!isCollapsed && (
+            <div className="overflow-hidden leading-tight">
+              <div className="text-xs font-bold text-white truncate">Wasim Sayyed</div>
+              <div className="text-[10px] font-mono text-cyan-400 truncate">Lead Architect</div>
+            </div>
+          )}
+        </div>
+
         {/* Footer Collapse Button (Desktop Only) */}
         <div className="p-3 border-t border-slate-800 shrink-0 hidden lg:flex items-center justify-between bg-slate-950/40">
           {!isCollapsed && (

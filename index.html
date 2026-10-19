@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,12 +20,12 @@
       (function() {
         try {
           var saved = localStorage.getItem('zaboraa_theme_mode');
-          if (saved === 'dark') {
-            document.documentElement.classList.remove('light-high-contrast');
-            document.documentElement.classList.add('dark');
-          } else {
+          if (saved === 'light') {
             document.documentElement.classList.remove('dark');
             document.documentElement.classList.add('light-high-contrast');
+          } else {
+            document.documentElement.classList.remove('light-high-contrast');
+            document.documentElement.classList.add('dark');
           }
         } catch (e) {}
       })();

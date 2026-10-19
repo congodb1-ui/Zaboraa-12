@@ -291,20 +291,25 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-2 p-1 pl-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-xs transition cursor-pointer"
+            className="flex items-center gap-2 p-1.5 pl-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-xs transition cursor-pointer"
           >
-            <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-cyan-600 to-emerald-400 flex items-center justify-center font-bold text-slate-950 text-[10px]">
-              WS
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 via-sky-500 to-emerald-400 flex items-center justify-center font-bold text-slate-950 text-xs shrink-0 overflow-hidden shadow-sm">
+              <span className="flex items-center justify-center w-full h-full text-center leading-none">WS</span>
             </div>
-            <span className="hidden sm:inline font-semibold text-slate-200">Wasim</span>
+            <span className="hidden sm:inline font-semibold text-slate-200">Wasim Sayyed</span>
           </button>
 
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-64 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl py-2 z-50 text-xs animate-in fade-in duration-100">
-              <div className="px-4 py-2 border-b border-slate-800 space-y-0.5">
-                <div className="font-bold text-white">Wasim Sayyed</div>
-                <div className="text-[11px] font-mono text-cyan-400">Lead Principal Architect</div>
-                <div className="text-[10px] text-slate-400">wasim.sayyed@zaboraa.com</div>
+              <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-emerald-400 flex items-center justify-center font-extrabold text-slate-950 text-sm shrink-0 shadow-md">
+                  <span className="flex items-center justify-center w-full h-full text-center leading-none">WS</span>
+                </div>
+                <div className="space-y-0.5 overflow-hidden">
+                  <div className="font-bold text-white truncate">Wasim Sayyed</div>
+                  <div className="text-[11px] font-mono text-cyan-400">Lead Principal Architect</div>
+                  <div className="text-[10px] text-slate-400 truncate">wasim.sayyed@zaboraa.com</div>
+                </div>
               </div>
 
               <div className="py-1">

@@ -422,14 +422,30 @@ export const Navbar: React.FC = () => {
           {/* User Account / Sign In Trigger (Zero Tiers) */}
           <button
             onClick={() => setIsCommercializeModalOpen(true)}
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer shrink-0 ${
+            className={`hidden sm:flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer shrink-0 ${
               authUser
                 ? 'bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-200'
                 : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white'
             }`}
             title="Enterprise Architect Account & SSO Session"
           >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            {authUser ? (
+              <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-cyan-400/50 bg-cyan-950">
+                {authUser.photoURL ? (
+                  <img
+                    src={authUser.photoURL}
+                    alt={authUser.displayName || 'Avatar'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="w-full h-full flex items-center justify-center text-center font-bold text-cyan-300 text-[10px] leading-none">
+                    {(authUser.displayName || authUser.email || 'A').charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            )}
             <span className="truncate max-w-[100px] lg:max-w-[130px]">
               {authUser ? (authUser.displayName?.split(' ')[0] || 'Architect') : 'Sign In'}
             </span>

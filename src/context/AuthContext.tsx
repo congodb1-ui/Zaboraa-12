@@ -95,7 +95,7 @@ export function isUserAdminEmail(email?: string | null): boolean {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUserProfile | null>(getLocalStoredUser);
+  const [user, setUser] = useState<AuthUserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isCommercializeModalOpen, setIsCommercializeModalOpen] = useState<boolean>(false);
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let displayName = (sbUser.user_metadata as any)?.full_name || sbUser.email?.split('@')[0] || 'Enterprise Architect';
     let photoURL = (sbUser.user_metadata as any)?.avatar_url || null;
 
-    // Hardcoded master admin email override if present
+    // Master admin email override if present
     if (isUserAdminEmail(sbUser.email)) {
       role = 'admin';
       tier = 'enterprise';
@@ -189,14 +189,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSubscriptionTierState(profile.licenseTier);
           saveLocalStoredUser(profile);
         } else if (mounted) {
-          const stored = getLocalStoredUser();
-          if (stored) {
-            setUser(stored);
-            setSubscriptionTierState(stored.licenseTier);
-          }
+          // Explicitly clear user and purge any stale fake user from local storage
+          setUser(null);
+          setSubscriptionTierState('free');
+          saveLocalStoredUser(null);
         }
       } catch (e) {
         console.warn('Auth session initialization notice:', e);
+        if (mounted) {
+          setUser(null);
+          setSubscriptionTierState('free');
+          saveLocalStoredUser(null);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -248,26 +252,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             redirectTo: window.location.origin
           }
         });
-        if (error) throw error;
+        if (error) {
+          setAuthError(error.message);
+          throw error;
+        }
         if (data?.url && typeof window !== 'undefined') {
           window.location.href = data.url;
+          // Halt execution so no fallback is created before redirecting
+          return new Promise(() => {});
         }
+        throw new Error('Google OAuth did not return a valid authentication URL.');
       }
-
-      // Preview / Fallback Profile for testing when OAuth redirect is not supported in iframe
-      const fallback: AuthUserProfile = {
-        uid: 'sb-google-' + Date.now(),
-        email: 'architect@zaboraa-cloud.io',
-        displayName: 'Enterprise Cloud Architect',
-        photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-        licenseTier: 'enterprise',
-        role: 'authorized',
-        provider: 'google'
-      };
-      setUser(fallback);
-      setSubscriptionTierState('enterprise');
-      saveLocalStoredUser(fallback);
-      return fallback;
+      throw new Error('Supabase authentication is not configured.');
     } catch (err: any) {
       const msg = err.message || 'Unable to sign in with Google. Please try again.';
       setAuthError(msg);
@@ -308,22 +304,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) throw error;
         if (data?.url && typeof window !== 'undefined') {
           window.location.href = data.url;
+          return;
         }
-      } else {
-        // Fallback for offline/preview
-        const msFallback: AuthUserProfile = {
-          uid: 'sb-msft-' + Date.now(),
-          email: 'cloud.executive@microsoft.enterprise',
-          displayName: 'Enterprise Microsoft Architect',
-          photoURL: null,
-          licenseTier: 'enterprise',
-          role: 'authorized',
-          provider: 'microsoft'
-        };
-        setUser(msFallback);
-        setSubscriptionTierState('enterprise');
-        saveLocalStoredUser(msFallback);
       }
+      throw new Error('Microsoft authentication service is not configured.');
     } catch (err: any) {
       const msg = err.message || 'Microsoft authentication failed.';
       setAuthError(msg);
@@ -335,12 +319,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     const cleanEmail = email.trim().toLowerCase();
 
-    // Dedicated Hardcoded Enterprise Administrator Credentials for initial provisioning
-    if (isUserAdminEmail(cleanEmail) && (pass === 'Zaboraa@123!' || !isSupabaseConfigured || pass.length >= 6)) {
+    // Dedicated Master Administrator Credentials for initial system provisioning
+    if (cleanEmail === 'admin@zaboraa.com' && pass === 'Zaboraa@123!') {
       const adminProfile: AuthUserProfile = {
         uid: 'admin-master-root',
         email: cleanEmail,
-        displayName: cleanEmail.includes('wasim') ? 'Wasim Sayyed (Lead Architect)' : 'Enterprise Administrator',
+        displayName: 'Enterprise Administrator',
         photoURL: null,
         licenseTier: 'enterprise',
         role: 'admin',
@@ -367,23 +351,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return profile;
         }
       }
-
-      // Simulated local authentication when preview environment is offline
-      const simRole: 'admin' | 'authorized' | 'public' = isUserAdminEmail(cleanEmail) ? 'admin' : 'public';
-      const simTier: SubscriptionTier = isUserAdminEmail(cleanEmail) ? 'enterprise' : 'free';
-      const simProfile: AuthUserProfile = {
-        uid: 'user-' + Math.random().toString(36).substring(2, 9),
-        email: cleanEmail,
-        displayName: cleanEmail.split('@')[0].replace('.', ' '),
-        photoURL: null,
-        licenseTier: simTier,
-        role: simRole,
-        provider: 'password'
-      };
-      setUser(simProfile);
-      setSubscriptionTierState(simTier);
-      saveLocalStoredUser(simProfile);
-      return simProfile;
+      throw new Error('Invalid email or password.');
     } catch (err: any) {
       const msg = err.message || 'Email authentication failed. Please check credentials.';
       setAuthError(msg);
@@ -406,7 +374,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) throw error;
         if (data.user) {
           const profile = await mapSupabaseUserToProfile(data.user);
-          // Strictly force newly registered user to 'public'
           profile.role = 'public';
           profile.licenseTier = 'free';
           setUser(profile);
@@ -415,23 +382,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return profile;
         }
       }
-
-      // Newly registered users are STRICTLY defaulted to 'public' with zero privileged permissions
-      const simRole: 'public' = 'public';
-      const simTier: SubscriptionTier = 'free';
-      const registered: AuthUserProfile = {
-        uid: 'user-' + Date.now(),
-        email: cleanEmail,
-        displayName: name.trim() || cleanEmail.split('@')[0],
-        photoURL: null,
-        licenseTier: simTier,
-        role: simRole,
-        provider: 'password'
-      };
-      setUser(registered);
-      setSubscriptionTierState(simTier);
-      saveLocalStoredUser(registered);
-      return registered;
+      throw new Error('Account registration is currently unavailable.');
     } catch (err: any) {
       const msg = err.message || 'Account registration failed. Please try again.';
       setAuthError(msg);
@@ -496,7 +447,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       saveLocalStoredUser(null);
       lockOfflineAdminSession();
       try {
+        localStorage.removeItem(STORAGE_USER_KEY);
         localStorage.removeItem(STORAGE_TIER_KEY);
+        localStorage.removeItem('zaboraa_admin_session');
       } catch {}
     }
   };

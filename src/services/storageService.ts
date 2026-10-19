@@ -218,9 +218,28 @@ export async function saveGeneratedBlueprint(
       }
     }
 
+    // 3. Persist to public.generated_images table for the image gallery & user tracking
+    const finalUrl = storageUrl || payload.imageDataOrUrl;
+    await recordGeneratedImage({
+      image_name: fileName,
+      image_type: payload.metadata?.imageType || 'blueprint_3d',
+      storage_path: storagePath,
+      storage_url: finalUrl,
+      user_id: payload.userId || null,
+      user_email: payload.userEmail || null,
+      user_name: payload.metadata?.architectName || (payload.userEmail ? payload.userEmail.split('@')[0] : 'Enterprise Architect'),
+      file_size_bytes: blob.size,
+      mime_type: blob.type || 'image/png',
+      metadata: {
+        ...payload.metadata,
+        title: payload.title,
+        configSummary: payload.configSummary
+      }
+    });
+
     return {
       success: true,
-      storageUrl: storageUrl || payload.imageDataOrUrl,
+      storageUrl: finalUrl,
       storagePath,
       savedToDatabase,
       message: 'Blueprint saved successfully to Supabase cloud storage.'
@@ -235,3 +254,157 @@ export async function saveGeneratedBlueprint(
     };
   }
 }
+
+export interface GeneratedImageRecord {
+  id: string;
+  image_name: string;
+  image_type: string;
+  storage_path: string;
+  storage_url: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  created_at: string;
+  file_size_bytes: number;
+  mime_type: string;
+  metadata?: Record<string, any>;
+}
+
+const LOCAL_GENERATED_IMAGES_KEY = 'zaboraa_generated_images_cache';
+
+function getLocalGeneratedImages(): GeneratedImageRecord[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_GENERATED_IMAGES_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function saveLocalGeneratedImages(images: GeneratedImageRecord[]) {
+  try {
+    localStorage.setItem(LOCAL_GENERATED_IMAGES_KEY, JSON.stringify(images.slice(0, 50)));
+  } catch {}
+}
+
+/**
+ * Record a newly generated image in Supabase database and local cache
+ */
+export async function recordGeneratedImage(
+  item: Omit<GeneratedImageRecord, 'id' | 'created_at'>
+): Promise<GeneratedImageRecord> {
+  const newRecord: GeneratedImageRecord = {
+    ...item,
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `img-${Date.now()}`,
+    created_at: new Date().toISOString()
+  };
+
+  // 1. Try Supabase insert
+  if (supabase && (import.meta as any).env?.VITE_SUPABASE_URL) {
+    try {
+      const { data, error } = await supabase
+        .from('generated_images')
+        .insert({
+          image_name: item.image_name,
+          image_type: item.image_type,
+          storage_path: item.storage_path,
+          storage_url: item.storage_url,
+          user_id: item.user_id,
+          user_email: item.user_email,
+          user_name: item.user_name,
+          file_size_bytes: item.file_size_bytes || 0,
+          mime_type: item.mime_type || 'image/png',
+          metadata: item.metadata || {}
+        })
+        .select()
+        .maybeSingle();
+
+      if (!error && data) {
+        newRecord.id = data.id;
+        newRecord.created_at = data.created_at;
+      }
+    } catch (e) {
+      console.warn('Notice: Unable to record in public.generated_images table:', e);
+    }
+  }
+
+  // 2. Cache locally
+  const current = getLocalGeneratedImages();
+  saveLocalGeneratedImages([newRecord, ...current]);
+
+  return newRecord;
+}
+
+/**
+ * Fetch generated images.
+ * If user is admin (or isAdmin=true), fetches all images across all users.
+ * If user is regular architect, fetches strictly user-linked images.
+ */
+export async function fetchGeneratedImages(
+  userId?: string | null,
+  isAdmin = false
+): Promise<GeneratedImageRecord[]> {
+  if (supabase && (import.meta as any).env?.VITE_SUPABASE_URL) {
+    try {
+      let query = supabase
+        .from('generated_images')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!isAdmin && userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data as GeneratedImageRecord[];
+      }
+    } catch (e) {
+      console.warn('Notice: Error fetching generated images from Supabase:', e);
+    }
+  }
+
+  // Fallback to local cache
+  const local = getLocalGeneratedImages();
+  if (isAdmin) return local;
+  if (userId) return local.filter(img => img.user_id === userId);
+  return local;
+}
+
+/**
+ * Delete a generated image record from database and storage
+ */
+export async function deleteGeneratedImage(
+  imageId: string,
+  storagePath?: string
+): Promise<{ success: boolean; error?: string }> {
+  let success = true;
+  let errorMsg: string | undefined = undefined;
+
+  if (supabase && (import.meta as any).env?.VITE_SUPABASE_URL) {
+    try {
+      const { error: dbError } = await supabase
+        .from('generated_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (dbError) {
+        success = false;
+        errorMsg = dbError.message;
+      }
+
+      if (storagePath) {
+        await supabase.storage.from('blueprints').remove([storagePath]);
+        await supabase.storage.from('generated-images').remove([storagePath]);
+      }
+    } catch (err: any) {
+      success = false;
+      errorMsg = err.message || 'Failed to delete generated image.';
+    }
+  }
+
+  const current = getLocalGeneratedImages();
+  saveLocalGeneratedImages(current.filter(i => i.id !== imageId));
+
+  return { success, error: errorMsg };
+}
+

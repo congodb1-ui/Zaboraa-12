@@ -75,11 +75,36 @@ export const Hero: React.FC = () => {
               {hero.subheadline}
             </p>
 
+            {/* Interactive Multi-Cloud Platform Navigator Pills */}
+            <div className="pt-1">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider font-semibold mr-1">
+                  Validated Stacks:
+                </span>
+                {[
+                  { name: 'Azure AVS', id: 'avs' },
+                  { name: 'Google GCVE', id: 'gcve' },
+                  { name: 'AWS VMC', id: 'vmc-dr' },
+                  { name: 'NSX-T SDN', id: 'nsx' },
+                  { name: 'SRM & HCX', id: 'srm' },
+                  { name: 'Nutanix NC2', id: 'nutanix-nc2-azure' }
+                ].map((cloud) => (
+                  <a
+                    key={cloud.id}
+                    href="#architecture-showcase"
+                    className="px-2.5 py-1 rounded bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 font-mono text-[11px] transition-all hover:scale-105"
+                  >
+                    {cloud.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+
             {/* Interactive CTAs */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 onClick={() => setIsBriefingModalOpen(true)}
-                className="px-5 py-3 text-sm font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                className="px-5 py-3 text-sm font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-cyan-400"
               >
                 <Calendar className="w-4 h-4" />
                 <span>Schedule Architecture Briefing</span>

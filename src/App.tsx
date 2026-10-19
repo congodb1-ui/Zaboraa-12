@@ -22,6 +22,8 @@ import { PWAInstallPrompt } from './components/offline/PWAInstallPrompt';
 import { TrackRecordEditorModal } from './components/TrackRecordEditorModal';
 import { FounderCredentialsModal } from './components/FounderCredentialsModal';
 import { HeroStatsModal } from './components/HeroStatsModal';
+import { WorkspaceProvider } from './context/WorkspaceContext';
+import { UserWorkspaceDrawer } from './components/workspace/UserWorkspaceDrawer';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -275,6 +277,7 @@ const MainLayout: React.FC = () => {
       <TrackRecordEditorModal />
       <FounderCredentialsModal />
       <HeroStatsModal />
+      <UserWorkspaceDrawer />
       <AuthErrorBoundary fallbackTitle="Commercialization & Authentication Portal">
         <CommercializeModal />
       </AuthErrorBoundary>
@@ -286,11 +289,13 @@ export default function App() {
   return (
     <AuthErrorBoundary fallbackTitle="Enterprise Cloud Workspace">
       <AuthProvider>
-        <CustomizationProvider>
-          <BrowserRouter>
-            <MainLayout />
-          </BrowserRouter>
-        </CustomizationProvider>
+        <WorkspaceProvider>
+          <CustomizationProvider>
+            <BrowserRouter>
+              <MainLayout />
+            </BrowserRouter>
+          </CustomizationProvider>
+        </WorkspaceProvider>
       </AuthProvider>
     </AuthErrorBoundary>
   );

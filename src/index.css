@@ -517,23 +517,70 @@ html, body {
 }
 
 /* Nested surfaces inside dark containers */
+/* Nested surfaces inside dark containers */
 .light-high-contrast .dark-card .bg-slate-950\/60,
 .light-high-contrast .dark-card .bg-slate-950\/80,
 .light-high-contrast .dark-card .bg-slate-950,
+.light-high-contrast .dark-card .bg-slate-900,
+.light-high-contrast .dark-card .bg-slate-800,
 .light-high-contrast .dark-feature-container .bg-slate-950\/60,
 .light-high-contrast .dark-feature-container .bg-slate-950\/80,
 .light-high-contrast .dark-feature-container .bg-slate-950,
+.light-high-contrast .dark-feature-container .bg-slate-900,
 .light-high-contrast [data-theme-container="dark"] .bg-slate-950\/60,
 .light-high-contrast [data-theme-container="dark"] .bg-slate-950\/80,
 .light-high-contrast [data-theme-container="dark"] .bg-slate-950,
+.light-high-contrast [data-theme-container="dark"] .bg-slate-900,
+.light-high-contrast [data-theme-container="dark"] .bg-slate-800,
+.light-high-contrast [data-theme-container="dark"] .bg-\[\#0a0f1d\],
+.light-high-contrast [data-theme-container="dark"] .bg-\[\#0f172a\],
+.light-high-contrast [data-theme-container="dark"] .bg-\[\#131d31\],
+.light-high-contrast [data-theme-container="dark"] .bg-\[\#1a263e\],
 .light-high-contrast .hero-dark-card .bg-slate-950\/60,
 .light-high-contrast .hero-dark-card .bg-slate-950\/80,
 .light-high-contrast .hero-dark-card .bg-slate-950,
+.light-high-contrast .hero-dark-card .bg-slate-900,
 .light-high-contrast [class*="from-slate-900"] .bg-slate-950\/60,
 .light-high-contrast [class*="from-slate-900"] .bg-slate-950\/80,
 .light-high-contrast [class*="bg-gradient-to"][class*="slate-900"] .bg-slate-950\/60,
 .light-high-contrast [class*="bg-gradient-to"][class*="slate-900"] .bg-slate-950\/80 {
-  background-color: rgba(2, 6, 23, 0.85) !important;
+  background-color: #0b1120 !important;
+}
+
+/* Explicit input and textarea rules inside dark containers for WCAG AAA contrast */
+[data-theme-container="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme-container="dark"] select,
+[data-theme-container="dark"] textarea,
+.light-high-contrast [data-theme-container="dark"] input:not([type="checkbox"]):not([type="radio"]),
+.light-high-contrast [data-theme-container="dark"] select,
+.light-high-contrast [data-theme-container="dark"] textarea {
+  background-color: #060a14 !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+[data-theme-container="dark"] input::placeholder,
+[data-theme-container="dark"] textarea::placeholder,
+.light-high-contrast [data-theme-container="dark"] input::placeholder,
+.light-high-contrast [data-theme-container="dark"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Form labels inside dark containers: ultra high contrast */
+[data-theme-container="dark"] label,
+.light-high-contrast [data-theme-container="dark"] label {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+
+/* High contrast button text inside dark containers */
+[data-theme-container="dark"] button.bg-cyan-400,
+[data-theme-container="dark"] .bg-cyan-400 button,
+.light-high-contrast [data-theme-container="dark"] button.bg-cyan-400,
+.light-high-contrast [data-theme-container="dark"] .bg-cyan-400 {
+  background-color: #22d3ee !important;
+  color: #020617 !important;
+  font-weight: 900 !important;
 }
 
 .light-high-contrast .dark-card .bg-cyan-500\/10,
@@ -546,15 +593,18 @@ html, body {
 
 .light-high-contrast .dark-card .border-slate-800,
 .light-high-contrast .dark-card .border-slate-800\/80,
+.light-high-contrast .dark-card .border-slate-700,
 .light-high-contrast .dark-feature-container .border-slate-800,
 .light-high-contrast .dark-feature-container .border-slate-800\/80,
 .light-high-contrast [data-theme-container="dark"] .border-slate-800,
 .light-high-contrast [data-theme-container="dark"] .border-slate-800\/80,
+.light-high-contrast [data-theme-container="dark"] .border-slate-700,
+.light-high-contrast [data-theme-container="dark"] .border-slate-600,
 .light-high-contrast .hero-dark-card .border-slate-800,
 .light-high-contrast .hero-dark-card .border-slate-800\/80,
 .light-high-contrast [class*="from-slate-900"] .border-slate-800,
 .light-high-contrast [class*="bg-gradient-to"][class*="slate-900"] .border-slate-800 {
-  border-color: rgba(51, 65, 85, 0.7) !important;
+  border-color: #334155 !important;
 }
 
 /* =========================================================================

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCustomization } from '../../context/CustomizationContext';
 import { AdminSidebar, AdminViewId } from '../../components/admin/AdminSidebar';
@@ -234,12 +234,12 @@ export const AdminControlCenterPage: React.FC = () => {
               <span>Sign In with Admin Account</span>
             </button>
 
-            <a
-              href="/"
+            <Link
+              to="/"
               className="text-xs font-mono text-slate-400 hover:text-white transition"
             >
               &larr; Return to Public Architecture Homepage
-            </a>
+            </Link>
           </div>
         </div>
       </div>

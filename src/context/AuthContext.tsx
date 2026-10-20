@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { offlineVaultService, VaultDataSnapshot } from '../services/offlineVaultService';
+import { getAuthRedirectUrl } from '../utils/canonicalUrl';
 
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
 export type UserRole = 'admin' | 'authorized' | 'public' | 'user';
@@ -110,8 +111,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Default to 'public' for zero-privilege security
     let role: 'admin' | 'authorized' | 'public' = 'public';
     let tier: SubscriptionTier = 'free';
-    let displayName = (sbUser.user_metadata as any)?.full_name || sbUser.email?.split('@')[0] || 'Enterprise Architect';
-    let photoURL = (sbUser.user_metadata as any)?.avatar_url || null;
+    const metaFullName = (sbUser.user_metadata as any)?.full_name ||
+                         (sbUser.user_metadata as any)?.name ||
+                         (sbUser.user_metadata as any)?.given_name ||
+                         sbUser.email?.split('@')[0] || 'Enterprise Architect';
+    const metaAvatarUrl = (sbUser.user_metadata as any)?.avatar_url ||
+                          (sbUser.user_metadata as any)?.picture || null;
+
+    let displayName = metaFullName;
+    let photoURL = metaAvatarUrl;
 
     // Master admin email override if present
     if (isUserAdminEmail(sbUser.email)) {
@@ -119,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       tier = 'enterprise';
     }
 
-    if (supabase) {
+    if (supabase && isSupabaseConfigured) {
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -141,9 +149,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           if (data.full_name) displayName = data.full_name;
           if (data.avatar_url) photoURL = data.avatar_url;
+
+          // If database profile is missing avatar or full name that Google provided, update profile
+          const needsSync = (!data.avatar_url && metaAvatarUrl) || (!data.full_name && metaFullName);
+          if (needsSync) {
+            try {
+              await supabase
+                .from('profiles')
+                .update({
+                  full_name: displayName,
+                  avatar_url: photoURL,
+                  last_sign_in_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', sbUser.id);
+            } catch {}
+          }
+        } else {
+          // Profile does not exist yet (e.g. first Google sign in) - Persist immediately
+          try {
+            await supabase.from('profiles').upsert({
+              id: sbUser.id,
+              email: sbUser.email,
+              full_name: metaFullName,
+              avatar_url: metaAvatarUrl,
+              role: role,
+              subscription_tier: tier,
+              status: 'active',
+              last_sign_in_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+          } catch (insertErr) {
+            console.warn('Notice creating initial user profile in Supabase:', insertErr);
+          }
         }
       } catch (err) {
-        console.warn('Notice: Unable to query public.profiles (using verified auth metadata):', err);
+        console.warn('Notice: Unable to query or sync public.profiles:', err);
       }
     }
 
@@ -249,7 +291,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin
+            redirectTo: getAuthRedirectUrl()
           }
         });
         if (error) {
@@ -278,7 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin
+            redirectTo: getAuthRedirectUrl()
           }
         });
         if (error) throw error;
@@ -297,7 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'azure',
           options: {
-            redirectTo: window.location.origin,
+            redirectTo: getAuthRedirectUrl(),
             scopes: 'email openid profile'
           }
         });
@@ -368,7 +410,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: cleanEmail,
           password: pass,
           options: {
-            data: { full_name: name.trim() }
+            data: { full_name: name.trim() },
+            emailRedirectTo: getAuthRedirectUrl()
           }
         });
         if (error) throw error;
@@ -400,7 +443,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (supabase && isSupabaseConfigured) {
         const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-          redirectTo: `${window.location.origin}/#reset-password`
+          redirectTo: getAuthRedirectUrl('#reset-password')
         });
         if (error) throw error;
       }

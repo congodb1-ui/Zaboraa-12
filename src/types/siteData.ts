@@ -169,11 +169,14 @@ export type HeaderStyle = 'glass' | 'solid' | 'blueprint';
 export type BackgroundPattern = 'tech-grid' | 'dot-matrix' | 'clean-minimal' | 'blueprint-glow';
 export type ImageAnimationType = 'ken-burns' | 'scanline' | 'hover-zoom' | 'all' | 'none';
 
+export type BlueprintAccessMode = 'everyone' | 'signed_in' | 'nobody';
+
 export interface FeatureControlsConfig {
   exportDossier: boolean;
   exportExecutiveSummary: boolean;
   export4k: boolean;
   generateBlueprint: boolean;
+  blueprintAccessMode?: BlueprintAccessMode;
 }
 
 export interface AdminSettings {
@@ -201,6 +204,7 @@ export interface AdminSettings {
   enableAuditTelemetry: boolean;
   publicAccessEnabled: boolean;
   authRequiredForTools: boolean;
+  blueprintAccessMode?: BlueprintAccessMode;
   featureControls?: FeatureControlsConfig;
 }
 

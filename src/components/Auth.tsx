@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { getAuthRedirectUrl } from '../utils/canonicalUrl';
 
 export const Auth: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -29,7 +30,7 @@ export const Auth: React.FC = () => {
     if (!supabase) return;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: getAuthRedirectUrl() },
     });
   };
 

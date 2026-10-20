@@ -304,12 +304,12 @@ export const AdminSeoView: React.FC<AdminSeoViewProps> = ({
               </span>
             </div>
             <p className="text-slate-300 leading-relaxed">
-              Google Search Console tracks search impressions, average ranking position, and crawling errors for <code className="text-cyan-300">zaboraa-12.vercel.app</code>.
+              Google Search Console tracks search impressions, average ranking position, and crawling errors for <code className="text-cyan-300">zaboraa.com</code>.
             </p>
             <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
               <div className="text-slate-400 font-bold uppercase">Setup Requirements:</div>
               <div className="text-slate-300">1. Verify domain ownership in Google Search Console via DNS TXT record or HTML meta tag.</div>
-              <div className="text-slate-300">2. Submit sitemap URL: <span className="text-cyan-300">https://zaboraa-12.vercel.app/sitemap.xml</span></div>
+              <div className="text-slate-300">2. Submit sitemap URL: <span className="text-cyan-300">https://zaboraa.com/sitemap.xml</span></div>
             </div>
           </div>
 

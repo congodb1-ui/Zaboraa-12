@@ -10,6 +10,7 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#020617" />
+    <link rel="canonical" href="https://zaboraa.com/" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,6 +19,13 @@
   <body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
     <script>
       (function() {
+        try {
+          var h = window.location.hostname.toLowerCase();
+          if (h === 'zaboraa-12.vercel.app' || h === 'www.zaboraa-12.vercel.app') {
+            window.location.replace('https://zaboraa.com' + window.location.pathname + window.location.search + window.location.hash);
+            return;
+          }
+        } catch (e) {}
         try {
           var saved = localStorage.getItem('zaboraa_theme_mode');
           if (saved === 'light') {

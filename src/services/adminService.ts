@@ -6,6 +6,7 @@
 
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { offlineVaultService, VaultAuditLog } from './offlineVaultService';
+import { CANONICAL_PRODUCTION_DOMAIN, getCanonicalDomain } from '../utils/canonicalUrl';
 
 // ----------------------------------------------------------------------
 // Types & Interfaces
@@ -476,60 +477,51 @@ class AdminService {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && data) {
-          return data.map((d: any) => ({
-            id: d.id,
-            email: d.email,
-            role: (d.role as AdminUserRole) || 'public',
-            status: (d.status as AccountStatus) || 'active',
-            subscription_tier: d.subscription_tier || 'free',
-            full_name: d.full_name || d.email?.split('@')[0] || 'User',
-            avatar_url: d.avatar_url,
-            admin_notes: d.admin_notes,
-            created_at: d.created_at || new Date().toISOString(),
-            updated_at: d.updated_at,
-            last_sign_in_at: d.last_sign_in_at,
-            suspended_at: d.suspended_at
-          }));
+        if (!error && Array.isArray(data)) {
+          if (data.length > 0) {
+            return data.map((d: any) => ({
+              id: d.id,
+              email: d.email,
+              role: (d.role as AdminUserRole) || 'public',
+              status: (d.status as AccountStatus) || 'active',
+              subscription_tier: d.subscription_tier || 'free',
+              full_name: d.full_name || d.email?.split('@')[0] || 'User',
+              avatar_url: d.avatar_url,
+              admin_notes: d.admin_notes,
+              created_at: d.created_at || new Date().toISOString(),
+              updated_at: d.updated_at,
+              last_sign_in_at: d.last_sign_in_at,
+              suspended_at: d.suspended_at
+            }));
+          }
+
+          // If profiles table is currently empty, check if active auth user exists
+          try {
+            const { data: authData } = await supabase.auth.getUser();
+            if (authData?.user) {
+              const u = authData.user;
+              const fullName = (u.user_metadata as any)?.full_name || (u.user_metadata as any)?.name || u.email?.split('@')[0] || 'Administrator';
+              const avatarUrl = (u.user_metadata as any)?.avatar_url || (u.user_metadata as any)?.picture || null;
+              return [{
+                id: u.id,
+                email: u.email ?? null,
+                role: 'admin',
+                status: 'active',
+                subscription_tier: 'enterprise',
+                full_name: fullName,
+                avatar_url: avatarUrl,
+                created_at: u.created_at || new Date().toISOString()
+              }];
+            }
+          } catch {}
+          return [];
         }
       } catch (e) {
         console.warn('Notice querying Supabase profiles:', e);
       }
     }
 
-    // Offline / Demo Fallback Profiles
-    return [
-      {
-        id: 'usr-wasim-admin',
-        email: 'wasim.sayyed@zaboraa.com',
-        role: 'admin',
-        status: 'active',
-        subscription_tier: 'enterprise',
-        full_name: 'Wasim Sayyed (Lead Architect)',
-        created_at: '2026-01-01T08:00:00Z',
-        admin_notes: 'Platform founder and primary security officer.'
-      },
-      {
-        id: 'usr-demo-arch',
-        email: 'architect@enterprise.org',
-        role: 'authorized',
-        status: 'active',
-        subscription_tier: 'pro',
-        full_name: 'David Richardson (FSI Markets)',
-        created_at: '2026-02-15T11:30:00Z',
-        admin_notes: 'Authorized enterprise evaluator for AVS ANF storage decoupling.'
-      },
-      {
-        id: 'usr-public-01',
-        email: 'e.rostova@healthcore-sys.org',
-        role: 'public',
-        status: 'active',
-        subscription_tier: 'free',
-        full_name: 'Elena Rostova',
-        created_at: '2026-03-10T14:20:00Z',
-        admin_notes: 'Inbound lead for Nutanix NC2 Epic migration.'
-      }
-    ];
+    return [];
   }
 
   async updateUserRole(
@@ -973,8 +965,8 @@ class AdminService {
         page_path: '/',
         meta_title: 'Zaboraa Technologies - Enterprise VMware Cloud Architecture',
         meta_description: 'Founder-led VMware cloud architecture, hyperscaler migration, interactive diagrams, video masterclasses, and software tutorials across Azure AVS, AWS VMC, and Google Cloud GCVE.',
-        canonical_url: 'https://zaboraa-12.vercel.app/',
-        og_image_url: 'https://zaboraa-12.vercel.app/assets/images/architecture_avs_mesh_1791450083586.jpg',
+        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/`,
+        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/architecture_avs_mesh_1791450083586.jpg`,
         keywords: ['VMware Cloud', 'Azure AVS', 'AWS VMC', 'Google GCVE', 'Nutanix NC2', 'NSX Distributed Firewall', 'Wasim Sayyed'],
         structured_data_type: 'Organization',
         indexable: true,
@@ -988,8 +980,8 @@ class AdminService {
         page_path: '/tools',
         meta_title: 'Multi-Cloud Architecture Sizing & Engineering Workbench - Zaboraa',
         meta_description: 'Eliminate sizing guesswork. Parse RVTools spreadsheets, model compute node counts, decouple storage with ANF/FSx, and calculate WAN bandwidth.',
-        canonical_url: 'https://zaboraa-12.vercel.app/tools',
-        og_image_url: 'https://zaboraa-12.vercel.app/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg',
+        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/tools`,
+        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg`,
         keywords: ['RVTools Parser', 'Node Sizing Tool', 'ANF Decoupled Storage', 'Disaster Recovery Sizer'],
         structured_data_type: 'WebApplication',
         indexable: true,
@@ -1001,8 +993,8 @@ class AdminService {
         page_path: '/tools/sizing',
         meta_title: 'Multi-Cloud Node & Decoupled Storage Sizer - Zaboraa',
         meta_description: 'Model compute node counts across Azure AVS (AV36/AV64), AWS VMC (i3en/i4i), and Google GCVE (ve1/ve2). Decouple storage with Azure NetApp Files and Amazon FSx ONTAP.',
-        canonical_url: 'https://zaboraa-12.vercel.app/tools/sizing',
-        og_image_url: 'https://zaboraa-12.vercel.app/assets/images/avs_anf_storage_architecture_1791548263395.jpg',
+        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/tools/sizing`,
+        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/avs_anf_storage_architecture_1791548263395.jpg`,
         keywords: ['AVS Node Sizing', 'VMC i4i Sizing', 'Azure NetApp Files NFS', 'FSx ONTAP'],
         structured_data_type: 'WebApplication',
         indexable: true,
@@ -1014,8 +1006,8 @@ class AdminService {
         page_path: '/tools/design-generator',
         meta_title: 'Self-Service Hybrid Architecture Blueprint Generator - Zaboraa',
         meta_description: 'Guided 4-step wizard generating comprehensive multi-cloud migration architecture blueprints, network CIDR maps, and 4K vector topologies.',
-        canonical_url: 'https://zaboraa-12.vercel.app/tools/design-generator',
-        og_image_url: 'https://zaboraa-12.vercel.app/assets/images/blueprint_3d_isometric_1791610246387.jpg',
+        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/tools/design-generator`,
+        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/blueprint_3d_isometric_1791610246387.jpg`,
         keywords: ['Architecture Blueprint Generator', 'VMware Cloud BOM', '4K Cloud Vector Diagram'],
         structured_data_type: 'WebApplication',
         indexable: true,
@@ -1027,8 +1019,8 @@ class AdminService {
         page_path: '/cases',
         meta_title: 'Enterprise Cloud Migration Case Studies - Zaboraa',
         meta_description: 'Production track record across Fortune 500 financial institutions, global healthcare networks, and enterprise retail leaders.',
-        canonical_url: 'https://zaboraa-12.vercel.app/cases',
-        og_image_url: 'https://zaboraa-12.vercel.app/assets/images/wasim_sayyed_executive_1791473154875.jpg',
+        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/cases`,
+        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/wasim_sayyed_executive_1791473154875.jpg`,
         keywords: ['Cloud Migration Case Studies', 'Enterprise Architecture Track Record', 'Fortune 500 Case Studies'],
         structured_data_type: 'CollectionPage',
         indexable: true,
@@ -1068,7 +1060,7 @@ class AdminService {
   }
 
   generateSitemapXml(pages: SeoPageMetadata[]): string {
-    const baseUrl = 'https://zaboraa-12.vercel.app';
+    const baseUrl = getCanonicalDomain();
     const entries = pages
       .filter((p) => p.indexable)
       .map((p) => {
@@ -1097,7 +1089,7 @@ Allow: /
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
+Sitemap: ${getCanonicalDomain()}/sitemap.xml
 `;
   }
 
@@ -1651,18 +1643,112 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
     };
   }
 
+  // --------------------------------------------------------------------
+  // 8.1 STRUCTURED SITE CONTENT (Supabase public.site_content)
+  // --------------------------------------------------------------------
+  async getSiteContent(sectionKey?: string): Promise<Record<string, any>> {
+    const localKey = 'zaboraa_site_content_cache_v2';
+    let localCache: Record<string, any> = {};
+    try {
+      const raw = localStorage.getItem(localKey);
+      if (raw) localCache = JSON.parse(raw);
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase.from('site_content').select('*');
+        if (sectionKey) {
+          query = query.eq('section_key', sectionKey);
+        }
+        const { data, error } = await query;
+        if (!error && Array.isArray(data)) {
+          const map: Record<string, any> = { ...localCache };
+          data.forEach((row: any) => {
+            map[row.section_key] = row.content_json;
+          });
+          try {
+            localStorage.setItem(localKey, JSON.stringify(map));
+          } catch {}
+          return map;
+        }
+      } catch (err) {
+        console.warn('Notice querying site_content from Supabase:', err);
+      }
+    }
+    return localCache;
+  }
+
+  async saveSiteContent(
+    sectionKey: string,
+    contentJson: any,
+    title = 'Website Content',
+    actorEmail = 'admin@zaboraa.com'
+  ): Promise<{ success: boolean; persistedToCloud: boolean; cloudError?: string }> {
+    const localKey = 'zaboraa_site_content_cache_v2';
+    try {
+      const raw = localStorage.getItem(localKey);
+      const local = raw ? JSON.parse(raw) : {};
+      local[sectionKey] = contentJson;
+      localStorage.setItem(localKey, JSON.stringify(local));
+    } catch {}
+
+    let persistedToCloud = false;
+    let cloudError: string | undefined;
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('site_content').upsert({
+          id: sectionKey,
+          section_key: sectionKey,
+          title,
+          content_json: contentJson,
+          status: 'published',
+          updated_at: new Date().toISOString()
+        });
+
+        if (error) throw error;
+        persistedToCloud = true;
+      } catch (err: any) {
+        cloudError = err.message || 'Supabase site_content write failed';
+        console.warn(`Notice updating site_content in Supabase for [${sectionKey}]:`, cloudError);
+      }
+    }
+
+    await this.logAuditEvent({
+      actorEmail,
+      actorRole: 'admin',
+      action: 'UPDATE_SITE_CONTENT',
+      targetEntity: 'site_content',
+      targetId: sectionKey,
+      outcome: persistedToCloud ? 'success' : (isSupabaseConfigured ? 'failure' : 'success'),
+      metadata: { sectionKey, persistedToCloud, cloudError }
+    });
+
+    const isSuccess = isSupabaseConfigured ? persistedToCloud : true;
+    return {
+      success: isSuccess,
+      persistedToCloud,
+      cloudError
+    };
+  }
+
   async getGlobalSettings(): Promise<{
     branding?: any;
     featureControls?: any;
     organization?: any;
     aiConfiguration?: any;
+    siteContent?: Record<string, any>;
   }> {
-    const all = await this.getAppSettings();
+    const [all, siteContent] = await Promise.all([
+      this.getAppSettings(),
+      this.getSiteContent()
+    ]);
     return {
       branding: all['branding'] || null,
       featureControls: all['feature_controls'] || null,
       organization: all['organization'] || null,
-      aiConfiguration: all['ai_configuration'] || null
+      aiConfiguration: all['ai_configuration'] || null,
+      siteContent
     };
   }
 
@@ -1672,6 +1758,7 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
       featureControls?: any;
       organization?: any;
       aiConfiguration?: any;
+      siteContent?: Record<string, any>;
     },
     actorEmail = 'admin@zaboraa.com'
   ): Promise<{ success: boolean; persistedToCloud: boolean; cloudError?: string; error?: string }> {
@@ -1709,6 +1796,7 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
               export_executive_summary: payload.featureControls.exportExecutiveSummary ?? true,
               export_4k: payload.featureControls.export4k ?? true,
               generate_blueprint: payload.featureControls.generateBlueprint ?? true,
+              blueprint_access_mode: payload.featureControls.blueprintAccessMode || 'everyone',
               updated_at: new Date().toISOString()
             });
           } catch {}
@@ -1739,14 +1827,23 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
         );
       }
 
+      if (payload.siteContent) {
+        for (const [secKey, secVal] of Object.entries(payload.siteContent)) {
+          promises.push(
+            this.saveSiteContent(secKey, secVal, `Section: ${secKey}`, actorEmail)
+          );
+        }
+      }
+
       const results = await Promise.all(promises);
-      const allCloudPersisted = isSupabaseConfigured && results.every((r) => r.persistedToCloud);
+      const allCloudPersisted = isSupabaseConfigured ? results.every((r) => r.persistedToCloud) : true;
       const firstCloudError = results.find((r) => r.cloudError)?.cloudError;
 
       return {
-        success: true,
+        success: isSupabaseConfigured ? allCloudPersisted : true,
         persistedToCloud: allCloudPersisted,
-        cloudError: firstCloudError
+        cloudError: firstCloudError,
+        error: allCloudPersisted ? undefined : firstCloudError
       };
     } catch (err: any) {
       return { success: false, persistedToCloud: false, error: err.message || 'Failed to save global settings' };

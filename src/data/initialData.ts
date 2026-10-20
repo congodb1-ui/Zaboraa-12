@@ -26,11 +26,13 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     enableAuditTelemetry: true,
     publicAccessEnabled: true,
     authRequiredForTools: false,
+    blueprintAccessMode: 'everyone',
     featureControls: {
       exportDossier: true,
       exportExecutiveSummary: true,
       export4k: true,
-      generateBlueprint: true
+      generateBlueprint: true,
+      blueprintAccessMode: 'everyone'
     }
   },
   platformShowcases: [

@@ -986,12 +986,12 @@ export const AdminDashboardModal: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-700 gap-2">
                     <span className="text-slate-300 font-bold uppercase tracking-wider text-xs">Canonical Production URL</span>
                     <a
-                      href="https://zaboraa-12.vercel.app/"
+                      href="https://zaboraa.com/"
                       target="_blank"
                       rel="noreferrer"
                       className="text-cyan-300 hover:text-cyan-200 font-bold flex items-center gap-1.5 underline"
                     >
-                      <span>https://zaboraa-12.vercel.app/</span>
+                      <span>https://zaboraa.com/</span>
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   </div>

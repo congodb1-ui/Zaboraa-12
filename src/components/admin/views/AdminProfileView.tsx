@@ -27,7 +27,7 @@ interface AdminProfileViewProps {
 
 export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserEmail }) => {
   const { user } = useAuth();
-  const { siteConfig, updateFounderPhoto } = useCustomization();
+  const { siteConfig, updateFounderPhoto, updateFounderCredentials } = useCustomization();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form States
@@ -124,21 +124,66 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
     setFeedback(null);
 
     try {
-      // Update Supabase profile if configured
+      let persistedToCloud = false;
+      let cloudError: string | undefined;
+
+      // 1. Update Supabase public.profiles if configured and session exists
       if (isSupabaseConfigured && supabase && user?.uid) {
         try {
-          await supabase
+          const { error } = await supabase
             .from('profiles')
             .update({
-              full_name: fullName,
-              avatar_url: avatarUrl,
+              full_name: fullName.trim(),
+              avatar_url: avatarUrl.trim() || null,
               updated_at: new Date().toISOString()
             })
             .eq('id', user.uid);
-        } catch (e) {
-          console.warn('Notice updating profile table in Supabase:', e);
+
+          if (error) {
+            cloudError = error.message;
+          } else {
+            persistedToCloud = true;
+          }
+        } catch (e: any) {
+          cloudError = e?.message || 'Database update failed';
         }
       }
+
+      // 2. Sync to siteConfig and persistent site_content
+      const updatedFounder = {
+        name: fullName.trim(),
+        role: roleTitle.trim(),
+        phone: phone.trim(),
+        location: location.trim(),
+        bio: bio.trim(),
+        portraitImage: avatarUrl.trim() || undefined
+      };
+      updateFounderCredentials(updatedFounder);
+
+      const contentSaveResult = await adminService.saveSiteContent(
+        'founder',
+        updatedFounder,
+        'Executive Founder Profile',
+        currentUserEmail
+      );
+
+      if (contentSaveResult.persistedToCloud) {
+        persistedToCloud = true;
+      }
+
+      // 3. Mirror into local users cache so Admin Console updates immediately
+      const existingUsers = adminService.getLocalUsers();
+      const updatedLocal = existingUsers.map((u) =>
+        u.id === user?.uid || u.email === currentUserEmail
+          ? {
+              ...u,
+              full_name: fullName.trim(),
+              avatar_url: avatarUrl.trim() || null,
+              updated_at: new Date().toISOString()
+            }
+          : u
+      );
+      adminService.saveLocalUsers(updatedLocal);
 
       await adminService.logAuditEvent({
         actorEmail: currentUserEmail,
@@ -146,14 +191,26 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
         action: 'UPDATE_ADMIN_PROFILE',
         targetEntity: 'profiles',
         targetId: user?.uid || 'admin',
-        outcome: 'success',
-        metadata: { fullName, roleTitle, department }
+        outcome: persistedToCloud ? 'success' : (isSupabaseConfigured ? 'failure' : 'success'),
+        metadata: { fullName, roleTitle, department, persistedToCloud, cloudError }
       });
 
-      setFeedback({
-        type: 'success',
-        message: 'Profile details and account preferences saved successfully.'
-      });
+      if (isSupabaseConfigured && !persistedToCloud) {
+        setFeedback({
+          type: 'error',
+          message: `Failed to persist profile to Supabase: ${cloudError || 'Cloud write did not complete'}. Changes saved to local preview only.`
+        });
+      } else if (isSupabaseConfigured && persistedToCloud) {
+        setFeedback({
+          type: 'success',
+          message: 'Profile details and account preferences successfully persisted to Supabase.'
+        });
+      } else {
+        setFeedback({
+          type: 'success',
+          message: 'Profile details saved to local storage (Supabase is not configured).'
+        });
+      }
     } catch (err: any) {
       setFeedback({
         type: 'error',

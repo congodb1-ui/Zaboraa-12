@@ -138,6 +138,7 @@ interface CustomizationContextType {
     updates: Partial<AdminSettings>,
     brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
   ) => Promise<{ success: boolean; message: string }>;
+  refreshRemoteSettings: () => Promise<void>;
 }
 
 const CustomizationContext = createContext<CustomizationContextType | undefined>(undefined);
@@ -174,20 +175,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
               ...INITIAL_SITE_DATA.founder,
               ...(parsed.founder || {}),
               portraitImage:
-                !parsed.founder?.portraitImage ||
-                parsed.founder?.portraitImage?.includes('wasim_headshot_framer') ||
-                parsed.founder?.portraitImage?.includes('founder_architect_portrait') ||
-                parsed.founder?.portraitImage?.includes('wasim_sayyed_executive') ||
-                parsed.founder?.portraitImage?.includes('wasim_pic_02.jpg')
-                  ? INITIAL_SITE_DATA.founder.portraitImage
-                  : parsed.founder.portraitImage,
-              photoStyle: INITIAL_SITE_DATA.founder.photoStyle
+                parsed.founder?.portraitImage || INITIAL_SITE_DATA.founder.portraitImage,
+              photoStyle: parsed.founder?.photoStyle || INITIAL_SITE_DATA.founder.photoStyle
             },
             hero: {
               ...INITIAL_SITE_DATA.hero,
               ...(parsed.hero || {})
             },
-            platformShowcases: parsed.platformShowcases || INITIAL_SITE_DATA.platformShowcases,
+            platformShowcases: parsed.platformShowcases && parsed.platformShowcases.length > 0
+              ? parsed.platformShowcases
+              : INITIAL_SITE_DATA.platformShowcases,
             diagrams: parsed.diagrams || INITIAL_SITE_DATA.diagrams,
             videos: parsed.videos || INITIAL_SITE_DATA.videos,
             tutorials: parsed.tutorials || INITIAL_SITE_DATA.tutorials,
@@ -196,23 +193,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             services: parsed.services || INITIAL_SITE_DATA.services,
             enableHotspots: parsed.enableHotspots !== undefined ? parsed.enableHotspots : true
           };
-          const hasOldFallbacks = merged.platformShowcases?.some((p: any) =>
-            p.designs?.some((d: any) => d.imageUrl?.includes('architecture_avs_mesh') && p.id !== 'avs')
-          );
-          const hasAria = merged.platformShowcases?.some((p: any) => p.id === 'aria');
-          const hasNutanix = merged.platformShowcases?.some((p: any) => p.id === 'nutanix-nc2-azure');
-          const hasIncompleteDesigns = merged.platformShowcases?.some((p: any) =>
-            !p.designs || p.designs.length < 3 || p.designs.some((d: any) => !d.id || !d.imageUrl)
-          );
-          if (!merged.platformShowcases || merged.platformShowcases.length < 8 || hasOldFallbacks || !hasAria || !hasNutanix || hasIncompleteDesigns) {
-            merged.platformShowcases = INITIAL_SITE_DATA.platformShowcases;
-          }
           if (!merged.adminSettings) {
             merged.adminSettings = INITIAL_SITE_DATA.adminSettings;
           } else {
+            const rawAccessMode = merged.adminSettings.blueprintAccessMode ||
+                                  merged.adminSettings.featureControls?.blueprintAccessMode ||
+                                  'everyone';
             merged.adminSettings = {
               ...INITIAL_SITE_DATA.adminSettings,
               ...merged.adminSettings,
+              blueprintAccessMode: rawAccessMode,
               publicAccessEnabled: merged.adminSettings.publicAccessEnabled !== undefined
                 ? merged.adminSettings.publicAccessEnabled
                 : true,
@@ -231,7 +221,8 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
                   : true,
                 generateBlueprint: merged.adminSettings?.featureControls?.generateBlueprint !== undefined
                   ? merged.adminSettings.featureControls.generateBlueprint
-                  : true
+                  : true,
+                blueprintAccessMode: rawAccessMode
               }
             };
           }
@@ -387,41 +378,81 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     root.setAttribute('data-ui-pattern', currentPattern);
   }, [theme, siteConfig.adminSettings]);
 
-  // Remote Hydration: Asynchronously fetch persistent settings from Supabase if available
-  // Strictly preserves existing saved user changes and never overwrites with defaults
+  // Remote Hydration: Asynchronously fetch persistent settings from Supabase
+  const applyRemoteSettings = (remote: any) => {
+    if (!remote || (!remote.branding && !remote.featureControls && !remote.organization && !remote.siteContent)) {
+      return;
+    }
+
+    setSiteConfig((prev) => {
+      const currentAdminSettings = prev.adminSettings || INITIAL_SITE_DATA.adminSettings!;
+      const rawAccessMode = remote.organization?.blueprintAccessMode ||
+                            remote.featureControls?.blueprintAccessMode ||
+                            currentAdminSettings.blueprintAccessMode ||
+                            'everyone';
+
+      const merged: SiteConfig = {
+        ...prev,
+        brand: remote.branding?.brandName || prev.brand,
+        brandTagline: remote.branding?.brandTagline || prev.brandTagline,
+        brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : prev.brandLogoUrl,
+        founder: remote.siteContent?.founder ? { ...prev.founder, ...remote.siteContent.founder } : prev.founder,
+        hero: remote.siteContent?.hero ? { ...prev.hero, ...remote.siteContent.hero } : prev.hero,
+        adminSettings: {
+          ...currentAdminSettings,
+          brandName: remote.branding?.brandName || currentAdminSettings.brandName,
+          brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : currentAdminSettings.brandLogoUrl,
+          supportEmail: remote.organization?.supportEmail || currentAdminSettings.supportEmail,
+          executiveContact: remote.organization?.executiveContact || currentAdminSettings.executiveContact,
+          defaultCloudPlatform: remote.organization?.defaultCloudPlatform || currentAdminSettings.defaultCloudPlatform,
+          defaultVcpuOvercommit: remote.organization?.defaultVcpuOvercommit ?? currentAdminSettings.defaultVcpuOvercommit,
+          defaultRamBufferPercent: remote.organization?.defaultRamBufferPercent ?? currentAdminSettings.defaultRamBufferPercent,
+          defaultTargetRpoMinutes: remote.organization?.defaultTargetRpoMinutes ?? currentAdminSettings.defaultTargetRpoMinutes,
+          defaultTargetRtoHours: remote.organization?.defaultTargetRtoHours ?? currentAdminSettings.defaultTargetRtoHours,
+          primaryRegion: remote.organization?.primaryRegion || currentAdminSettings.primaryRegion,
+          authRequiredForTools: remote.organization?.authRequiredForTools ?? currentAdminSettings.authRequiredForTools,
+          publicAccessEnabled: remote.organization?.publicAccessEnabled ?? currentAdminSettings.publicAccessEnabled,
+          blueprintAccessMode: rawAccessMode,
+          featureControls: {
+            ...(currentAdminSettings.featureControls || {
+              exportDossier: true,
+              exportExecutiveSummary: true,
+              export4k: true,
+              generateBlueprint: true,
+              blueprintAccessMode: 'everyone'
+            }),
+            ...(remote.featureControls || {}),
+            blueprintAccessMode: rawAccessMode
+          }
+        }
+      };
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      } catch (e) {
+        console.warn('Notice saving hydrated settings to localStorage:', e);
+      }
+
+      return merged;
+    });
+  };
+
+  const refreshRemoteSettings = async (): Promise<void> => {
+    try {
+      const remote = await adminService.getGlobalSettings();
+      applyRemoteSettings(remote);
+    } catch (e) {
+      console.warn('Notice refreshing remote settings:', e);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     const hydrateRemoteSettings = async () => {
       try {
         const remote = await adminService.getGlobalSettings();
         if (!isMounted) return;
-
-        if (remote.branding || remote.featureControls || remote.organization) {
-          setSiteConfig(prev => {
-            const currentAdminSettings = prev.adminSettings || INITIAL_SITE_DATA.adminSettings!;
-            const merged: SiteConfig = {
-              ...prev,
-              brand: remote.branding?.brandName || prev.brand,
-              brandTagline: remote.branding?.brandTagline || prev.brandTagline,
-              brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : prev.brandLogoUrl,
-              adminSettings: {
-                ...currentAdminSettings,
-                brandName: remote.branding?.brandName || currentAdminSettings.brandName,
-                brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : currentAdminSettings.brandLogoUrl,
-                featureControls: {
-                  ...(currentAdminSettings.featureControls || {
-                    exportDossier: true,
-                    exportExecutiveSummary: true,
-                    export4k: true,
-                    generateBlueprint: true
-                  }),
-                  ...(remote.featureControls || {})
-                }
-              }
-            };
-            return merged;
-          });
-        }
+        applyRemoteSettings(remote);
       } catch (e) {
         console.warn('Notice hydrating remote settings:', e);
       }
@@ -951,6 +982,12 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setSiteConfig(newConfig);
 
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
+      } catch (e) {
+        console.warn('Notice saving new config to localStorage:', e);
+      }
+
       // Persist to Supabase app_settings & admin_feature_controls
       const result = await adminService.saveGlobalSettings(
         {
@@ -959,7 +996,20 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             brandTagline: newTagline,
             brandLogoUrl: newLogo
           },
-          featureControls: updatedAdminSettings.featureControls
+          featureControls: updatedAdminSettings.featureControls,
+          organization: {
+            supportEmail: updatedAdminSettings.supportEmail,
+            executiveContact: updatedAdminSettings.executiveContact,
+            defaultCloudPlatform: updatedAdminSettings.defaultCloudPlatform,
+            defaultVcpuOvercommit: updatedAdminSettings.defaultVcpuOvercommit,
+            defaultRamBufferPercent: updatedAdminSettings.defaultRamBufferPercent,
+            defaultTargetRpoMinutes: updatedAdminSettings.defaultTargetRpoMinutes,
+            defaultTargetRtoHours: updatedAdminSettings.defaultTargetRtoHours,
+            primaryRegion: updatedAdminSettings.primaryRegion,
+            authRequiredForTools: updatedAdminSettings.authRequiredForTools,
+            publicAccessEnabled: updatedAdminSettings.publicAccessEnabled,
+            blueprintAccessMode: updatedAdminSettings.blueprintAccessMode || updatedAdminSettings.featureControls?.blueprintAccessMode || 'everyone'
+          }
         },
         user?.email || 'admin@zaboraa.com'
       );
@@ -976,14 +1026,14 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!result.persistedToCloud) {
         return {
-          success: true,
-          message: `Settings saved to local cache only. Supabase sync notice: ${result.cloudError || 'table not reachable'}`
+          success: false,
+          message: `Failed to persist to Supabase cloud: ${result.cloudError || 'Cloud write did not complete'}. Changes saved to local browser cache only.`
         };
       }
 
       return {
         success: true,
-        message: 'Settings and branding successfully persisted to Supabase PostgreSQL.'
+        message: 'Settings, branding, and blueprint access controls successfully persisted to Supabase.'
       };
     } catch (err: any) {
       return { success: false, message: err.message || 'Failed to persist settings.' };
@@ -1082,7 +1132,8 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         resetToDefaults,
         exportConfigJson,
         importConfigJson,
-        savePersistentAdminSettings
+        savePersistentAdminSettings,
+        refreshRemoteSettings
       }}
     >
       {children}

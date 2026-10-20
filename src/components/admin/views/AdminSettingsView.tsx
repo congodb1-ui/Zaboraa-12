@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCustomization } from '../../../context/CustomizationContext';
 import { adminService } from '../../../services/adminService';
+import { BlueprintAccessMode } from '../../../types/siteData';
 import {
   SlidersHorizontal,
   Save,
@@ -75,6 +76,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
   const [generateBlueprint, setGenerateBlueprint] = useState(
     siteConfig.adminSettings?.featureControls?.generateBlueprint ?? true
   );
+  const [blueprintAccessMode, setBlueprintAccessMode] = useState<BlueprintAccessMode>(
+    siteConfig.adminSettings?.blueprintAccessMode ||
+    siteConfig.adminSettings?.featureControls?.blueprintAccessMode ||
+    'everyone'
+  );
   const [authRequiredForTools, setAuthRequiredForTools] = useState(
     siteConfig.adminSettings?.authRequiredForTools ?? false
   );
@@ -106,11 +112,13 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
           primaryRegion,
           authRequiredForTools,
           publicAccessEnabled,
+          blueprintAccessMode,
           featureControls: {
             export4k,
             exportDossier,
             exportExecutiveSummary,
-            generateBlueprint
+            generateBlueprint,
+            blueprintAccessMode
           }
         },
         {
@@ -403,6 +411,83 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
           <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800/80">
             <Lock className="w-4 h-4 text-emerald-400" />
             <h2 className="text-sm font-bold text-white">Platform Feature Gating & Access Control</h2>
+          </div>
+
+          {/* Blueprint Access Switch: 3 modes */}
+          <div className="p-5 rounded-xl bg-slate-950/80 border border-cyan-500/30 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                  <span>Blueprint Generation Access Switch</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  Controls who is permitted to trigger server-side 3D architecture blueprint generations. Enforced server-side.
+                </div>
+              </div>
+              <div className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 uppercase">
+                Active Mode: {blueprintAccessMode.replace('_', ' ')}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Option 1: Everyone */}
+              <button
+                type="button"
+                onClick={() => setBlueprintAccessMode('everyone')}
+                className={`p-3.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  blueprintAccessMode === 'everyone'
+                    ? 'bg-cyan-950/60 border-cyan-400 text-white shadow-md ring-1 ring-cyan-500/40'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Everyone</span>
+                  {blueprintAccessMode === 'everyone' && <span className="w-2 h-2 rounded-full bg-cyan-400" />}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  Public open access. All visitors (including anonymous) can generate blueprints.
+                </p>
+              </button>
+
+              {/* Option 2: Signed-in users only */}
+              <button
+                type="button"
+                onClick={() => setBlueprintAccessMode('signed_in')}
+                className={`p-3.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  blueprintAccessMode === 'signed_in'
+                    ? 'bg-emerald-950/60 border-emerald-400 text-white shadow-md ring-1 ring-emerald-500/40'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Signed-in users only</span>
+                  {blueprintAccessMode === 'signed_in' && <span className="w-2 h-2 rounded-full bg-emerald-400" />}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  Authenticated only. Requires a verified Google, Microsoft, or email account.
+                </p>
+              </button>
+
+              {/* Option 3: Nobody */}
+              <button
+                type="button"
+                onClick={() => setBlueprintAccessMode('nobody')}
+                className={`p-3.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  blueprintAccessMode === 'nobody'
+                    ? 'bg-rose-950/60 border-rose-400 text-white shadow-md ring-1 ring-rose-500/40'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Nobody</span>
+                  {blueprintAccessMode === 'nobody' && <span className="w-2 h-2 rounded-full bg-rose-400" />}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  Emergency off-switch. Blocks all generations server-side with 403 Forbidden.
+                </p>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

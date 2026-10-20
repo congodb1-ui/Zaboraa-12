@@ -272,15 +272,33 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                       onClick={() => setSelectedUser(u)}
                     >
                       <td className="py-3 px-4">
-                        <div className="font-bold text-white group-hover:text-cyan-300 transition-colors">
-                          {u.full_name || u.email?.split('@')[0] || 'User'}
-                        </div>
-                        <div className="text-[11px] font-mono text-slate-400">{u.email}</div>
-                        {u.admin_notes && (
-                          <div className="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">
-                            Note: {u.admin_notes}
+                        <div className="flex items-center gap-3">
+                          {u.avatar_url ? (
+                            <img
+                              src={u.avatar_url}
+                              alt={u.full_name || 'Avatar'}
+                              className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0 shadow-sm"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-cyan-400 shrink-0">
+                              {(u.full_name || u.email || 'U').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-bold text-white group-hover:text-cyan-300 transition-colors truncate">
+                              {u.full_name || u.email?.split('@')[0] || 'User'}
+                            </div>
+                            <div className="text-[11px] font-mono text-slate-400 truncate">{u.email}</div>
+                            {u.admin_notes && (
+                              <div className="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">
+                                Note: {u.admin_notes}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <span
@@ -534,6 +552,96 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                 className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 Save Notes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* User Profile Detail Inspection Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-6 space-y-5 text-slate-100">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                {selectedUser.avatar_url ? (
+                  <img
+                    src={selectedUser.avatar_url}
+                    alt={selectedUser.full_name || 'Avatar'}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-cyan-500/50 shadow-md"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-cyan-500/50 flex items-center justify-center font-bold text-lg text-cyan-400">
+                    {(selectedUser.full_name || selectedUser.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-base font-bold text-white">
+                    {selectedUser.full_name || 'Enterprise User'}
+                  </h2>
+                  <div className="text-xs font-mono text-cyan-400">{selectedUser.email}</div>
+                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">ID: {selectedUser.id}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px] font-mono uppercase">Assigned Role</span>
+                <span className="font-bold text-white capitalize">{selectedUser.role}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] font-mono uppercase">Account Status</span>
+                <span className="font-bold text-emerald-400 capitalize">{selectedUser.status}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] font-mono uppercase">License Tier</span>
+                <span className="font-bold text-white capitalize">{selectedUser.subscription_tier}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] font-mono uppercase">Member Since</span>
+                <span className="font-mono text-slate-300">
+                  {new Date(selectedUser.created_at).toLocaleDateString()}
+                </span>
+              </div>
+              {selectedUser.last_sign_in_at && (
+                <div className="col-span-2">
+                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Last Active Authentication</span>
+                  <span className="font-mono text-cyan-300">
+                    {new Date(selectedUser.last_sign_in_at).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {selectedUser.admin_notes && (
+              <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 text-xs">
+                <span className="text-slate-400 block text-[10px] font-mono uppercase mb-1">Administrative Notes</span>
+                <p className="text-slate-200 italic">{selectedUser.admin_notes}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setRoleModalUser(selectedUser);
+                  setTargetRole(selectedUser.role === 'admin' ? 'authorized' : 'admin');
+                  setSelectedUser(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+              >
+                Change Role
+              </button>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Close Details
               </button>
             </div>
           </div>

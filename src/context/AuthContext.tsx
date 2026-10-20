@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { offlineVaultService, VaultDataSnapshot } from '../services/offlineVaultService';
 import { getAuthRedirectUrl } from '../utils/canonicalUrl';
+import { adminService, AdminUserProfile, AdminUserRole } from '../services/adminService';
 
 export type SubscriptionTier = 'free' | 'pro' | 'enterprise';
 export type UserRole = 'admin' | 'authorized' | 'public' | 'user';
@@ -42,6 +43,7 @@ export interface AuthContextType {
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
   quickDemoLogin: () => AuthUserProfile;
   signOut: () => Promise<void>;
+  refreshUserProfile: () => Promise<AuthUserProfile | null>;
   isCommercializeModalOpen: boolean;
   setIsCommercializeModalOpen: (open: boolean) => void;
   authError: string | null;
@@ -111,12 +113,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Default to 'public' for zero-privilege security
     let role: 'admin' | 'authorized' | 'public' = 'public';
     let tier: SubscriptionTier = 'free';
+
+    // Comprehensive Google OAuth profile attributes extraction
+    const googleIdentity = sbUser.identities?.find((id: any) => id.provider === 'google')?.identity_data;
     const metaFullName = (sbUser.user_metadata as any)?.full_name ||
                          (sbUser.user_metadata as any)?.name ||
                          (sbUser.user_metadata as any)?.given_name ||
+                         googleIdentity?.full_name ||
+                         googleIdentity?.name ||
                          sbUser.email?.split('@')[0] || 'Enterprise Architect';
     const metaAvatarUrl = (sbUser.user_metadata as any)?.avatar_url ||
-                          (sbUser.user_metadata as any)?.picture || null;
+                          (sbUser.user_metadata as any)?.picture ||
+                          googleIdentity?.avatar_url ||
+                          googleIdentity?.picture || null;
 
     let displayName = metaFullName;
     let photoURL = metaAvatarUrl;
@@ -147,11 +156,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (data.subscription_tier === 'pro' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'free') {
             tier = data.subscription_tier;
           }
-          if (data.full_name) displayName = data.full_name;
-          if (data.avatar_url) photoURL = data.avatar_url;
+
+          const isGenericName = !data.full_name || data.full_name === 'User' || data.full_name === sbUser.email?.split('@')[0];
+          if (isGenericName && metaFullName && metaFullName !== sbUser.email?.split('@')[0]) {
+            displayName = metaFullName;
+          } else if (data.full_name) {
+            displayName = data.full_name;
+          }
+
+          if (!data.avatar_url && metaAvatarUrl) {
+            photoURL = metaAvatarUrl;
+          } else if (data.avatar_url) {
+            photoURL = data.avatar_url;
+          }
 
           // If database profile is missing avatar or full name that Google provided, update profile
-          const needsSync = (!data.avatar_url && metaAvatarUrl) || (!data.full_name && metaFullName);
+          const needsSync = (!data.avatar_url && metaAvatarUrl) || (isGenericName && metaFullName && metaFullName !== sbUser.email?.split('@')[0]);
           if (needsSync) {
             try {
               await supabase
@@ -166,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch {}
           }
         } else {
-          // Profile does not exist yet (e.g. first Google sign in) - Persist immediately
+          // Profile does not exist yet (e.g. first Google sign in) - Persist immediately to Supabase
           try {
             await supabase.from('profiles').upsert({
               id: sbUser.id,
@@ -205,6 +225,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role,
       provider
     };
+
+    // Synchronize real profile into admin local registry immediately
+    try {
+      if (typeof localStorage !== 'undefined' && authProfile.email) {
+        const localList = adminService.getLocalUsers();
+        const existingIdx = localList.findIndex((u) => u.email === authProfile.email || u.id === authProfile.uid);
+        const mappedRole = (authProfile.role as AdminUserRole) || (isUserAdminEmail(authProfile.email) ? 'admin' : 'authorized');
+        if (existingIdx >= 0) {
+          localList[existingIdx] = {
+            ...localList[existingIdx],
+            full_name: displayName,
+            avatar_url: photoURL || localList[existingIdx].avatar_url,
+            role: mappedRole,
+            subscription_tier: tier,
+            updated_at: new Date().toISOString()
+          };
+        } else {
+          localList.unshift({
+            id: authProfile.uid,
+            email: authProfile.email,
+            role: mappedRole,
+            status: 'active',
+            subscription_tier: tier,
+            full_name: displayName,
+            avatar_url: photoURL || undefined,
+            created_at: sbUser.created_at || new Date().toISOString()
+          });
+        }
+        adminService.saveLocalUsers(localList);
+      }
+    } catch {}
 
     return authProfile;
   }, []);

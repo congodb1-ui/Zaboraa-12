@@ -358,6 +358,7 @@ class AdminService {
   private localCrmLeadsKey = 'zaboraa_admin_crm_leads_v2';
   private localNotificationsKey = 'zaboraa_admin_notifications_v2';
   private localAppSettingsKey = 'zaboraa_app_settings_cache_v2';
+  private localUsersKey = 'zaboraa_admin_users_cache_v2';
 
   // --------------------------------------------------------------------
   // 1. AUDIT LOGGING (Append-Only)
@@ -469,6 +470,20 @@ class AdminService {
   // --------------------------------------------------------------------
   // 2. USER AND ACCESS MANAGEMENT
   // --------------------------------------------------------------------
+  getLocalUsers(): AdminUserProfile[] {
+    try {
+      const raw = localStorage.getItem(this.localUsersKey);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  }
+
+  saveLocalUsers(users: AdminUserProfile[]): void {
+    try {
+      localStorage.setItem(this.localUsersKey, JSON.stringify(users));
+    } catch {}
+  }
+
   async getUsers(): Promise<AdminUserProfile[]> {
     if (isSupabaseConfigured && supabase) {
       try {
@@ -477,51 +492,139 @@ class AdminService {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && Array.isArray(data)) {
-          if (data.length > 0) {
-            return data.map((d: any) => ({
-              id: d.id,
-              email: d.email,
-              role: (d.role as AdminUserRole) || 'public',
-              status: (d.status as AccountStatus) || 'active',
-              subscription_tier: d.subscription_tier || 'free',
-              full_name: d.full_name || d.email?.split('@')[0] || 'User',
-              avatar_url: d.avatar_url,
-              admin_notes: d.admin_notes,
-              created_at: d.created_at || new Date().toISOString(),
-              updated_at: d.updated_at,
-              last_sign_in_at: d.last_sign_in_at,
-              suspended_at: d.suspended_at
-            }));
-          }
+        let mappedUsers: AdminUserProfile[] = [];
+        if (!error && Array.isArray(data) && data.length > 0) {
+          mappedUsers = data.map((d: any) => ({
+            id: d.id,
+            email: d.email,
+            role: (d.role as AdminUserRole) || 'public',
+            status: (d.status as AccountStatus) || 'active',
+            subscription_tier: d.subscription_tier || 'free',
+            full_name: d.full_name || d.email?.split('@')[0] || 'User',
+            avatar_url: d.avatar_url,
+            admin_notes: d.admin_notes,
+            created_at: d.created_at || new Date().toISOString(),
+            updated_at: d.updated_at,
+            last_sign_in_at: d.last_sign_in_at,
+            suspended_at: d.suspended_at
+          }));
+        }
 
-          // If profiles table is currently empty, check if active auth user exists
-          try {
-            const { data: authData } = await supabase.auth.getUser();
-            if (authData?.user) {
-              const u = authData.user;
-              const fullName = (u.user_metadata as any)?.full_name || (u.user_metadata as any)?.name || u.email?.split('@')[0] || 'Administrator';
-              const avatarUrl = (u.user_metadata as any)?.avatar_url || (u.user_metadata as any)?.picture || null;
-              return [{
+        // Also check if current active auth session user should be merged/synced
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            const u = authData.user;
+            const googleIdentity = u.identities?.find((id: any) => id.provider === 'google')?.identity_data;
+            const fullName = (u.user_metadata as any)?.full_name ||
+                             (u.user_metadata as any)?.name ||
+                             googleIdentity?.full_name ||
+                             googleIdentity?.name ||
+                             u.email?.split('@')[0] || 'User';
+            const avatarUrl = (u.user_metadata as any)?.avatar_url ||
+                              (u.user_metadata as any)?.picture ||
+                              googleIdentity?.avatar_url ||
+                              googleIdentity?.picture || null;
+
+            const existingIdx = mappedUsers.findIndex((mu) => mu.id === u.id || mu.email === u.email);
+            if (existingIdx >= 0) {
+              // Update with fresher Google metadata if profile had blanks
+              if (!mappedUsers[existingIdx].avatar_url && avatarUrl) {
+                mappedUsers[existingIdx].avatar_url = avatarUrl;
+              }
+              if ((!mappedUsers[existingIdx].full_name || mappedUsers[existingIdx].full_name === 'User') && fullName) {
+                mappedUsers[existingIdx].full_name = fullName;
+              }
+            } else {
+              // Add real signed-in user to list
+              mappedUsers.unshift({
                 id: u.id,
                 email: u.email ?? null,
-                role: 'admin',
+                role: (u.email?.includes('admin') || u.email?.endsWith('@zaboraa.com')) ? 'admin' : 'authorized',
                 status: 'active',
                 subscription_tier: 'enterprise',
                 full_name: fullName,
                 avatar_url: avatarUrl,
                 created_at: u.created_at || new Date().toISOString()
-              }];
+              });
             }
-          } catch {}
-          return [];
+          }
+        } catch {}
+
+        if (mappedUsers.length > 0) {
+          this.saveLocalUsers(mappedUsers);
+          return mappedUsers;
         }
       } catch (e) {
         console.warn('Notice querying Supabase profiles:', e);
       }
     }
 
-    return [];
+    // Fallback: Check local cache or active signed-in user
+    try {
+      const activeUserRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('zaboraa_auth_user') : null;
+      if (activeUserRaw) {
+        const activeUser = JSON.parse(activeUserRaw);
+        if (activeUser?.email) {
+          const localList = this.getLocalUsers();
+          const existingIdx = localList.findIndex((u) => u.email === activeUser.email || u.id === activeUser.uid);
+          if (existingIdx >= 0) {
+            localList[existingIdx] = {
+              ...localList[existingIdx],
+              full_name: activeUser.displayName || localList[existingIdx].full_name,
+              avatar_url: activeUser.photoURL || localList[existingIdx].avatar_url,
+              role: activeUser.role || localList[existingIdx].role,
+              subscription_tier: activeUser.licenseTier || localList[existingIdx].subscription_tier
+            };
+            this.saveLocalUsers(localList);
+            return localList;
+          } else {
+            const realUserEntry: AdminUserProfile = {
+              id: activeUser.uid || 'usr-' + Date.now(),
+              email: activeUser.email,
+              role: (activeUser.role as AdminUserRole) || (activeUser.email.includes('admin') || activeUser.email.endsWith('@zaboraa.com') ? 'admin' : 'authorized'),
+              status: 'active',
+              subscription_tier: activeUser.licenseTier || 'enterprise',
+              full_name: activeUser.displayName || activeUser.email.split('@')[0],
+              avatar_url: activeUser.photoURL || undefined,
+              created_at: new Date().toISOString()
+            };
+            localList.unshift(realUserEntry);
+            this.saveLocalUsers(localList);
+            return localList;
+          }
+        }
+      }
+    } catch {}
+
+    const local = this.getLocalUsers();
+    if (local.length > 0) return local;
+
+    const seedUsers: AdminUserProfile[] = [
+      {
+        id: 'usr-admin-wasim',
+        email: 'wasim.sayyed@zaboraa.com',
+        role: 'admin',
+        status: 'active',
+        subscription_tier: 'enterprise',
+        full_name: 'Wasim Sayyed',
+        avatar_url: '/assets/images/wasim_headshot_framer.png',
+        admin_notes: 'Principal Multi-Cloud Architect & Founder',
+        created_at: '2026-01-01T00:00:00.000Z'
+      },
+      {
+        id: 'usr-architect-member',
+        email: 'cloud.architect@zaboraa-client.com',
+        role: 'authorized',
+        status: 'active',
+        subscription_tier: 'pro',
+        full_name: 'Enterprise Cloud Architect',
+        created_at: '2026-02-15T00:00:00.000Z'
+      }
+    ];
+
+    this.saveLocalUsers(seedUsers);
+    return seedUsers;
   }
 
   async updateUserRole(
@@ -557,6 +660,12 @@ class AdminService {
       }
     }
 
+    // Always synchronize local state for offline resilience and tests
+    const updatedUsers = allUsers.map((u) =>
+      u.id === targetUserId ? { ...u, role: newRole, updated_at: new Date().toISOString() } : u
+    );
+    this.saveLocalUsers(updatedUsers);
+
     await this.logAuditEvent({
       actorEmail,
       actorRole: 'admin',
@@ -577,8 +686,8 @@ class AdminService {
     adminNotes?: string
   ): Promise<{ success: boolean; error?: string }> {
     // Guardrail against suspending the last admin
+    const allUsers = await this.getUsers();
     if (newStatus === 'suspended') {
-      const allUsers = await this.getUsers();
       const currentAdmins = allUsers.filter((u) => u.role === 'admin' && u.status === 'active');
       const isTargetAdmin = currentAdmins.some((u) => u.id === targetUserId);
 
@@ -615,6 +724,20 @@ class AdminService {
         return { success: false, error: err.message || 'Failed to update account status.' };
       }
     }
+
+    // Always synchronize local state for offline resilience and tests
+    const updatedUsers = allUsers.map((u) =>
+      u.id === targetUserId
+        ? {
+            ...u,
+            status: newStatus,
+            admin_notes: adminNotes !== undefined ? adminNotes : u.admin_notes,
+            suspended_at: newStatus === 'suspended' ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString()
+          }
+        : u
+    );
+    this.saveLocalUsers(updatedUsers);
 
     await this.logAuditEvent({
       actorEmail,
@@ -656,6 +779,10 @@ class AdminService {
         return { success: false, error: err.message || 'Failed to delete user profile.' };
       }
     }
+
+    // Always synchronize local state for offline resilience and tests
+    const filteredUsers = allUsers.filter((u) => u.id !== targetUserId);
+    this.saveLocalUsers(filteredUsers);
 
     await this.logAuditEvent({
       actorEmail,
@@ -1616,7 +1743,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
           category,
           description,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'key' });
 
         if (error) throw error;
         persistedToCloud = true;
@@ -1637,7 +1764,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
     });
 
     return {
-      success: true,
+      success: isSupabaseConfigured ? persistedToCloud : true,
       persistedToCloud,
       cloudError
     };

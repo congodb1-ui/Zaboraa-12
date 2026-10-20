@@ -964,11 +964,27 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         user?.email || 'admin@zaboraa.com'
       );
 
-      if (!result.success) {
-        return { success: true, message: 'Settings saved locally (remote cloud sync pending).' };
+      const hasSupabase = (import.meta as any).env?.VITE_SUPABASE_URL && 
+        !(import.meta as any).env?.VITE_SUPABASE_URL.includes('mock-zaboraa');
+
+      if (!hasSupabase) {
+        return {
+          success: true,
+          message: 'Settings saved to local browser storage (Supabase environment variables are not configured).'
+        };
       }
 
-      return { success: true, message: 'Settings and branding successfully persisted to Supabase.' };
+      if (!result.persistedToCloud) {
+        return {
+          success: true,
+          message: `Settings saved to local cache only. Supabase sync notice: ${result.cloudError || 'table not reachable'}`
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Settings and branding successfully persisted to Supabase PostgreSQL.'
+      };
     } catch (err: any) {
       return { success: false, message: err.message || 'Failed to persist settings.' };
     }

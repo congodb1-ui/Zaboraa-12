@@ -319,7 +319,9 @@ export default defineConfig(({ mode }) => {
                 database: {
                   configured: Boolean(env.VITE_SUPABASE_URL),
                   engine: 'Supabase PostgreSQL',
-                  mode: env.VITE_SUPABASE_URL ? 'cloud_connected' : 'local_vault'
+                  status: Boolean(env.VITE_SUPABASE_URL) ? 'configured' : 'not_configured',
+                  verified: false,
+                  note: 'Live database connectivity is verified via client-side probe or authenticated requests.'
                 }
               },
               security: {

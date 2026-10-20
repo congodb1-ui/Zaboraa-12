@@ -23,7 +23,9 @@ export default async function handler(req, res) {
       database: {
         configured: hasSupabaseUrl && hasSupabaseKey,
         engine: 'Supabase PostgreSQL',
-        mode: (hasSupabaseUrl && hasSupabaseKey) ? 'cloud_connected' : 'local_vault'
+        status: (hasSupabaseUrl && hasSupabaseKey) ? 'configured' : 'not_configured',
+        verified: false,
+        note: 'Live database connectivity is verified via client-side probe or authenticated requests.'
       },
       firebase: {
         configured: hasFirebaseKey,

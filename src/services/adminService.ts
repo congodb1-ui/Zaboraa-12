@@ -127,6 +127,43 @@ export interface IntegrationStatus {
   details?: Record<string, any>;
 }
 
+export interface SaveSettingsResult {
+  success: boolean;
+  persistedToCloud: boolean;
+  cloudError?: string;
+  error?: string;
+}
+
+export interface SupabaseDetailedDiagnostic {
+  state: 'connected' | 'not_configured' | 'schema_missing' | 'connection_failed';
+  timestamp: string;
+  isConfigured: boolean;
+  maskedUrl: string | null;
+  database: {
+    reachable: boolean;
+    latencyMs: number;
+    errorType?: 'AUTH_ERROR' | 'TABLE_NOT_FOUND' | 'NETWORK_ERROR' | 'RLS_RESTRICTION' | 'UNKNOWN';
+    safeErrorMessage?: string;
+  };
+  auth: {
+    reachable: boolean;
+    sessionActive: boolean;
+    latencyMs: number;
+    safeErrorMessage?: string;
+  };
+  tablesFound: {
+    app_settings: boolean;
+    profiles: boolean;
+    admin_feature_controls: boolean;
+    user_workspaces: boolean;
+    audit_logs: boolean;
+  };
+  requiredEnvVars: string[];
+  missingEnvVars: string[];
+  summary: string;
+  recommendations: string[];
+}
+
 // ----------------------------------------------------------------------
 // Allowlisted Application Tables for Database Explorer
 // ----------------------------------------------------------------------
@@ -1110,16 +1147,36 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
     });
 
     // 2. Supabase Auth
+    let authStatus: 'connected' | 'not_configured' | 'degraded' | 'error' = 'not_configured';
+    let authLatency = 0;
+    let authSummary = 'Supabase credentials not configured. Mock authentication active.';
+
+    if (isSupabaseConfigured && supabase) {
+      const startAuth = performance.now();
+      try {
+        const { error } = await supabase.auth.getSession();
+        authLatency = Math.round(performance.now() - startAuth);
+        if (!error) {
+          authStatus = 'connected';
+          authSummary = 'Supabase Auth service operational with verified session handshake.';
+        } else {
+          authStatus = 'error';
+          authSummary = `Auth service responded with error: ${error.message}`;
+        }
+      } catch (authErr: any) {
+        authStatus = 'error';
+        authSummary = `Auth service unreachable: ${authErr.message || 'Network error'}`;
+      }
+    }
+
     results.push({
       id: 'supabase_auth',
       name: 'Supabase Authentication',
       category: 'auth',
-      status: isSupabaseConfigured ? 'connected' : 'not_configured',
-      latencyMs: 25,
+      status: authStatus,
+      latencyMs: authLatency || 25,
       lastChecked: new Date().toLocaleTimeString(),
-      summary: isSupabaseConfigured
-        ? 'PKCE session persistence active with role-based routing.'
-        : 'Mock auth active with Demo Architect and Emergency Vault.',
+      summary: authSummary,
       requiredEnvVars: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
       missingEnvVars: isSupabaseConfigured ? [] : ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
     });
@@ -1209,6 +1266,232 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
     });
 
     return results;
+  }
+
+  /**
+   * Safe, non-destructive Supabase connection diagnostic.
+   * Accurately distinguishes configured, connected, schema_missing, and failed states
+   * without exposing credentials, secrets, or sensitive database details.
+   */
+  async testSupabaseConnectionDetailed(): Promise<SupabaseDetailedDiagnostic> {
+    const rawUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
+    const rawAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+
+    const hasConfig = Boolean(
+      rawUrl &&
+      rawAnonKey &&
+      !rawUrl.includes('mock-zaboraa') &&
+      !rawAnonKey.includes('dummy-preview-key')
+    );
+
+    const requiredEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
+    const missingEnvVars: string[] = [];
+    if (!rawUrl || rawUrl.includes('mock-zaboraa')) missingEnvVars.push('VITE_SUPABASE_URL');
+    if (!rawAnonKey || rawAnonKey.includes('dummy-preview-key')) missingEnvVars.push('VITE_SUPABASE_ANON_KEY');
+
+    // Safe URL masking: e.g. "https://abcxyz.supabase.co" -> "https://abc***.supabase.co"
+    let maskedUrl: string | null = null;
+    if (rawUrl && !rawUrl.includes('mock-zaboraa')) {
+      try {
+        const parsed = new URL(rawUrl);
+        const hostParts = parsed.hostname.split('.');
+        if (hostParts.length >= 3) {
+          const projectSubdomain = hostParts[0];
+          const maskedSub = projectSubdomain.length > 4 
+            ? `${projectSubdomain.substring(0, 3)}***` 
+            : '***';
+          maskedUrl = `https://${maskedSub}.${hostParts.slice(1).join('.')}`;
+        } else {
+          maskedUrl = `https://${parsed.hostname}`;
+        }
+      } catch {
+        maskedUrl = 'https://[custom-domain]';
+      }
+    }
+
+    if (!hasConfig || !supabase) {
+      return {
+        state: 'not_configured',
+        timestamp: new Date().toISOString(),
+        isConfigured: false,
+        maskedUrl: null,
+        database: {
+          reachable: false,
+          latencyMs: 0,
+          errorType: 'AUTH_ERROR',
+          safeErrorMessage: 'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not set.'
+        },
+        auth: {
+          reachable: false,
+          sessionActive: false,
+          latencyMs: 0,
+          safeErrorMessage: 'Supabase Auth unconfigured; running in local preview mode.'
+        },
+        tablesFound: {
+          app_settings: false,
+          profiles: false,
+          admin_feature_controls: false,
+          user_workspaces: false,
+          audit_logs: false
+        },
+        requiredEnvVars,
+        missingEnvVars,
+        summary: 'Supabase credentials are not configured. The application is running safely with in-memory mock storage and local cache without cloud persistence.',
+        recommendations: [
+          'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env.local file.',
+          'For Vercel deployments, configure these variables in Vercel Project Settings > Environment Variables.',
+          'Never use the secret service_role key in frontend environments.'
+        ]
+      };
+    }
+
+    // 1. Probe Auth endpoint
+    let authReachable = false;
+    let authSessionActive = false;
+    let authLatency = 0;
+    let authSafeError: string | undefined;
+
+    const authStart = performance.now();
+    try {
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      authLatency = Math.round(performance.now() - authStart);
+      if (!sessionErr) {
+        authReachable = true;
+        authSessionActive = Boolean(sessionData?.session);
+      } else {
+        authSafeError = sessionErr.message || 'Auth service responded with error';
+      }
+    } catch (err: any) {
+      authLatency = Math.round(performance.now() - authStart);
+      authSafeError = err.message || 'Network request failed contacting Supabase Auth';
+    }
+
+    // 2. Probe Database tables non-destructively
+    const tablesFound = {
+      app_settings: false,
+      profiles: false,
+      admin_feature_controls: false,
+      user_workspaces: false,
+      audit_logs: false
+    };
+
+    let dbReachable = false;
+    let dbLatency = 0;
+    let dbErrorType: 'AUTH_ERROR' | 'TABLE_NOT_FOUND' | 'NETWORK_ERROR' | 'RLS_RESTRICTION' | 'UNKNOWN' | undefined;
+    let dbSafeError: string | undefined;
+
+    const dbStart = performance.now();
+    try {
+      // Query app_settings count header
+      const { error: appSettingsErr } = await supabase
+        .from('app_settings')
+        .select('key', { count: 'exact', head: true });
+
+      dbLatency = Math.round(performance.now() - dbStart);
+
+      if (!appSettingsErr) {
+        tablesFound.app_settings = true;
+        dbReachable = true;
+      } else {
+        const msg = appSettingsErr.message || '';
+        const code = (appSettingsErr as any).code || '';
+        if (code === '42P01' || msg.includes('does not exist') || msg.includes('relation')) {
+          dbReachable = true; // DB instance answered, but table is missing
+          dbErrorType = 'TABLE_NOT_FOUND';
+          dbSafeError = 'Table "app_settings" does not exist in public schema.';
+        } else if (code === 'PGRST301' || msg.includes('JWT') || msg.includes('apikey')) {
+          dbErrorType = 'AUTH_ERROR';
+          dbSafeError = 'Invalid Supabase Anon Key. Verify VITE_SUPABASE_ANON_KEY.';
+        } else {
+          dbReachable = true;
+          dbErrorType = 'RLS_RESTRICTION';
+          dbSafeError = `Access restricted: ${msg}`;
+        }
+      }
+
+      // Check profiles table
+      const { error: profilesErr } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true });
+      if (!profilesErr) {
+        tablesFound.profiles = true;
+        dbReachable = true;
+      }
+
+      // Check admin_feature_controls
+      const { error: featErr } = await supabase
+        .from('admin_feature_controls')
+        .select('id', { count: 'exact', head: true });
+      if (!featErr) tablesFound.admin_feature_controls = true;
+
+      // Check user_workspaces
+      const { error: wsErr } = await supabase
+        .from('user_workspaces')
+        .select('id', { count: 'exact', head: true });
+      if (!wsErr) tablesFound.user_workspaces = true;
+
+      // Check audit_logs
+      const { error: auditErr } = await supabase
+        .from('audit_logs')
+        .select('id', { count: 'exact', head: true });
+      if (!auditErr) tablesFound.audit_logs = true;
+
+    } catch (err: any) {
+      dbLatency = Math.round(performance.now() - dbStart);
+      dbErrorType = 'NETWORK_ERROR';
+      dbSafeError = err.message || 'Failed to reach Supabase server. Check network connection and URL format.';
+    }
+
+    // Determine aggregate state
+    let state: SupabaseDetailedDiagnostic['state'] = 'connection_failed';
+    const recs: string[] = [];
+
+    if (!dbReachable && !authReachable) {
+      state = 'connection_failed';
+      recs.push('Verify that VITE_SUPABASE_URL points to an active Supabase project.');
+      recs.push('Check that VITE_SUPABASE_ANON_KEY is the public "anon" key, not the service_role key.');
+    } else if (tablesFound.app_settings && tablesFound.profiles) {
+      state = 'connected';
+      recs.push('Supabase PostgreSQL database and Auth services are live, connected, and responding.');
+    } else if (dbReachable && (!tablesFound.app_settings || !tablesFound.profiles)) {
+      state = 'schema_missing';
+      if (!tablesFound.app_settings) {
+        recs.push('Run migration "supabase/migrations/20261021_admin_app_settings.sql" in Supabase SQL Editor to create public.app_settings.');
+      }
+      if (!tablesFound.profiles) {
+        recs.push('Run migration "supabase/migrations/20261019_enterprise_admin_suite.sql" or "supabase_schema.sql" to create public.profiles.');
+      }
+    } else {
+      state = 'connected';
+    }
+
+    return {
+      state,
+      timestamp: new Date().toISOString(),
+      isConfigured: true,
+      maskedUrl,
+      database: {
+        reachable: dbReachable,
+        latencyMs: dbLatency,
+        errorType: dbErrorType,
+        safeErrorMessage: dbSafeError
+      },
+      auth: {
+        reachable: authReachable,
+        sessionActive: authSessionActive,
+        latencyMs: authLatency,
+        safeErrorMessage: authSafeError
+      },
+      tablesFound,
+      requiredEnvVars,
+      missingEnvVars,
+      summary: state === 'connected'
+        ? `Supabase is connected and operational (${dbLatency}ms roundtrip). Database tables and auth bus are verified.`
+        : state === 'schema_missing'
+          ? `Supabase instance reached, but required database tables are missing. Apply migrations in Supabase SQL editor.`
+          : `Supabase connection failed: ${dbSafeError || authSafeError || 'Unknown connection error'}.`,
+      recommendations: recs
+    };
   }
 
   // --------------------------------------------------------------------
@@ -1325,10 +1608,13 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
     category = 'general',
     description = '',
     actorEmail = 'admin@zaboraa.com'
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<SaveSettingsResult> {
     const current = this.getLocalAppSettings();
     current[key] = value;
     this.setLocalAppSettings(current);
+
+    let persistedToCloud = false;
+    let cloudError: string | undefined;
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -1341,8 +1627,10 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
         });
 
         if (error) throw error;
+        persistedToCloud = true;
       } catch (err: any) {
-        console.warn('Notice updating app_settings in Supabase:', err.message);
+        cloudError = err.message || 'Supabase write failed';
+        console.warn(`Notice updating app_settings in Supabase for [${key}]:`, cloudError);
       }
     }
 
@@ -1352,11 +1640,15 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
       action: 'UPDATE_APP_SETTING',
       targetEntity: 'app_settings',
       targetId: key,
-      outcome: 'success',
-      metadata: { category, key }
+      outcome: persistedToCloud ? 'success' : (isSupabaseConfigured ? 'warning' : 'success'),
+      metadata: { category, key, persistedToCloud, cloudError }
     });
 
-    return { success: true };
+    return {
+      success: true,
+      persistedToCloud,
+      cloudError
+    };
   }
 
   async getGlobalSettings(): Promise<{
@@ -1382,9 +1674,9 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
       aiConfiguration?: any;
     },
     actorEmail = 'admin@zaboraa.com'
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; persistedToCloud: boolean; cloudError?: string; error?: string }> {
     try {
-      const promises: Promise<any>[] = [];
+      const promises: Promise<SaveSettingsResult>[] = [];
 
       if (payload.branding) {
         promises.push(
@@ -1447,10 +1739,17 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
         );
       }
 
-      await Promise.all(promises);
-      return { success: true };
+      const results = await Promise.all(promises);
+      const allCloudPersisted = isSupabaseConfigured && results.every((r) => r.persistedToCloud);
+      const firstCloudError = results.find((r) => r.cloudError)?.cloudError;
+
+      return {
+        success: true,
+        persistedToCloud: allCloudPersisted,
+        cloudError: firstCloudError
+      };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to save global settings' };
+      return { success: false, persistedToCloud: false, error: err.message || 'Failed to save global settings' };
     }
   }
 

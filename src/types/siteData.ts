@@ -190,6 +190,14 @@ export interface AdminSettings {
   clientName: string;
   brandName?: string;
   brandLogoUrl?: string;
+  supportEmail?: string;
+  executiveContact?: string;
+  defaultCloudPlatform?: string;
+  defaultVcpuOvercommit?: number;
+  defaultRamBufferPercent?: number;
+  defaultTargetRpoMinutes?: number;
+  defaultTargetRtoHours?: number;
+  primaryRegion?: string;
   enableAuditTelemetry: boolean;
   publicAccessEnabled: boolean;
   authRequiredForTools: boolean;

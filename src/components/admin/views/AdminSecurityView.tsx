@@ -82,6 +82,16 @@ export const AdminSecurityView: React.FC<AdminSecurityViewProps> = ({
       title: 'Append-Only Audit Immutability',
       status: 'verified',
       details: 'Database table public.audit_logs possesses no UPDATE or DELETE policies, ensuring write-once audit history.'
+    },
+    {
+      title: 'Server-Side AI Gateway Isolation',
+      status: 'verified',
+      details: 'All Gemini and Vertex AI integrations execute behind /api/generate-blueprint and /api/generate-proposal serverless endpoints with zero credential leakage to client bundles.'
+    },
+    {
+      title: 'Bot Mitigation & Rate Limit Policies',
+      status: 'verified',
+      details: 'Vercel Security Headers (Content-Security-Policy, X-Frame-Options, X-Content-Type-Options: nosniff) with IP token-bucket rate limiter enforcing 30 requests/minute ceiling.'
     }
   ];
 

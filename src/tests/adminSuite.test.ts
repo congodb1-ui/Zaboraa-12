@@ -165,6 +165,48 @@ describe('Zaboraa Enterprise Admin Suite Service', () => {
       expect(keys).toContain('supabase_auth');
       expect(keys).toContain('cloud_storage');
       expect(keys).toContain('gemini_api');
+      expect(keys).toContain('serverless_gateway');
+    });
+  });
+
+  describe('Persistent Application Settings & Preferences', () => {
+    it('saves and retrieves application settings with audit trail logging', async () => {
+      const saveRes = await adminService.saveAppSetting(
+        'branding',
+        {
+          brandName: 'Zaboraa Enterprise Cloud',
+          brandTagline: 'Global Hyperscaler Architecture'
+        },
+        'branding',
+        'Updated brand coordinates',
+        'wasim.sayyed@zaboraa.com'
+      );
+      expect(saveRes.success).toBe(true);
+
+      const retrieved = await adminService.getAppSettings('branding');
+      expect(retrieved['branding']).toBeDefined();
+      expect(retrieved['branding'].brandName).toBe('Zaboraa Enterprise Cloud');
+
+      // Verify audit trail logged the setting change
+      const logs = await adminService.getAuditLogs();
+      const settingLog = logs.find(l => l.action === 'UPDATE_APP_SETTING');
+      expect(settingLog).toBeDefined();
+      expect(settingLog?.target_entity).toBe('app_settings');
+    });
+
+    it('persists and aggregates global settings (branding, features, organization)', async () => {
+      const globalRes = await adminService.saveGlobalSettings({
+        branding: { brandName: 'Zaboraa Global' },
+        featureControls: { export4k: true, exportDossier: true, generateBlueprint: true },
+        organization: { defaultCloudProvider: 'Azure AVS', primaryRegion: 'East US 2' }
+      }, 'wasim.sayyed@zaboraa.com');
+
+      expect(globalRes.success).toBe(true);
+
+      const globalConfig = await adminService.getGlobalSettings();
+      expect(globalConfig.branding?.brandName).toBe('Zaboraa Global');
+      expect(globalConfig.featureControls?.export4k).toBe(true);
+      expect(globalConfig.organization?.defaultCloudProvider).toBe('Azure AVS');
     });
   });
 });

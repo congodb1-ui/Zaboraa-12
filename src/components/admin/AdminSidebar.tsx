@@ -17,7 +17,10 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Sparkles
+  Sparkles,
+  SlidersHorizontal,
+  Cpu,
+  UserCheck
 } from 'lucide-react';
 
 export type AdminViewId =
@@ -26,6 +29,9 @@ export type AdminViewId =
   | 'briefings'
   | 'workspaces'
   | 'users'
+  | 'profile'
+  | 'settings'
+  | 'ai'
   | 'security'
   | 'database'
   | 'media'
@@ -71,23 +77,25 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
 }) => {
   const sections: NavSection[] = [
     {
-      title: 'CORE OPERATIONS',
+      title: 'CORE CONTROL PLANE',
       items: [
         { id: 'overview', label: 'Executive Overview', icon: LayoutDashboard },
-        { id: 'crm', label: 'CRM & Pipeline', icon: Briefcase, badge: badges.leads, badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' },
-        { id: 'briefings', label: 'Briefing Requests', icon: Calendar, badge: badges.briefings, badgeColor: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' },
-        { id: 'workspaces', label: 'Client Workspaces', icon: FolderKanban }
-      ]
-    },
-    {
-      title: 'IDENTITY & ACCESS',
-      items: [
+        { id: 'workspaces', label: 'Architecture Projects', icon: FolderKanban },
         { id: 'users', label: 'User Directory & Roles', icon: Users },
-        { id: 'security', label: 'Security & Audit Trail', icon: ShieldCheck, badge: badges.security, badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' }
+        { id: 'profile', label: 'Profile & Security', icon: UserCheck }
       ]
     },
     {
-      title: 'DATA & STORAGE',
+      title: 'GOVERNANCE & PLATFORM',
+      items: [
+        { id: 'security', label: 'Security & Audit Trail', icon: ShieldCheck, badge: badges.security, badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' },
+        { id: 'ai', label: 'AI Engine & Guardrails', icon: Cpu },
+        { id: 'settings', label: 'Platform & Branding', icon: SlidersHorizontal },
+        { id: 'integrations', label: 'Storage & Integrations', icon: Activity }
+      ]
+    },
+    {
+      title: 'DATA EXPLORATION',
       items: [
         { id: 'database', label: 'Database Explorer', icon: Database },
         { id: 'media', label: 'Media Library', icon: ImageIcon },
@@ -95,12 +103,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       ]
     },
     {
-      title: 'PLATFORM & GROWTH',
+      title: 'PIPELINE & GROWTH',
       items: [
-        { id: 'content', label: 'Website Content CMS', icon: FileText },
-        { id: 'seo', label: 'SEO & Growth Center', icon: Search },
+        { id: 'crm', label: 'CRM & Pipeline', icon: Briefcase, badge: badges.leads, badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' },
+        { id: 'briefings', label: 'Briefing Requests', icon: Calendar, badge: badges.briefings, badgeColor: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' },
         { id: 'analytics', label: 'Analytics & Reporting', icon: BarChart3 },
-        { id: 'integrations', label: 'System Health & Integrations', icon: Activity }
+        { id: 'content', label: 'Website Content CMS', icon: FileText },
+        { id: 'seo', label: 'SEO & Growth Center', icon: Search }
       ]
     }
   ];

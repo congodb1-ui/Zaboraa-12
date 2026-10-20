@@ -27,6 +27,9 @@ import { AdminAnalyticsView } from '../../components/admin/views/AdminAnalyticsV
 import { AdminSecurityView } from '../../components/admin/views/AdminSecurityView';
 import { AdminBackupsView } from '../../components/admin/views/AdminBackupsView';
 import { AdminIntegrationsView } from '../../components/admin/views/AdminIntegrationsView';
+import { AdminSettingsView } from '../../components/admin/views/AdminSettingsView';
+import { AdminAiManagementView } from '../../components/admin/views/AdminAiManagementView';
+import { AdminProfileView } from '../../components/admin/views/AdminProfileView';
 
 import { ShieldAlert, Lock, LogIn, ArrowRight } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -37,6 +40,9 @@ const VALID_VIEWS: AdminViewId[] = [
   'briefings',
   'workspaces',
   'users',
+  'profile',
+  'settings',
+  'ai',
   'security',
   'database',
   'media',
@@ -164,11 +170,19 @@ export const AdminControlCenterPage: React.FC = () => {
   const handleGlobalSearch = (term: string) => {
     if (!term) return;
     const lower = term.toLowerCase();
-    if (lower.includes('lead') || lower.includes('crm') || lower.includes('deal')) {
+    if (lower.includes('setting') || lower.includes('brand') || lower.includes('config')) {
+      setActiveView('settings');
+    } else if (lower.includes('ai') || lower.includes('model') || lower.includes('gemini') || lower.includes('prompt')) {
+      setActiveView('ai');
+    } else if (lower.includes('profile') || lower.includes('avatar') || lower.includes('account')) {
+      setActiveView('profile');
+    } else if (lower.includes('workspace') || lower.includes('project') || lower.includes('design')) {
+      setActiveView('workspaces');
+    } else if (lower.includes('lead') || lower.includes('crm') || lower.includes('deal')) {
       setActiveView('crm');
     } else if (lower.includes('brief') || lower.includes('sched')) {
       setActiveView('briefings');
-    } else if (lower.includes('user') || lower.includes('role') || lower.includes('profile')) {
+    } else if (lower.includes('user') || lower.includes('role')) {
       setActiveView('users');
     } else if (lower.includes('table') || lower.includes('sql') || lower.includes('data')) {
       setActiveView('database');
@@ -313,6 +327,24 @@ export const AdminControlCenterPage: React.FC = () => {
             <AdminUsersView
               users={users}
               onRefreshUsers={loadAllAdminData}
+              currentUserEmail={currentUserEmail}
+            />
+          )}
+
+          {activeView === 'settings' && (
+            <AdminSettingsView
+              currentUserEmail={currentUserEmail}
+            />
+          )}
+
+          {activeView === 'ai' && (
+            <AdminAiManagementView
+              currentUserEmail={currentUserEmail}
+            />
+          )}
+
+          {activeView === 'profile' && (
+            <AdminProfileView
               currentUserEmail={currentUserEmail}
             />
           )}

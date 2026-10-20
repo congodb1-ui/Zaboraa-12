@@ -16,7 +16,10 @@ import {
   Activity,
   Layers,
   Sparkles,
-  Download
+  Download,
+  UserCheck,
+  SlidersHorizontal,
+  Cpu
 } from 'lucide-react';
 import { AdminViewId } from './AdminSidebar';
 import { AdminNotification, adminService } from '../../services/adminService';
@@ -80,16 +83,19 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
     overview: { title: 'Executive Overview', category: 'Core Operations' },
     crm: { title: 'CRM & Pipeline', category: 'Core Operations' },
     briefings: { title: 'Briefing Requests', category: 'Core Operations' },
-    workspaces: { title: 'Client Workspaces', category: 'Core Operations' },
-    users: { title: 'User Directory & Roles', category: 'Identity & Access' },
-    security: { title: 'Security & Audit Trail', category: 'Identity & Access' },
+    workspaces: { title: 'Architecture Projects', category: 'Core Control Plane' },
+    users: { title: 'User Directory & Roles', category: 'Core Control Plane' },
+    profile: { title: 'Profile & Security', category: 'Core Control Plane' },
+    settings: { title: 'Platform & Branding', category: 'Governance & Platform' },
+    ai: { title: 'AI Engine & Guardrails', category: 'Governance & Platform' },
+    security: { title: 'Security & Audit Trail', category: 'Governance & Platform' },
     database: { title: 'Database Explorer', category: 'Data & Storage' },
     media: { title: 'Media Library', category: 'Data & Storage' },
     backups: { title: 'Backups & Migrations', category: 'Data & Storage' },
     content: { title: 'Website Content CMS', category: 'Platform & Growth' },
     seo: { title: 'SEO & Growth Center', category: 'Platform & Growth' },
     analytics: { title: 'Analytics & Reporting', category: 'Platform & Growth' },
-    integrations: { title: 'System Health & Integrations', category: 'Platform & Growth' }
+    integrations: { title: 'Storage & Integrations', category: 'Platform & Growth' }
   };
 
   const currentMeta = viewTitles[activeView] || { title: 'Admin Console', category: 'Administration' };
@@ -312,17 +318,54 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
                 </div>
               </div>
 
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    onSignOut();
-                    setIsProfileOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Sign Out of Admin Console</span>
-                </button>
+              <div className="py-1 divide-y divide-slate-800">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      onSelectView('profile');
+                      setIsProfileOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Profile & Security</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSelectView('settings');
+                      setIsProfileOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Platform & Branding Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSelectView('ai');
+                      setIsProfileOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>AI Engine & Guardrails</span>
+                  </button>
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    onClick={() => {
+                      onSignOut();
+                      setIsProfileOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-rose-300 hover:text-rose-200 hover:bg-rose-950/40 flex items-center gap-2 cursor-pointer transition"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Sign Out of Admin Console</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

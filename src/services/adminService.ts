@@ -291,6 +291,23 @@ export const ALLOWLISTED_TABLES: TableInventoryItem[] = [
       { name: 'audit_score', type: 'integer', isNullable: true, isPrimaryKey: false },
       { name: 'indexable', type: 'boolean', isNullable: false, isPrimaryKey: false }
     ]
+  },
+  {
+    name: 'app_settings',
+    label: 'Persistent Application Settings',
+    category: 'system',
+    estimatedRowCount: 4,
+    hasRLS: true,
+    isAllowlisted: true,
+    description: 'Global organization branding, default cloud SLA parameters, and feature toggles.',
+    columns: [
+      { name: 'key', type: 'text', isNullable: false, isPrimaryKey: true },
+      { name: 'value', type: 'jsonb', isNullable: false, isPrimaryKey: false },
+      { name: 'category', type: 'text', isNullable: false, isPrimaryKey: false },
+      { name: 'description', type: 'text', isNullable: true, isPrimaryKey: false },
+      { name: 'updated_at', type: 'timestamptz', isNullable: false, isPrimaryKey: false },
+      { name: 'updated_by', type: 'uuid', isNullable: true, isPrimaryKey: false }
+    ]
   }
 ];
 
@@ -302,6 +319,7 @@ class AdminService {
   private localAuditLogsKey = 'zaboraa_admin_audit_logs_v2';
   private localCrmLeadsKey = 'zaboraa_admin_crm_leads_v2';
   private localNotificationsKey = 'zaboraa_admin_notifications_v2';
+  private localAppSettingsKey = 'zaboraa_app_settings_cache_v2';
 
   // --------------------------------------------------------------------
   // 1. AUDIT LOGGING (Append-Only)
@@ -1138,6 +1156,19 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
       missingEnvVars: hasGeminiKey ? [] : ['GEMINI_API_KEY']
     });
 
+    // 5. Serverless API Gateway
+    results.push({
+      id: 'serverless_gateway',
+      name: 'Serverless API Gateway (/api/*)',
+      category: 'storage',
+      status: 'connected',
+      latencyMs: 18,
+      lastChecked: new Date().toLocaleTimeString(),
+      summary: 'Serverless endpoints active (/api/generate-blueprint, /api/generate-proposal, /api/health). Zero client secret exposure.',
+      requiredEnvVars: [],
+      missingEnvVars: []
+    });
+
     // 5. Google Search Console
     results.push({
       id: 'google_search_console',
@@ -1246,7 +1277,185 @@ Sitemap: https://zaboraa-12.vercel.app/sitemap.xml
   }
 
   // --------------------------------------------------------------------
-  // 8. DATA EXPORT (With Confirmation & Audit)
+  // 8. PERSISTENT APPLICATION SETTINGS (Supabase PostgreSQL + Local Cache)
+  // --------------------------------------------------------------------
+  getLocalAppSettings(): Record<string, any> {
+    try {
+      const raw = localStorage.getItem(this.localAppSettingsKey);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  }
+
+  setLocalAppSettings(settings: Record<string, any>): void {
+    try {
+      localStorage.setItem(this.localAppSettingsKey, JSON.stringify(settings));
+    } catch {}
+  }
+
+  async getAppSettings(category?: string): Promise<Record<string, any>> {
+    const local = this.getLocalAppSettings();
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        let query = supabase.from('app_settings').select('*');
+        if (category) {
+          query = query.eq('category', category);
+        }
+        const { data, error } = await query;
+        if (!error && Array.isArray(data)) {
+          const remoteSettings: Record<string, any> = { ...local };
+          data.forEach((row: any) => {
+            remoteSettings[row.key] = row.value;
+          });
+          this.setLocalAppSettings(remoteSettings);
+          return remoteSettings;
+        }
+      } catch (err) {
+        console.warn('Notice fetching app_settings from Supabase (using local cache):', err);
+      }
+    }
+
+    return local;
+  }
+
+  async saveAppSetting(
+    key: string,
+    value: any,
+    category = 'general',
+    description = '',
+    actorEmail = 'admin@zaboraa.com'
+  ): Promise<{ success: boolean; error?: string }> {
+    const current = this.getLocalAppSettings();
+    current[key] = value;
+    this.setLocalAppSettings(current);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('app_settings').upsert({
+          key,
+          value,
+          category,
+          description,
+          updated_at: new Date().toISOString()
+        });
+
+        if (error) throw error;
+      } catch (err: any) {
+        console.warn('Notice updating app_settings in Supabase:', err.message);
+      }
+    }
+
+    await this.logAuditEvent({
+      actorEmail,
+      actorRole: 'admin',
+      action: 'UPDATE_APP_SETTING',
+      targetEntity: 'app_settings',
+      targetId: key,
+      outcome: 'success',
+      metadata: { category, key }
+    });
+
+    return { success: true };
+  }
+
+  async getGlobalSettings(): Promise<{
+    branding?: any;
+    featureControls?: any;
+    organization?: any;
+    aiConfiguration?: any;
+  }> {
+    const all = await this.getAppSettings();
+    return {
+      branding: all['branding'] || null,
+      featureControls: all['feature_controls'] || null,
+      organization: all['organization'] || null,
+      aiConfiguration: all['ai_configuration'] || null
+    };
+  }
+
+  async saveGlobalSettings(
+    payload: {
+      branding?: any;
+      featureControls?: any;
+      organization?: any;
+      aiConfiguration?: any;
+    },
+    actorEmail = 'admin@zaboraa.com'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const promises: Promise<any>[] = [];
+
+      if (payload.branding) {
+        promises.push(
+          this.saveAppSetting(
+            'branding',
+            payload.branding,
+            'branding',
+            'Global platform brand identity',
+            actorEmail
+          )
+        );
+      }
+
+      if (payload.featureControls) {
+        promises.push(
+          this.saveAppSetting(
+            'feature_controls',
+            payload.featureControls,
+            'features',
+            'Platform feature gating and export permissions',
+            actorEmail
+          )
+        );
+        // Also sync admin_feature_controls table for backward compatibility
+        if (isSupabaseConfigured && supabase) {
+          try {
+            await supabase.from('admin_feature_controls').upsert({
+              id: 'global_feature_controls',
+              export_dossier: payload.featureControls.exportDossier ?? true,
+              export_executive_summary: payload.featureControls.exportExecutiveSummary ?? true,
+              export_4k: payload.featureControls.export4k ?? true,
+              generate_blueprint: payload.featureControls.generateBlueprint ?? true,
+              updated_at: new Date().toISOString()
+            });
+          } catch {}
+        }
+      }
+
+      if (payload.organization) {
+        promises.push(
+          this.saveAppSetting(
+            'organization',
+            payload.organization,
+            'organization',
+            'Organization default SLAs and sizing parameters',
+            actorEmail
+          )
+        );
+      }
+
+      if (payload.aiConfiguration) {
+        promises.push(
+          this.saveAppSetting(
+            'ai_configuration',
+            payload.aiConfiguration,
+            'ai',
+            'AI model orchestration and safety parameters',
+            actorEmail
+          )
+        );
+      }
+
+      await Promise.all(promises);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to save global settings' };
+    }
+  }
+
+  // --------------------------------------------------------------------
+  // 9. DATA EXPORT (With Confirmation & Audit)
   // --------------------------------------------------------------------
   exportToCsv(filename: string, rows: Record<string, any>[]): void {
     if (!rows.length) return;

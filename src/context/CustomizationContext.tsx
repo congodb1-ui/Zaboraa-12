@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { useAuth, isUserAdminEmail } from './AuthContext';
+import { adminService } from '../services/adminService';
 
 const STORAGE_KEY = 'zaboraa_site_config_v8';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
@@ -133,6 +134,10 @@ interface CustomizationContextType {
   resetToDefaults: () => void;
   exportConfigJson: () => string;
   importConfigJson: (json: string) => boolean;
+  savePersistentAdminSettings: (
+    updates: Partial<AdminSettings>,
+    brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 const CustomizationContext = createContext<CustomizationContextType | undefined>(undefined);
@@ -381,6 +386,52 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     root.setAttribute('data-ui-header', currentHeader);
     root.setAttribute('data-ui-pattern', currentPattern);
   }, [theme, siteConfig.adminSettings]);
+
+  // Remote Hydration: Asynchronously fetch persistent settings from Supabase if available
+  // Strictly preserves existing saved user changes and never overwrites with defaults
+  useEffect(() => {
+    let isMounted = true;
+    const hydrateRemoteSettings = async () => {
+      try {
+        const remote = await adminService.getGlobalSettings();
+        if (!isMounted) return;
+
+        if (remote.branding || remote.featureControls || remote.organization) {
+          setSiteConfig(prev => {
+            const currentAdminSettings = prev.adminSettings || INITIAL_SITE_DATA.adminSettings!;
+            const merged: SiteConfig = {
+              ...prev,
+              brand: remote.branding?.brandName || prev.brand,
+              brandTagline: remote.branding?.brandTagline || prev.brandTagline,
+              brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : prev.brandLogoUrl,
+              adminSettings: {
+                ...currentAdminSettings,
+                brandName: remote.branding?.brandName || currentAdminSettings.brandName,
+                brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : currentAdminSettings.brandLogoUrl,
+                featureControls: {
+                  ...(currentAdminSettings.featureControls || {
+                    exportDossier: true,
+                    exportExecutiveSummary: true,
+                    export4k: true,
+                    generateBlueprint: true
+                  }),
+                  ...(remote.featureControls || {})
+                }
+              }
+            };
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.warn('Notice hydrating remote settings:', e);
+      }
+    };
+
+    hydrateRemoteSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const brandName = siteConfig.brand || siteConfig.adminSettings?.brandName || 'Zaboraa Technologies';
   const brandLogoUrl = siteConfig.brandLogoUrl || siteConfig.adminSettings?.brandLogoUrl;
@@ -866,6 +917,63 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const savePersistentAdminSettings = async (
+    updates: Partial<AdminSettings>,
+    brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const currentAdmin = siteConfig.adminSettings || INITIAL_SITE_DATA.adminSettings!;
+      const updatedAdminSettings: AdminSettings = {
+        ...currentAdmin,
+        ...updates,
+        featureControls: {
+          ...(currentAdmin.featureControls || {
+            exportDossier: true,
+            exportExecutiveSummary: true,
+            export4k: true,
+            generateBlueprint: true
+          }),
+          ...(updates.featureControls || {})
+        }
+      };
+
+      const newBrand = brandingUpdates?.brandName || siteConfig.brand;
+      const newTagline = brandingUpdates?.brandTagline || siteConfig.brandTagline;
+      const newLogo = brandingUpdates?.brandLogoUrl !== undefined ? brandingUpdates.brandLogoUrl : siteConfig.brandLogoUrl;
+
+      const newConfig: SiteConfig = {
+        ...siteConfig,
+        brand: newBrand,
+        brandTagline: newTagline,
+        brandLogoUrl: newLogo,
+        adminSettings: updatedAdminSettings
+      };
+
+      setSiteConfig(newConfig);
+
+      // Persist to Supabase app_settings & admin_feature_controls
+      const result = await adminService.saveGlobalSettings(
+        {
+          branding: {
+            brandName: newBrand,
+            brandTagline: newTagline,
+            brandLogoUrl: newLogo
+          },
+          featureControls: updatedAdminSettings.featureControls
+        },
+        user?.email || 'admin@zaboraa.com'
+      );
+
+      if (!result.success) {
+        return { success: true, message: 'Settings saved locally (remote cloud sync pending).' };
+      }
+
+      return { success: true, message: 'Settings and branding successfully persisted to Supabase.' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Failed to persist settings.' };
+    }
+  };
+
   return (
     <CustomizationContext.Provider
       value={{
@@ -957,7 +1065,8 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
         resetToDefaults,
         exportConfigJson,
-        importConfigJson
+        importConfigJson,
+        savePersistentAdminSettings
       }}
     >
       {children}

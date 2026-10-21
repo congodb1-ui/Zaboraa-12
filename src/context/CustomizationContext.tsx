@@ -139,6 +139,8 @@ interface CustomizationContextType {
     brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
   ) => Promise<{ success: boolean; message: string }>;
   refreshRemoteSettings: () => Promise<void>;
+  syncAllContentToCloud: () => Promise<{ success: boolean; message: string; persistedToCloud: boolean }>;
+  isHydrated: boolean;
 }
 
 const CustomizationContext = createContext<CustomizationContextType | undefined>(undefined);
@@ -320,13 +322,41 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateAdminSettings = (cfg: Partial<AdminSettings>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      adminSettings: {
+    setSiteConfig(prev => {
+      const updatedAdminSettings: AdminSettings = {
         ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
         ...cfg
+      };
+
+      if (isAdmin) {
+        if (cfg.announcementBannerEnabled !== undefined || cfg.announcementText !== undefined || cfg.announcementLink !== undefined) {
+          adminService.saveAppSetting(
+            'announcement',
+            {
+              announcementBannerEnabled: updatedAdminSettings.announcementBannerEnabled,
+              announcementText: updatedAdminSettings.announcementText,
+              announcementLink: updatedAdminSettings.announcementLink
+            },
+            'general',
+            'Announcement banner settings',
+            user?.email || 'admin@zaboraa.com'
+          ).catch(e => console.warn('Notice persisting announcement settings:', e));
+        }
+
+        adminService.saveAppSetting(
+          'admin_settings',
+          updatedAdminSettings,
+          'general',
+          'Platform layout and theme preset configuration',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting admin_settings:', e));
       }
-    }));
+
+      return {
+        ...prev,
+        adminSettings: updatedAdminSettings
+      };
+    });
   };
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
@@ -378,30 +408,60 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     root.setAttribute('data-ui-pattern', currentPattern);
   }, [theme, siteConfig.adminSettings]);
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
   // Remote Hydration: Asynchronously fetch persistent settings from Supabase
   const applyRemoteSettings = (remote: any) => {
-    if (!remote || (!remote.branding && !remote.featureControls && !remote.organization && !remote.siteContent)) {
+    if (!remote || (!remote.branding && !remote.featureControls && !remote.organization && !remote.siteContent && !remote.announcement && !remote.adminSettings)) {
       return;
     }
 
     setSiteConfig((prev) => {
       const currentAdminSettings = prev.adminSettings || INITIAL_SITE_DATA.adminSettings!;
-      const rawAccessMode = remote.organization?.blueprintAccessMode ||
-                            remote.featureControls?.blueprintAccessMode ||
+      const rawAccessMode = remote.featureControls?.blueprintAccessMode ||
+                            remote.organization?.blueprintAccessMode ||
                             currentAdminSettings.blueprintAccessMode ||
-                            'everyone';
+                            'signed_in';
+
+      // Remote Branding takes precedence over stale localStorage
+      const brand = remote.branding?.brandName || remote.branding?.brand || prev.brand;
+      const brandTagline = remote.branding?.brandTagline || prev.brandTagline;
+      const brandLogoUrl = remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : prev.brandLogoUrl;
+
+      // Remote Announcement Banner
+      const announcementData = remote.announcement || remote.adminSettings || remote.branding?.announcement || {};
+      const announcementBannerEnabled = announcementData.announcementBannerEnabled !== undefined
+        ? Boolean(announcementData.announcementBannerEnabled)
+        : currentAdminSettings.announcementBannerEnabled;
+      const announcementText = announcementData.announcementText || currentAdminSettings.announcementText;
+      const announcementLink = announcementData.announcementLink || currentAdminSettings.announcementLink;
+
+      // Remote Site Content
+      const siteContent = remote.siteContent || {};
 
       const merged: SiteConfig = {
         ...prev,
-        brand: remote.branding?.brandName || prev.brand,
-        brandTagline: remote.branding?.brandTagline || prev.brandTagline,
-        brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : prev.brandLogoUrl,
-        founder: remote.siteContent?.founder ? { ...prev.founder, ...remote.siteContent.founder } : prev.founder,
-        hero: remote.siteContent?.hero ? { ...prev.hero, ...remote.siteContent.hero } : prev.hero,
+        brand,
+        brandTagline,
+        brandLogoUrl,
+        founder: siteContent.founder ? { ...INITIAL_SITE_DATA.founder, ...prev.founder, ...siteContent.founder } : prev.founder,
+        hero: siteContent.hero ? { ...INITIAL_SITE_DATA.hero, ...prev.hero, ...siteContent.hero } : prev.hero,
+        diagrams: Array.isArray(siteContent.diagrams) && siteContent.diagrams.length > 0 ? siteContent.diagrams : prev.diagrams,
+        videos: Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos,
+        tutorials: Array.isArray(siteContent.tutorials) && siteContent.tutorials.length > 0 ? siteContent.tutorials : prev.tutorials,
+        knowledgeBase: Array.isArray(siteContent.knowledgeBase) && siteContent.knowledgeBase.length > 0 ? siteContent.knowledgeBase : prev.knowledgeBase,
+        caseStudies: Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0 ? siteContent.caseStudies : prev.caseStudies,
+        services: Array.isArray(siteContent.services) && siteContent.services.length > 0 ? siteContent.services : prev.services,
+        platformShowcases: Array.isArray(siteContent.platformShowcases) && siteContent.platformShowcases.length > 0
+          ? siteContent.platformShowcases
+          : Array.isArray(siteContent.platforms) && siteContent.platforms.length > 0
+          ? siteContent.platforms
+          : prev.platformShowcases,
         adminSettings: {
           ...currentAdminSettings,
-          brandName: remote.branding?.brandName || currentAdminSettings.brandName,
-          brandLogoUrl: remote.branding?.brandLogoUrl !== undefined ? remote.branding.brandLogoUrl : currentAdminSettings.brandLogoUrl,
+          ...(remote.adminSettings || {}),
+          brandName: brand,
+          brandLogoUrl,
           supportEmail: remote.organization?.supportEmail || currentAdminSettings.supportEmail,
           executiveContact: remote.organization?.executiveContact || currentAdminSettings.executiveContact,
           defaultCloudPlatform: remote.organization?.defaultCloudPlatform || currentAdminSettings.defaultCloudPlatform,
@@ -413,13 +473,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           authRequiredForTools: remote.organization?.authRequiredForTools ?? currentAdminSettings.authRequiredForTools,
           publicAccessEnabled: remote.organization?.publicAccessEnabled ?? currentAdminSettings.publicAccessEnabled,
           blueprintAccessMode: rawAccessMode,
+          announcementBannerEnabled,
+          announcementText,
+          announcementLink,
           featureControls: {
             ...(currentAdminSettings.featureControls || {
               exportDossier: true,
               exportExecutiveSummary: true,
               export4k: true,
               generateBlueprint: true,
-              blueprintAccessMode: 'everyone'
+              blueprintAccessMode: 'signed_in'
             }),
             ...(remote.featureControls || {}),
             blueprintAccessMode: rawAccessMode
@@ -439,7 +502,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshRemoteSettings = async (): Promise<void> => {
     try {
-      const remote = await adminService.getGlobalSettings();
+      const remote = await adminService.getGlobalSettings(!isAdmin);
       applyRemoteSettings(remote);
     } catch (e) {
       console.warn('Notice refreshing remote settings:', e);
@@ -450,11 +513,20 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     let isMounted = true;
     const hydrateRemoteSettings = async () => {
       try {
-        const remote = await adminService.getGlobalSettings();
+        const remote = await adminService.getGlobalSettings(!isAdmin);
         if (!isMounted) return;
         applyRemoteSettings(remote);
+
+        // Safe one-time backfill: if an authenticated administrator is active and the remote site_content table is empty,
+        // sync the active local site content into Supabase so incognito visitors and public users see it immediately.
+        if (isAdmin && isSupabaseConfigured && (!remote.siteContent || Object.keys(remote.siteContent).length === 0)) {
+          console.info('Authoritative admin session detected with empty remote site_content: syncing initial site content to Supabase...');
+          syncAllContentToCloud().catch(err => console.warn('Notice during auto-sync to cloud:', err));
+        }
       } catch (e) {
         console.warn('Notice hydrating remote settings:', e);
+      } finally {
+        if (isMounted) setIsHydrated(true);
       }
     };
 
@@ -462,7 +534,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isAdmin]);
 
   const brandName = siteConfig.brand || siteConfig.adminSettings?.brandName || 'Zaboraa Technologies';
   const brandLogoUrl = siteConfig.brandLogoUrl || siteConfig.adminSettings?.brandLogoUrl;
@@ -699,35 +771,63 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updatePlatformShowcase = (id: string, updated: Partial<PlatformShowcase>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
         item.id === id ? { ...item, ...updated } : item
-      )
-    }));
+      );
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const addPlatformShowcase = (platform: PlatformShowcase) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases), platform]
-    }));
+    setSiteConfig(prev => {
+      const updatedList = [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases), platform];
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const deletePlatformShowcase = (id: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).filter(item => item.id !== id)
-    }));
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).filter(item => item.id !== id);
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const togglePlatformEnabled = (id: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
         item.id === id ? { ...item, enabled: item.enabled === false ? true : false } : item
-      )
-    }));
+      );
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const reorderPlatformShowcases = (startIndex: number, endIndex: number) => {
@@ -738,6 +838,10 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       const [movedItem] = list.splice(startIndex, 1);
       list.splice(endIndex, 0, movedItem);
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', list, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
       return {
         ...prev,
         platformShowcases: list
@@ -754,6 +858,10 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (targetIndex < 0 || targetIndex >= list.length) return prev;
       const [movedItem] = list.splice(index, 1);
       list.splice(targetIndex, 0, movedItem);
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', list, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
       return {
         ...prev,
         platformShowcases: list
@@ -768,6 +876,10 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (index <= 0) return prev;
       const [item] = list.splice(index, 1);
       list.unshift(item);
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', list, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
       return {
         ...prev,
         platformShowcases: list
@@ -776,9 +888,8 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addPlatformDesign = (platformId: string, design: ArchitectureDesignItem) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId) {
           const existingDesigns = item.designs || [];
           return {
@@ -787,14 +898,21 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         }
         return item;
-      })
-    }));
+      });
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const updatePlatformDesign = (platformId: string, designId: string, updated: Partial<ArchitectureDesignItem>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId && item.designs) {
           return {
             ...item,
@@ -802,14 +920,21 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         }
         return item;
-      })
-    }));
+      });
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const deletePlatformDesign = (platformId: string, designId: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId && item.designs) {
           return {
             ...item,
@@ -817,14 +942,21 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         }
         return item;
-      })
-    }));
+      });
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const toggleDesignEnabled = (platformId: string, designId: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      platformShowcases: (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
+    setSiteConfig(prev => {
+      const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId && item.designs) {
           return {
             ...item,
@@ -834,8 +966,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         }
         return item;
-      })
-    }));
+      });
+      if (isAdmin) {
+        adminService.saveSiteContent('platformShowcases', updatedList, 'Platform Showcases', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting platform showcases:', e));
+      }
+      return {
+        ...prev,
+        platformShowcases: updatedList
+      };
+    });
   };
 
   const updateHero = (hero: SiteConfig['hero']) => {
@@ -859,93 +999,177 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addDiagram = (diagram: ArchitectureDiagram) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      diagrams: [diagram, ...prev.diagrams]
-    }));
+    setSiteConfig(prev => {
+      const updatedList = [diagram, ...prev.diagrams];
+      if (isAdmin) {
+        adminService.saveSiteContent('diagrams', updatedList, 'Architecture Diagrams', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting diagrams:', e));
+      }
+      return {
+        ...prev,
+        diagrams: updatedList
+      };
+    });
   };
 
   const updateDiagram = (id: string, updated: Partial<ArchitectureDiagram>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      diagrams: prev.diagrams.map(d => (d.id === id ? { ...d, ...updated } : d))
-    }));
+    setSiteConfig(prev => {
+      const updatedList = prev.diagrams.map(d => (d.id === id ? { ...d, ...updated } : d));
+      if (isAdmin) {
+        adminService.saveSiteContent('diagrams', updatedList, 'Architecture Diagrams', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting diagrams:', e));
+      }
+      return {
+        ...prev,
+        diagrams: updatedList
+      };
+    });
   };
 
   const deleteDiagram = (id: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      diagrams: prev.diagrams.filter(d => d.id !== id)
-    }));
+    setSiteConfig(prev => {
+      const updatedList = prev.diagrams.filter(d => d.id !== id);
+      if (isAdmin) {
+        adminService.saveSiteContent('diagrams', updatedList, 'Architecture Diagrams', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting diagrams:', e));
+      }
+      return {
+        ...prev,
+        diagrams: updatedList
+      };
+    });
     if (selectedDiagram?.id === id) setSelectedDiagram(null);
   };
 
   const addVideo = (video: VideoItem) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      videos: [video, ...prev.videos]
-    }));
+    setSiteConfig(prev => {
+      const updatedList = [video, ...prev.videos];
+      if (isAdmin) {
+        adminService.saveSiteContent('videos', updatedList, 'Video Masterclasses', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting videos:', e));
+      }
+      return {
+        ...prev,
+        videos: updatedList
+      };
+    });
   };
 
   const updateVideo = (id: string, updated: Partial<VideoItem>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      videos: prev.videos.map(v => (v.id === id ? { ...v, ...updated } : v))
-    }));
+    setSiteConfig(prev => {
+      const updatedList = prev.videos.map(v => (v.id === id ? { ...v, ...updated } : v));
+      if (isAdmin) {
+        adminService.saveSiteContent('videos', updatedList, 'Video Masterclasses', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting videos:', e));
+      }
+      return {
+        ...prev,
+        videos: updatedList
+      };
+    });
   };
 
   const deleteVideo = (id: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      videos: prev.videos.filter(v => v.id !== id)
-    }));
+    setSiteConfig(prev => {
+      const updatedList = prev.videos.filter(v => v.id !== id);
+      if (isAdmin) {
+        adminService.saveSiteContent('videos', updatedList, 'Video Masterclasses', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting videos:', e));
+      }
+      return {
+        ...prev,
+        videos: updatedList
+      };
+    });
     if (selectedVideo?.id === id) setSelectedVideo(null);
   };
 
   const addTutorial = (tutorial: TutorialArticle) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      tutorials: [tutorial, ...prev.tutorials]
-    }));
+    setSiteConfig(prev => {
+      const updatedList = [tutorial, ...prev.tutorials];
+      if (isAdmin) {
+        adminService.saveSiteContent('tutorials', updatedList, 'Tutorials & Articles', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting tutorials:', e));
+      }
+      return {
+        ...prev,
+        tutorials: updatedList
+      };
+    });
   };
 
   const updateTutorial = (id: string, updated: Partial<TutorialArticle>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      tutorials: prev.tutorials.map(t => (t.id === id ? { ...t, ...updated } : t))
-    }));
+    setSiteConfig(prev => {
+      const updatedList = prev.tutorials.map(t => (t.id === id ? { ...t, ...updated } : t));
+      if (isAdmin) {
+        adminService.saveSiteContent('tutorials', updatedList, 'Tutorials & Articles', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting tutorials:', e));
+      }
+      return {
+        ...prev,
+        tutorials: updatedList
+      };
+    });
   };
 
   const deleteTutorial = (id: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      tutorials: prev.tutorials.filter(t => t.id !== id)
-    }));
+    setSiteConfig(prev => {
+      const updatedList = prev.tutorials.filter(t => t.id !== id);
+      if (isAdmin) {
+        adminService.saveSiteContent('tutorials', updatedList, 'Tutorials & Articles', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting tutorials:', e));
+      }
+      return {
+        ...prev,
+        tutorials: updatedList
+      };
+    });
     if (selectedTutorial?.id === id) setSelectedTutorial(null);
   };
 
   // Case Study & Track Record CRUD
   const addCaseStudy = (study: CaseStudy) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      caseStudies: [study, ...(prev.caseStudies || INITIAL_SITE_DATA.caseStudies)]
-    }));
+    setSiteConfig(prev => {
+      const updatedList = [study, ...(prev.caseStudies || INITIAL_SITE_DATA.caseStudies)];
+      if (isAdmin) {
+        adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting case studies:', e));
+      }
+      return {
+        ...prev,
+        caseStudies: updatedList
+      };
+    });
   };
 
   const updateCaseStudy = (id: string, updated: Partial<CaseStudy>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      caseStudies: (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).map(s =>
+    setSiteConfig(prev => {
+      const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).map(s =>
         s.id === id ? { ...s, ...updated } : s
-      )
-    }));
+      );
+      if (isAdmin) {
+        adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting case studies:', e));
+      }
+      return {
+        ...prev,
+        caseStudies: updatedList
+      };
+    });
   };
 
   const deleteCaseStudy = (id: string) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      caseStudies: (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).filter(s => s.id !== id)
-    }));
+    setSiteConfig(prev => {
+      const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).filter(s => s.id !== id);
+      if (isAdmin) {
+        adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting case studies:', e));
+      }
+      return {
+        ...prev,
+        caseStudies: updatedList
+      };
+    });
   };
 
   const reorderCaseStudies = (startIndex: number, endIndex: number) => {
@@ -956,6 +1180,10 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       const [moved] = list.splice(startIndex, 1);
       list.splice(endIndex, 0, moved);
+      if (isAdmin) {
+        adminService.saveSiteContent('caseStudies', list, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
+          .catch(e => console.warn('Notice persisting case studies:', e));
+      }
       return {
         ...prev,
         caseStudies: list
@@ -1108,6 +1336,12 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             brandTagline: newTagline,
             brandLogoUrl: newLogo
           },
+          announcement: {
+            announcementBannerEnabled: updatedAdminSettings.announcementBannerEnabled ?? false,
+            announcementText: updatedAdminSettings.announcementText,
+            announcementLink: updatedAdminSettings.announcementLink
+          },
+          adminSettings: updatedAdminSettings,
           featureControls: updatedAdminSettings.featureControls,
           organization: {
             supportEmail: updatedAdminSettings.supportEmail,
@@ -1149,6 +1383,68 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     } catch (err: any) {
       return { success: false, message: err.message || 'Failed to persist settings.' };
+    }
+  };
+
+  const syncAllContentToCloud = async (): Promise<{ success: boolean; message: string; persistedToCloud: boolean }> => {
+    try {
+      const payload: Record<string, any> = {
+        hero: siteConfig.hero,
+        founder: siteConfig.founder,
+        platformShowcases: siteConfig.platformShowcases,
+        diagrams: siteConfig.diagrams,
+        videos: siteConfig.videos,
+        tutorials: siteConfig.tutorials,
+        caseStudies: siteConfig.caseStudies,
+        services: siteConfig.services,
+        knowledgeBase: siteConfig.knowledgeBase
+      };
+
+      const result = await adminService.saveGlobalSettings(
+        {
+          branding: {
+            brandName: siteConfig.brand || brandName,
+            brandTagline: siteConfig.brandTagline,
+            brandLogoUrl: siteConfig.brandLogoUrl
+          },
+          announcement: {
+            announcementBannerEnabled: siteConfig.adminSettings?.announcementBannerEnabled ?? false,
+            announcementText: siteConfig.adminSettings?.announcementText,
+            announcementLink: siteConfig.adminSettings?.announcementLink
+          },
+          adminSettings: siteConfig.adminSettings,
+          featureControls: siteConfig.adminSettings?.featureControls,
+          organization: {
+            defaultCloudPlatform: siteConfig.adminSettings?.defaultCloudPlatform,
+            supportEmail: siteConfig.adminSettings?.supportEmail,
+            executiveContact: siteConfig.adminSettings?.executiveContact,
+            defaultVcpuOvercommit: siteConfig.adminSettings?.defaultVcpuOvercommit,
+            defaultRamBufferPercent: siteConfig.adminSettings?.defaultRamBufferPercent,
+            defaultTargetRpoMinutes: siteConfig.adminSettings?.defaultTargetRpoMinutes,
+            defaultTargetRtoHours: siteConfig.adminSettings?.defaultTargetRtoHours,
+            primaryRegion: siteConfig.adminSettings?.primaryRegion,
+            authRequiredForTools: siteConfig.adminSettings?.authRequiredForTools,
+            publicAccessEnabled: siteConfig.adminSettings?.publicAccessEnabled,
+            blueprintAccessMode: siteConfig.adminSettings?.blueprintAccessMode || siteConfig.adminSettings?.featureControls?.blueprintAccessMode || 'signed_in'
+          },
+          siteContent: payload
+        },
+        user?.email || 'admin@zaboraa.com'
+      );
+
+      return {
+        success: result.success,
+        message: result.persistedToCloud
+          ? 'All site content, showcases, diagrams, and settings synchronized to Supabase Cloud.'
+          : (result.cloudError || 'Content saved to local browser cache only.'),
+        persistedToCloud: result.persistedToCloud
+      };
+    } catch (e: any) {
+      return {
+        success: false,
+        message: e?.message || 'Synchronization failed',
+        persistedToCloud: false
+      };
     }
   };
 
@@ -1245,7 +1541,9 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         exportConfigJson,
         importConfigJson,
         savePersistentAdminSettings,
-        refreshRemoteSettings
+        refreshRemoteSettings,
+        syncAllContentToCloud,
+        isHydrated
       }}
     >
       {children}

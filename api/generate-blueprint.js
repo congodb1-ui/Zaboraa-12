@@ -22,24 +22,30 @@ export default async function handler(req, res) {
     try {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      let accessMode = 'everyone';
-      const { data: fcData } = await supabase
-        .from('admin_feature_controls')
-        .select('blueprint_access_mode')
-        .eq('id', 'global_feature_controls')
-        .maybeSingle();
-
-      if (fcData?.blueprint_access_mode) {
-        accessMode = fcData.blueprint_access_mode;
-      } else {
-        const { data: appData } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'feature_controls')
+      // Default to secure signed_in mode to prevent fail-open security bypass
+      let accessMode = 'signed_in';
+      try {
+        const { data: fcData, error: fcErr } = await supabase
+          .from('admin_feature_controls')
+          .select('blueprint_access_mode')
+          .eq('id', 'global_feature_controls')
           .maybeSingle();
-        if (appData?.value?.blueprintAccessMode) {
-          accessMode = appData.value.blueprintAccessMode;
+
+        if (!fcErr && fcData?.blueprint_access_mode) {
+          accessMode = fcData.blueprint_access_mode;
+        } else {
+          const { data: appData, error: appErr } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'feature_controls')
+            .maybeSingle();
+          if (!appErr && appData?.value?.blueprintAccessMode) {
+            accessMode = appData.value.blueprintAccessMode;
+          }
         }
+      } catch (lookupErr) {
+        console.warn('Notice querying blueprint access mode:', lookupErr?.message || lookupErr);
+        accessMode = 'signed_in';
       }
 
       if (accessMode === 'nobody') {
@@ -75,6 +81,11 @@ export default async function handler(req, res) {
       }
     } catch (e) {
       console.warn('Notice verifying blueprint access mode in handler:', e?.message || e);
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication verification error. Please ensure you are logged in.',
+        accessMode: 'signed_in'
+      });
     }
   }
 

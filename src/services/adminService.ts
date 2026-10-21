@@ -1697,7 +1697,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
     } catch {}
   }
 
-  async getAppSettings(category?: string): Promise<Record<string, any>> {
+  async getAppSettings(category?: string, forPublic = false): Promise<Record<string, any>> {
     const local = this.getLocalAppSettings();
 
     if (isSupabaseConfigured && supabase) {
@@ -1705,19 +1705,52 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
         let query = supabase.from('app_settings').select('*');
         if (category) {
           query = query.eq('category', category);
+        } else if (forPublic) {
+          // Public requests only select public-safe categories
+          query = query.in('category', ['branding', 'features', 'general', 'organization']);
         }
+
         const { data, error } = await query;
         if (!error && Array.isArray(data)) {
-          const remoteSettings: Record<string, any> = { ...local };
+          // Remote settings from Supabase are strictly authoritative over local cache
+          const remoteSettings: Record<string, any> = {};
           data.forEach((row: any) => {
-            remoteSettings[row.key] = row.value;
+            if (row && row.key) {
+              if (forPublic) {
+                // Protect private / sensitive settings from public callers
+                if (row.key === 'ai_configuration') return;
+                if (row.key === 'organization' && row.value) {
+                  // Sanitize internal administrative contacts from organization
+                  const { executiveContact, ...safeOrg } = row.value;
+                  remoteSettings[row.key] = safeOrg;
+                  return;
+                }
+              }
+              remoteSettings[row.key] = row.value;
+            }
           });
+
+          // Only keep local cache keys that have not yet been stored remotely in Supabase
+          for (const [k, v] of Object.entries(local)) {
+            if (!(k in remoteSettings)) {
+              remoteSettings[k] = v;
+            }
+          }
+
           this.setLocalAppSettings(remoteSettings);
           return remoteSettings;
+        } else if (error) {
+          console.warn('Notice fetching app_settings from Supabase (falling back to local cache):', error.message || error);
         }
-      } catch (err) {
-        console.warn('Notice fetching app_settings from Supabase (using local cache):', err);
+      } catch (err: any) {
+        console.warn('Notice fetching app_settings from Supabase (using local cache):', err?.message || err);
       }
+    }
+
+    if (forPublic && local['ai_configuration']) {
+      const sanitized = { ...local };
+      delete sanitized['ai_configuration'];
+      return sanitized;
     }
 
     return local;
@@ -1726,10 +1759,18 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
   async saveAppSetting(
     key: string,
     value: any,
-    category = 'general',
+    category?: string,
     description = '',
     actorEmail = 'admin@zaboraa.com'
   ): Promise<SaveSettingsResult> {
+    const deducedCategory = category || (
+      key === 'branding' ? 'branding' :
+      key === 'feature_controls' ? 'features' :
+      key === 'organization' ? 'organization' :
+      key === 'ai_configuration' ? 'ai' :
+      key === 'announcement' || key === 'admin_settings' ? 'general' : 'general'
+    );
+
     const current = this.getLocalAppSettings();
     current[key] = value;
     this.setLocalAppSettings(current);
@@ -1742,7 +1783,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
         const { error } = await supabase.from('app_settings').upsert({
           key,
           value,
-          category,
+          category: deducedCategory,
           description,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' });
@@ -1762,7 +1803,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
       targetEntity: 'app_settings',
       targetId: key,
       outcome: persistedToCloud ? 'success' : (isSupabaseConfigured ? 'warning' : 'success'),
-      metadata: { category, key, persistedToCloud, cloudError }
+      metadata: { category: deducedCategory, key, persistedToCloud, cloudError }
     });
 
     return {
@@ -1785,23 +1826,36 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
 
     if (isSupabaseConfigured && supabase) {
       try {
-        let query = supabase.from('site_content').select('*');
+        let query = supabase.from('site_content').select('*').eq('status', 'published');
         if (sectionKey) {
           query = query.eq('section_key', sectionKey);
         }
         const { data, error } = await query;
         if (!error && Array.isArray(data)) {
-          const map: Record<string, any> = { ...localCache };
+          // Remote site content from Supabase is authoritative
+          const map: Record<string, any> = {};
           data.forEach((row: any) => {
-            map[row.section_key] = row.content_json;
+            if (row && row.section_key && row.content_json) {
+              map[row.section_key] = row.content_json;
+            }
           });
+
+          // Retain local cache only for sections not yet created or published in Supabase
+          for (const [k, v] of Object.entries(localCache)) {
+            if (!(k in map)) {
+              map[k] = v;
+            }
+          }
+
           try {
             localStorage.setItem(localKey, JSON.stringify(map));
           } catch {}
           return map;
+        } else if (error) {
+          console.warn('Notice querying site_content from Supabase:', error.message || error);
         }
-      } catch (err) {
-        console.warn('Notice querying site_content from Supabase:', err);
+      } catch (err: any) {
+        console.warn('Notice querying site_content from Supabase:', err?.message || err);
       }
     }
     return localCache;
@@ -1833,7 +1887,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
           content_json: contentJson,
           status: 'published',
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'id' });
 
         if (error) throw error;
         persistedToCloud = true;
@@ -1861,22 +1915,26 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
     };
   }
 
-  async getGlobalSettings(): Promise<{
+  async getGlobalSettings(forPublic = false): Promise<{
     branding?: any;
     featureControls?: any;
     organization?: any;
     aiConfiguration?: any;
+    announcement?: any;
+    adminSettings?: any;
     siteContent?: Record<string, any>;
   }> {
     const [all, siteContent] = await Promise.all([
-      this.getAppSettings(),
+      this.getAppSettings(undefined, forPublic),
       this.getSiteContent()
     ]);
     return {
       branding: all['branding'] || null,
       featureControls: all['feature_controls'] || null,
       organization: all['organization'] || null,
-      aiConfiguration: all['ai_configuration'] || null,
+      aiConfiguration: forPublic ? null : (all['ai_configuration'] || null),
+      announcement: all['announcement'] || all['branding']?.announcement || null,
+      adminSettings: all['admin_settings'] || null,
       siteContent
     };
   }
@@ -1887,6 +1945,8 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
       featureControls?: any;
       organization?: any;
       aiConfiguration?: any;
+      announcement?: any;
+      adminSettings?: any;
       siteContent?: Record<string, any>;
     },
     actorEmail = 'admin@zaboraa.com'
@@ -1925,7 +1985,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
               export_executive_summary: payload.featureControls.exportExecutiveSummary ?? true,
               export_4k: payload.featureControls.export4k ?? true,
               generate_blueprint: payload.featureControls.generateBlueprint ?? true,
-              blueprint_access_mode: payload.featureControls.blueprintAccessMode || 'everyone',
+              blueprint_access_mode: payload.featureControls.blueprintAccessMode || 'signed_in',
               updated_at: new Date().toISOString()
             });
           } catch {}
@@ -1939,6 +1999,30 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
             payload.organization,
             'organization',
             'Organization default SLAs and sizing parameters',
+            actorEmail
+          )
+        );
+      }
+
+      if (payload.announcement) {
+        promises.push(
+          this.saveAppSetting(
+            'announcement',
+            payload.announcement,
+            'general',
+            'Global announcement banner configuration',
+            actorEmail
+          )
+        );
+      }
+
+      if (payload.adminSettings) {
+        promises.push(
+          this.saveAppSetting(
+            'admin_settings',
+            payload.adminSettings,
+            'general',
+            'Platform layout and theme preset configuration',
             actorEmail
           )
         );

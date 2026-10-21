@@ -22,7 +22,7 @@ interface AdminContentViewProps {
 export const AdminContentView: React.FC<AdminContentViewProps> = ({
   currentUserEmail
 }) => {
-  const { siteConfig, updateAdminSettings, updateGeneralInfo } = useCustomization();
+  const { siteConfig, updateAdminSettings, updateGeneralInfo, updateHeroContent, syncAllContentToCloud } = useCustomization();
 
   // Announcement Banner
   const [announcementText, setAnnouncementText] = useState(
@@ -56,37 +56,116 @@ export const AdminContentView: React.FC<AdminContentViewProps> = ({
   );
 
   // Status message
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handleSyncAll = async () => {
+    setIsPublishing(true);
+    setStatusMsg(null);
+    try {
+      const res = await syncAllContentToCloud();
+      setStatusMsg({
+        type: res.persistedToCloud ? 'success' : 'warning',
+        text: res.message
+      });
+    } catch (err: any) {
+      setStatusMsg({
+        type: 'error',
+        text: err?.message || 'Failed to sync content to Supabase cloud.'
+      });
+    } finally {
+      setIsPublishing(false);
+      setTimeout(() => setStatusMsg(null), 6000);
+    }
+  };
 
   const handleSaveContent = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsPublishing(true);
+    setStatusMsg(null);
 
-    updateAdminSettings({
-      announcementBannerEnabled: announcementEnabled,
-      announcementText,
-      announcementLink
-    });
+    try {
+      // 1. Update React Context state
+      updateAdminSettings({
+        announcementBannerEnabled: announcementEnabled,
+        announcementText,
+        announcementLink
+      });
 
-    updateGeneralInfo({
-      brand: brandName,
-      brandTagline,
-      founder: {
-        ...siteConfig.founder,
-        email: contactEmail
+      updateGeneralInfo({
+        brand: brandName,
+        brandTagline,
+        founder: {
+          ...siteConfig.founder,
+          email: contactEmail
+        }
+      });
+
+      updateHeroContent({
+        headline: heroHeadline,
+        subheadline: heroSubheadline
+      });
+
+      // 2. Persist to Supabase app_settings and site_content
+      const res = await adminService.saveGlobalSettings({
+        branding: {
+          brandName,
+          brandTagline
+        },
+        announcement: {
+          announcementBannerEnabled: announcementEnabled,
+          announcementText,
+          announcementLink
+        },
+        siteContent: {
+          hero: {
+            ...siteConfig.hero,
+            headline: heroHeadline,
+            subheadline: heroSubheadline
+          },
+          founder: {
+            ...siteConfig.founder,
+            email: contactEmail
+          },
+          platformShowcases: siteConfig.platformShowcases,
+          diagrams: siteConfig.diagrams,
+          videos: siteConfig.videos,
+          tutorials: siteConfig.tutorials,
+          caseStudies: siteConfig.caseStudies,
+          services: siteConfig.services,
+          knowledgeBase: siteConfig.knowledgeBase
+        }
+      }, currentUserEmail);
+
+      await adminService.logAuditEvent({
+        actorEmail: currentUserEmail,
+        actorRole: 'admin',
+        action: 'UPDATE_WEBSITE_CMS_CONTENT',
+        targetEntity: 'site_content',
+        outcome: res.success ? 'success' : 'failure',
+        metadata: { announcementEnabled, brandName, heroHeadline, persistedToCloud: res.persistedToCloud, error: res.error }
+      });
+
+      if (res.persistedToCloud) {
+        setStatusMsg({
+          type: 'success',
+          text: 'Website content & settings updated and published successfully to Supabase cloud.'
+        });
+      } else {
+        setStatusMsg({
+          type: 'warning',
+          text: `Settings updated in local cache: ${res.cloudError || 'Cloud write did not complete'}.`
+        });
       }
-    });
-
-    await adminService.logAuditEvent({
-      actorEmail: currentUserEmail,
-      actorRole: 'admin',
-      action: 'UPDATE_WEBSITE_CMS_CONTENT',
-      targetEntity: 'site_content',
-      outcome: 'success',
-      metadata: { announcementEnabled, brandName, heroHeadline }
-    });
-
-    setStatusMsg('Website content & settings updated and published successfully.');
-    setTimeout(() => setStatusMsg(null), 4000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: 'error',
+        text: err?.message || 'Failed to save website content.'
+      });
+    } finally {
+      setIsPublishing(false);
+      setTimeout(() => setStatusMsg(null), 6000);
+    }
   };
 
   return (
@@ -106,19 +185,41 @@ export const AdminContentView: React.FC<AdminContentViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleSaveContent}
-          className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm cursor-pointer"
-        >
-          <Save className="w-3.5 h-3.5" />
-          <span>Publish Changes</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSyncAll}
+            disabled={isPublishing}
+            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-slate-700 hover:border-slate-600 shadow-sm"
+            title="Synchronize all active diagrams, videos, tutorials, case studies, and showcases to Supabase Cloud"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isPublishing ? 'animate-spin text-cyan-400' : 'text-slate-400'}`} />
+            <span>Sync All Content</span>
+          </button>
+          <button
+            onClick={handleSaveContent}
+            disabled={isPublishing}
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>Publish Changes</span>
+          </button>
+        </div>
       </div>
 
       {statusMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2 shadow-sm animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{statusMsg}</span>
+        <div className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 shadow-sm animate-in fade-in ${
+          statusMsg.type === 'success'
+            ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-200'
+            : statusMsg.type === 'warning'
+            ? 'bg-amber-950/80 border-amber-500/60 text-amber-200'
+            : 'bg-rose-950/80 border-rose-500/60 text-rose-200'
+        }`}>
+          {statusMsg.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          )}
+          <span>{statusMsg.text}</span>
         </div>
       )}
 

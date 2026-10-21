@@ -83,6 +83,7 @@ function saveLocalStoredUser(profile: AuthUserProfile | null) {
 export const ADMIN_EMAILS = [
   'admin@zaboraa.com',
   'congodb4@gmail.com',
+  'congodb1992@gmail.com',
   'wasim.sayyed@zaboraa-cloud.com',
   'anansari678@gmail.com'
 ];
@@ -139,6 +140,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (supabase && isSupabaseConfigured) {
       try {
+        // Authoritative Check 1: Supabase database public.is_admin() RPC function
+        try {
+          const { data: isAdminRpc, error: rpcErr } = await supabase.rpc('is_admin');
+          if (!rpcErr && isAdminRpc === true) {
+            role = 'admin';
+            tier = 'enterprise';
+          }
+        } catch {
+          // RPC may not be available in mock/local preview
+        }
+
+        // Authoritative Check 2: Supabase public.admins table allowlist
+        if (role !== 'admin' && sbUser.email) {
+          try {
+            const { data: adminRow } = await supabase
+              .from('admins')
+              .select('email')
+              .or(`user_id.eq.${sbUser.id},email.eq.${sbUser.email.toLowerCase()}`)
+              .maybeSingle();
+            if (adminRow) {
+              role = 'admin';
+              tier = 'enterprise';
+            }
+          } catch {
+            // admins table might not exist in preview
+          }
+        }
+
         const { data, error } = await supabase
           .from('profiles')
           .select('id, email, role, subscription_tier, full_name, avatar_url')
@@ -146,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
 
         if (!error && data) {
-          if (data.role === 'admin' || isUserAdminEmail(sbUser.email)) {
+          if (data.role === 'admin' || role === 'admin' || isUserAdminEmail(sbUser.email)) {
             role = 'admin';
           } else if (data.role === 'authorized' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'pro') {
             role = 'authorized';
@@ -154,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role = 'public';
           }
 
-          if (isUserAdminEmail(sbUser.email)) {
+          if (role === 'admin' || isUserAdminEmail(sbUser.email)) {
             tier = 'enterprise';
           } else if (data.subscription_tier === 'pro' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'free') {
             tier = data.subscription_tier;

@@ -4,7 +4,6 @@ import { useCustomization } from '../context/CustomizationContext';
 import { DiagramLightboxModal } from './DiagramLightboxModal';
 import { resolveMediaUrl, ISOMETRIC_BLUEPRINT_3D_FALLBACK } from '../data/mediaAssets';
 import {
-  Sparkles,
   Maximize2,
   Layers,
   CheckCircle2,
@@ -37,26 +36,8 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
 }) => {
   const { siteConfig, isAdmin, toggleDesignEnabled } = useCustomization();
 
-  // Per-card animation preview toggle state
-  const [animatedCardIds, setAnimatedCardIds] = useState<Record<string, boolean>>(() => {
-    // Default to true for instant animation preview
-    const initial: Record<string, boolean> = {};
-    designs.forEach(d => {
-      initial[d.id] = true;
-    });
-    return initial;
-  });
-
   // Lightbox modal state
   const [lightboxDesign, setLightboxDesign] = useState<ArchitectureDesignItem | null>(null);
-
-  const toggleAnimation = (e: React.MouseEvent, designId: string) => {
-    e.stopPropagation();
-    setAnimatedCardIds(prev => ({
-      ...prev,
-      [designId]: !prev[designId]
-    }));
-  };
 
   const handleLaunchLightbox = (e: React.MouseEvent, design: ArchitectureDesignItem) => {
     e.stopPropagation();
@@ -91,16 +72,9 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
               </span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              Click any diagram to launch fullscreen inspection with pan, zoom, & hotspot callouts
+              Click any diagram to launch fullscreen inspection with pan and zoom
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px]">
-            <Sparkles className="w-3 h-3 text-emerald-400" />
-            <span>Instant Animation Toggle Enabled</span>
-          </span>
         </div>
       </div>
 
@@ -108,7 +82,6 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {visibleDesigns.map((design, idx) => {
           const isSelected = activeDesignId === design.id;
-          const isCardAnimated = animatedCardIds[design.id] ?? true;
           const isEnabled = design.enabled !== false;
           const resolvedImg = resolveMediaUrl(design.imageUrl);
 
@@ -175,7 +148,7 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
                 )}
               </div>
 
-              {/* Diagram Visual Preview Box with Instant Animation & Controls */}
+              {/* Diagram Visual Preview Box */}
               <div className="relative aspect-video bg-slate-950 overflow-hidden border-b border-slate-800/60 group/image">
                 <img
                   src={resolvedImg}
@@ -190,32 +163,8 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
                       target.src = ISOMETRIC_BLUEPRINT_3D_FALLBACK;
                     }
                   }}
-                  className={`w-full h-full object-contain transition-transform duration-700 ${
-                    isCardAnimated
-                      ? 'anim-kenburns'
-                      : 'group-hover/image:scale-105'
-                  }`}
+                  className="w-full h-full object-contain transition-transform duration-700 group-hover/image:scale-105"
                 />
-
-                {/* Scanning Laser Beam Overlay when animation is active */}
-                {isCardAnimated && <div className="anim-scanline-beam pointer-events-none" />}
-
-                {/* Instant Animation Preview Toggle Button (Direct on Card) */}
-                <div className="absolute top-2.5 left-2.5 z-10">
-                  <button
-                    type="button"
-                    onClick={(e) => toggleAnimation(e, design.id)}
-                    className={`px-2 py-1 rounded-md text-[10px] font-mono font-bold backdrop-blur-md border transition-all flex items-center gap-1.5 shadow-lg ${
-                      isCardAnimated
-                        ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300 ring-1 ring-emerald-500/30'
-                        : 'bg-slate-950/90 border-slate-700 text-slate-400 hover:text-slate-200'
-                    }`}
-                    title={isCardAnimated ? 'Turn animation OFF on this card' : 'Turn instant animation ON (Ken Burns & Scanline)'}
-                  >
-                    <Sparkles className={`w-3 h-3 ${isCardAnimated ? 'text-emerald-400 animate-spin' : 'text-slate-400'}`} style={{ animationDuration: '6s' }} />
-                    <span>{isCardAnimated ? 'ANIMATED' : 'STATIC'}</span>
-                  </button>
-                </div>
 
                 {/* Launch Full Screen Lightbox Button */}
                 <div className="absolute top-2.5 right-2.5 z-10">
@@ -223,7 +172,7 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
                     type="button"
                     onClick={(e) => handleLaunchLightbox(e, design)}
                     className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-slate-950/90 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500/60 text-slate-200 backdrop-blur-md transition-all flex items-center gap-1 shadow-lg cursor-pointer"
-                    title="Launch Fullscreen Lightbox with Pan, Zoom, and Hotspot Callouts"
+                    title="Launch Fullscreen Lightbox with Pan and Zoom"
                   >
                     <Maximize2 className="w-3 h-3 text-cyan-400" />
                     <span>FULL SCREEN</span>
@@ -271,7 +220,6 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
           title={lightboxDesign.title}
           subtitle={platformName}
           description={lightboxDesign.description}
-          initialAnimated={animatedCardIds[lightboxDesign.id] ?? true}
         />
       )}
     </div>

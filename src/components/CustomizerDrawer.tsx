@@ -51,7 +51,6 @@ export const CustomizerDrawer: React.FC = () => {
     setIsPhotoEditorOpen,
     setIsWatermarkModalOpen,
     updateWatermarkConfig,
-    updateEnableHotspots,
     updateAdminSettings,
     setActiveEditPlatformId,
     setFeaturedVideoId,
@@ -435,7 +434,7 @@ export const CustomizerDrawer: React.FC = () => {
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-          {/* Quick Display Controls: Watermark Option & Hotspot Option */}
+          {/* Quick Display Controls: Watermark Option */}
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 shadow-md">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
               <div className="flex items-center gap-2">
@@ -449,60 +448,8 @@ export const CustomizerDrawer: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* 1. Hotspot Option (Hotspot On or Off) */}
-              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between gap-2.5">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      {siteConfig.enableHotspots ? (
-                        <Eye className="w-4 h-4 text-emerald-400 shrink-0" />
-                      ) : (
-                        <EyeOff className="w-4 h-4 text-slate-400 shrink-0" />
-                      )}
-                      <span className="font-bold text-white text-xs">Hotspot Option</span>
-                    </div>
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
-                      siteConfig.enableHotspots
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                        : 'bg-slate-950 text-slate-400 border border-slate-800'
-                    }`}>
-                      {siteConfig.enableHotspots ? 'Hotspots: ON' : 'Hotspots: OFF'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-snug">
-                    Turn diagram interactive inspection hotspot pins on or off across the site.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextVal = !siteConfig.enableHotspots;
-                    updateEnableHotspots(nextVal);
-                    showNotification(nextVal ? 'Hotspots globally enabled!' : 'Hotspots globally disabled!');
-                  }}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    siteConfig.enableHotspots
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
-                  }`}
-                >
-                  {siteConfig.enableHotspots ? (
-                    <>
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Hotspots: ON (Click to Turn Off)</span>
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Hotspots: OFF (Click to Turn On)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* 2. Watermark Option */}
+            <div className="grid grid-cols-1 gap-3">
+              {/* Watermark Option */}
               <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex flex-col justify-between gap-2.5">
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -865,50 +812,6 @@ export const CustomizerDrawer: React.FC = () => {
                 </div>
               </div>
 
-              {/* Image & Diagram Animation Suite */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Image & Diagram Animation Engine</span>
-                    </span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Hardware-accelerated Ken Burns cinematic pan, holographic scanline beam, and hover zoom.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const current = siteConfig.adminSettings?.imageAnimationsEnabled ?? true;
-                      updateAdminSettings({ imageAnimationsEnabled: !current });
-                      showNotification(!current ? 'Image animations enabled' : 'Image animations paused');
-                    }}
-                    className={`px-3 py-1.5 rounded-lg border font-semibold text-xs transition-colors cursor-pointer ${
-                      (siteConfig.adminSettings?.imageAnimationsEnabled ?? true)
-                        ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
-                        : 'bg-slate-900 border-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {(siteConfig.adminSettings?.imageAnimationsEnabled ?? true) ? 'Animations: ON' : 'Animations: OFF'}
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] text-slate-400 font-mono">
-                  <div className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-center">
-                    <span className="text-white block font-sans font-semibold">Ken Burns</span>
-                    <span>22s Slow Drift</span>
-                  </div>
-                  <div className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-center">
-                    <span className="text-white block font-sans font-semibold">Scanline Beam</span>
-                    <span>Packet Sweep</span>
-                  </div>
-                  <div className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-center">
-                    <span className="text-white block font-sans font-semibold">Hover Zoom</span>
-                    <span>Lens Focus</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Site-Wide Migration Alert / Announcement Banner */}
               <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1059,7 +962,7 @@ export const CustomizerDrawer: React.FC = () => {
                       layoutDensity: 'balanced',
                       headerStyle: 'glass',
                       backgroundPattern: 'tech-grid',
-                      imageAnimationsEnabled: true,
+                      imageAnimationsEnabled: false,
                       publicAccessEnabled: true,
                       authRequiredForTools: false
                     });
@@ -1435,53 +1338,6 @@ export const CustomizerDrawer: React.FC = () => {
                     </>
                   )}
                 </button>
-              </div>
-
-              {/* Interactive Architecture Hotspots Global Admin Setting */}
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white">Interactive Diagram Hotspots</span>
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
-                        siteConfig.enableHotspots
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                          : 'bg-slate-900 text-slate-400 border border-slate-800'
-                      }`}>
-                        {siteConfig.enableHotspots ? 'Enabled Globally' : 'Disabled Everywhere'}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-relaxed">
-                      Control interactive hotspot display across all architecture diagrams. If disabled here from top settings, hotspots will not be shown anywhere on the site. If enabled, diagrams provide discrete inspection pins that are hidden by default until toggled on by viewers.
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextVal = !siteConfig.enableHotspots;
-                      updateEnableHotspots(nextVal);
-                      showNotification(nextVal ? 'Hotspots globally enabled!' : 'Hotspots globally hidden across entire site!');
-                    }}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                      siteConfig.enableHotspots
-                        ? 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/80 text-emerald-300'
-                        : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
-                    }`}
-                  >
-                    {siteConfig.enableHotspots ? (
-                      <>
-                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Hotspots Active</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Hotspots Hidden</span>
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
 
               {/* Watermark Configuration Card */}

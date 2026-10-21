@@ -29,7 +29,6 @@ export interface DiagramLightboxModalProps {
   title: string;
   subtitle?: string;
   description?: string;
-  initialAnimated?: boolean;
 }
 
 export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
@@ -39,8 +38,7 @@ export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
   designId,
   title,
   subtitle,
-  description,
-  initialAnimated = true
+  description
 }) => {
   const { siteConfig, brandName } = useCustomization();
   const isGloballyEnabled = siteConfig.enableHotspots === true;
@@ -54,7 +52,6 @@ export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
   const [showHotspots, setShowHotspots] = useState<boolean>(true);
   const [selectedHotspot, setSelectedHotspot] = useState<DiagramHotspot | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = useState<DiagramHotspot | null>(null);
-  const [isAnimated, setIsAnimated] = useState<boolean>(initialAnimated);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,10 +81,6 @@ export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
       } else if (e.key === '0') {
         setZoomLevel(1);
         setPanOffset({ x: 0, y: 0 });
-      } else if (e.key.toLowerCase() === 'h' && isGloballyEnabled) {
-        setShowHotspots(prev => !prev);
-      } else if (e.key.toLowerCase() === 'm') {
-        setIsAnimated(prev => !prev);
       }
     };
 
@@ -166,49 +159,8 @@ export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
           </div>
         </div>
 
-        {/* Action Controls: Motion Toggle + Hotspot Toggle + Zoom Controls + Close */}
+        {/* Action Controls: Zoom Controls + Close */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Motion Animation Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsAnimated(!isAnimated)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md cursor-pointer ${
-              isAnimated
-                ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-300 ring-1 ring-emerald-500/20'
-                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'
-            }`}
-            title="Toggle Live Scanline Beam & Ken Burns Animation (Key: M)"
-          >
-            <Sparkles className={`w-3.5 h-3.5 ${isAnimated ? 'text-emerald-400 animate-spin' : 'text-slate-400'}`} style={{ animationDuration: '8s' }} />
-            <span className="hidden sm:inline">{isAnimated ? 'Motion: Active' : 'Motion: Off'}</span>
-          </button>
-
-          {/* Hotspots Toggle */}
-          {isGloballyEnabled && hotspots.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowHotspots(!showHotspots)}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md cursor-pointer ${
-                showHotspots
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold ring-2 ring-cyan-500/30'
-                  : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-              }`}
-              title="Toggle interactive component hotspots (Key: H)"
-            >
-              {showHotspots ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Hide Hotspots</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Inspect Hotspots ({hotspots.length})</span>
-                </>
-              )}
-            </button>
-          )}
-
           {/* Zoom & Pan Controls */}
           <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-lg p-1 text-slate-300">
             <button
@@ -289,13 +241,8 @@ export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
                 setCurrentSrc(ISOMETRIC_BLUEPRINT_3D_FALLBACK);
               }
             }}
-            className={`max-h-[82vh] w-auto max-w-full object-contain pointer-events-none select-none ${
-              isAnimated ? 'anim-kenburns' : ''
-            }`}
+            className="max-h-[82vh] w-auto max-w-full object-contain pointer-events-none select-none"
           />
-
-          {/* Scanning Laser Beam Effect */}
-          {isAnimated && <div className="anim-scanline-beam pointer-events-none" />}
 
           {/* Watermark in Fullscreen */}
           {isWatermarkEnabled && (

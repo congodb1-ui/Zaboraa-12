@@ -1,14 +1,14 @@
 import { SiteConfig } from '../types/siteData';
 
 export const INITIAL_SITE_DATA: SiteConfig = {
-  brand: 'Zaboraa Technologies',
+  brand: 'Zaboraa',
   brandTagline: 'Founder-Led Enterprise VMware Cloud Architecture',
-  enableHotspots: true, // Enabled by default so users can inspect components and launch modals immediately
+  enableHotspots: false,
   featuredVideoId: 'video-hcx-masterclass',
   watermark: {
     enabled: true,
     type: 'text',
-    text: 'ZABORAA TECHNOLOGIES · HYBRID CLOUD BLUEPRINT',
+    text: 'ZABORAA · HYBRID CLOUD BLUEPRINT',
     opacity: 0.35,
     position: 'bottom-right'
   },
@@ -17,7 +17,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     layoutDensity: 'balanced',
     headerStyle: 'glass',
     backgroundPattern: 'tech-grid',
-    imageAnimationsEnabled: true,
+    imageAnimationsEnabled: false,
     announcementBannerEnabled: false,
     announcementText: 'New: VMware to Nutanix NC2 on Azure Migration Assessment Engine is Live!',
     announcementLink: '/tools/nutanix-nc2-assessment',
@@ -624,20 +624,20 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     ],
     bio: 'Architecting high-consequence enterprise cloud evacuations and sovereign VMware environments across Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC), and NSX-T SDN with a 100% zero-downtime cutover track record.',
     phone: '+91 7497624807',
-    email: 'contact@zaboraa.com',
-    location: 'Bangalore & Global Advisory',
+    email: 'wasim@zaboraa.com',
+    location: 'Pune & Global Advisory',
     portraitImage: '/assets/images/Wasim-Pic-02.png',
     photoStyle: {
       zoom: 1.0,
       brightness: 100,
       contrast: 100,
-      objectPosition: 'center',
+      objectPosition: 'top',
       borderGlow: 'none'
     }
   },
   hero: {
     eyebrow: 'EXECUTIVE CLOUD ADVISORY · FOUNDER-LED',
-    headline: 'Zero-Downtime VMware Cloud & Hyperscaler Migration Authority',
+    headline: 'Minimal Downtime VMware Cloud & Hyperscaler Migration Authority',
     subheadline: 'Architecting mission-critical enterprise cloud evacuations, sovereign VMware software-defined datacenters, and automated disaster recovery across Azure (AVS), AWS (VMC), and Google Cloud (GCVE).',
     stats: [
       { value: '12+', label: 'Years Enterprise Infrastructure' },

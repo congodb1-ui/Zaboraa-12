@@ -3,13 +3,9 @@ import { DiagramHotspot, getHotspotsForDesign } from '../data/diagramHotspotsDat
 import { ComponentInspectorModal } from './ComponentInspectorModal';
 import { useCustomization } from '../context/CustomizationContext';
 import {
-  Sparkles,
   Maximize2,
   Minimize2,
   Layers,
-  Eye,
-  EyeOff,
-  Zap,
   ShieldCheck,
   Info,
   ZoomIn,
@@ -46,27 +42,20 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
   // If disabled from top setting, it must not show hotspot anymore anywhere!
   const isGloballyEnabled = siteConfig.enableHotspots === true;
 
-  // Diagram-level state: default to true so components are immediately interactive and clickable
-  const [showHotspots, setShowHotspots] = useState<boolean>(true);
+  // Diagram-level hotspot interaction state
   const [selectedHotspot, setSelectedHotspot] = useState<DiagramHotspot | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = useState<DiagramHotspot | null>(null);
   const [currentSrc, setCurrentSrc] = useState<string>(imageUrl);
-  
-  // Animation state (Ken Burns, scanline beam, hover zoom)
-  const [isAnimated, setIsAnimated] = useState<boolean>(
-    siteConfig.adminSettings?.imageAnimationsEnabled ?? true
-  );
   
   // Full-screen distraction-free state
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
 
-  // When diagram or subsection changes, reset image source, zoom, and keep hotspots active
+  // When diagram or subsection changes, reset image source and zoom
   useEffect(() => {
     setCurrentSrc(imageUrl);
     setHoveredHotspot(null);
     setSelectedHotspot(null);
-    setShowHotspots(true);
     setZoomLevel(1);
   }, [imageUrl, designId]);
 
@@ -84,8 +73,6 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
         setZoomLevel(z => Math.max(0.75, Number((z - 0.25).toFixed(2))));
       } else if (e.key === '0') {
         setZoomLevel(1);
-      } else if (e.key.toLowerCase() === 'h' && isGloballyEnabled) {
-        setShowHotspots(prev => !prev);
       }
     };
 
@@ -146,7 +133,7 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
 
   // Reusable hotspot pins renderer for both inline canvas and full-screen window
   const renderHotspotPins = (scaleModifier: number = 1) => {
-    if (!isGloballyEnabled || !showHotspots || hotspots.length === 0) return null;
+    if (!isGloballyEnabled || hotspots.length === 0) return null;
 
     return (
       <div className="absolute inset-0 pointer-events-none z-20">
@@ -250,13 +237,8 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
               setCurrentSrc('/src' + currentSrc);
             }
           }}
-          className={`w-full h-full object-contain bg-slate-950 transition-transform duration-300 ${
-            isAnimated ? 'anim-kenburns anim-hover-zoom' : 'group-hover:scale-[1.01]'
-          }`}
+          className="w-full h-full object-contain bg-slate-950 transition-transform duration-300 group-hover:scale-[1.01]"
         />
-
-        {/* Dynamic Scanline Beam Overlay when animation is active */}
-        {isAnimated && <div className="anim-scanline-beam" />}
 
         {/* Hover click-to-expand pill cue */}
         <div className="absolute bottom-3 right-3 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -269,7 +251,7 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
         {/* Watermark Overlay */}
         {renderWatermark()}
 
-        {/* Top Control Bar: Title badge + Animation toggle + Hotspot toggle + Full Screen */}
+        {/* Top Control Bar: Title badge + Full Screen */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none z-20">
           <div className="pointer-events-auto px-3 py-1.5 rounded-lg bg-slate-950/90 border border-slate-700/80 backdrop-blur-md text-xs font-mono text-slate-200 flex items-center gap-2 shadow-lg">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -277,53 +259,6 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
           </div>
 
           <div className="pointer-events-auto flex items-center gap-2">
-            {/* Animation Toggle Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAnimated(!isAnimated);
-              }}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md ${
-                isAnimated
-                  ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-300'
-                  : 'bg-slate-900/90 border-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-              title={isAnimated ? 'Pause image animations (Ken Burns & Scanline)' : 'Enable image animations (Ken Burns & Scanline)'}
-            >
-              <Sparkles className={`w-3.5 h-3.5 ${isAnimated ? 'text-emerald-400 animate-spin' : 'text-slate-400'}`} style={{ animationDuration: '8s' }} />
-              <span className="hidden md:inline">{isAnimated ? 'Motion: ON' : 'Motion: OFF'}</span>
-            </button>
-
-            {/* Hotspot Toggle Button: Displayed ONLY IF enabled from admin top setting */}
-            {isGloballyEnabled && hotspots.length > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowHotspots(!showHotspots);
-                }}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-semibold backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md ${
-                  showHotspots
-                    ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold ring-2 ring-cyan-500/30'
-                    : 'bg-slate-900/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-                }`}
-                title={showHotspots ? 'Hide component inspection hotspots' : 'Enable component click hotspots'}
-              >
-                {showHotspots ? (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5" />
-                    <span>Hide Hotspots</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Inspect Components ({hotspots.length})</span>
-                  </>
-                )}
-              </button>
-            )}
-
             {/* Full Screen Mode Button */}
             <button
               type="button"
@@ -344,8 +279,8 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
         {renderHotspotPins(1)}
       </div>
 
-      {/* Component Quick Bar (Shown ONLY when globally enabled and user enables hotspots) */}
-      {isGloballyEnabled && showHotspots && hotspots.length > 0 && (
+      {/* Component Quick Bar (Shown when globally enabled and components exist) */}
+      {isGloballyEnabled && hotspots.length > 0 && (
         <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2 animate-in fade-in duration-200">
           <div className="flex items-center justify-between text-xs">
             <span className="font-mono text-slate-300 uppercase text-[11px] flex items-center gap-1.5 font-semibold">
@@ -408,34 +343,8 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
               </div>
             </div>
 
-            {/* Header Controls: Hotspot Toggle + Zoom Controls + Close */}
+            {/* Header Controls: Zoom Controls + Close */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Interactive Hotspot Toggle in Fullscreen (Only if enabled in admin site settings) */}
-              {isGloballyEnabled && hotspots.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowHotspots(!showHotspots)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all flex items-center gap-1.5 shadow-md ${
-                    showHotspots
-                      ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold ring-2 ring-cyan-500/30'
-                      : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                  title={showHotspots ? 'Hide component inspection hotspots (Key: H)' : 'Enable component hotspots (Key: H)'}
-                >
-                  {showHotspots ? (
-                    <>
-                      <EyeOff className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Hide Hotspots</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Inspect Hotspots ({hotspots.length})</span>
-                    </>
-                  )}
-                </button>
-              )}
-
               {/* Zoom Controls */}
               <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-lg p-1 text-slate-300">
                 <button
@@ -515,7 +424,7 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
           {/* Full Screen Footer Strip: Component Bar & Instructions */}
           <div className="pt-2 border-t border-slate-800/90 shrink-0 space-y-2">
             {/* Component Quick Bar if hotspots are enabled */}
-            {isGloballyEnabled && showHotspots && hotspots.length > 0 && (
+            {isGloballyEnabled && hotspots.length > 0 && (
               <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
                 <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
                   <Layers className="w-3 h-3 text-cyan-400" />
@@ -551,7 +460,6 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
               <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 shrink-0">
                 <span>Hotkeys: <kbd className="px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">Esc</kbd> Exit</span>
                 <span><kbd className="px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">+</kbd>/<kbd className="px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">-</kbd> Zoom</span>
-                {isGloballyEnabled && <span><kbd className="px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">H</kbd> Hotspots</span>}
               </div>
             </div>
           </div>

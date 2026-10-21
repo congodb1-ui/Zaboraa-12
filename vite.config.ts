@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import { GoogleGenAI } from '@google/genai';
@@ -419,6 +420,158 @@ export default defineConfig(({ mode }) => {
                 secretsExposed: false
               }
             }));
+          });
+
+          // Persistent App Settings Middleware (Disk + Cross-Browser/Incognito Sync)
+          server.middlewares.use(async (req, res, next) => {
+            const urlObj = new URL(req.url || '', 'http://localhost');
+            if (urlObj.pathname !== '/api/settings') {
+              return next();
+            }
+
+            const dataDir = path.join(process.cwd(), '.data');
+            const settingsFile = path.join(dataDir, 'app_settings.json');
+
+            if (req.method === 'GET') {
+              const forPublic = urlObj.searchParams.get('forPublic') === 'true';
+              let settings: Record<string, any> = {};
+              try {
+                if (fs.existsSync(settingsFile)) {
+                  settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+                }
+              } catch (e) {
+                console.warn('Notice reading settings file:', e);
+              }
+
+              if (forPublic) {
+                const sanitized = { ...settings };
+                delete sanitized['ai_configuration'];
+                if (sanitized['organization']) {
+                  const { executiveContact, ...safeOrg } = sanitized['organization'];
+                  sanitized['organization'] = safeOrg;
+                }
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: true, settings: sanitized }));
+              }
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: true, settings }));
+            }
+
+            if (req.method === 'POST') {
+              let bodyStr = '';
+              try {
+                for await (const chunk of req) {
+                  bodyStr += chunk.toString();
+                }
+                const body = JSON.parse(bodyStr || '{}');
+                let current: Record<string, any> = {};
+                if (!fs.existsSync(dataDir)) {
+                  fs.mkdirSync(dataDir, { recursive: true });
+                }
+                if (fs.existsSync(settingsFile)) {
+                  try {
+                    current = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+                  } catch {}
+                }
+
+                if (body.key && body.value !== undefined) {
+                  current[body.key] = body.value;
+                } else if (body.settings && typeof body.settings === 'object') {
+                  Object.assign(current, body.settings);
+                } else if (typeof body === 'object') {
+                  Object.assign(current, body);
+                }
+
+                fs.writeFileSync(settingsFile, JSON.stringify(current, null, 2), 'utf-8');
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: true, persisted: true }));
+              } catch (err: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: false, error: err?.message || 'Server error' }));
+              }
+            }
+
+            res.statusCode = 405;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+          });
+
+          // Persistent Site Content Middleware (Disk + Cross-Browser/Incognito Sync)
+          server.middlewares.use(async (req, res, next) => {
+            const urlObj = new URL(req.url || '', 'http://localhost');
+            if (urlObj.pathname !== '/api/site-content') {
+              return next();
+            }
+
+            const dataDir = path.join(process.cwd(), '.data');
+            const contentFile = path.join(dataDir, 'site_content.json');
+
+            if (req.method === 'GET') {
+              const sectionKey = urlObj.searchParams.get('sectionKey');
+              let content: Record<string, any> = {};
+              try {
+                if (fs.existsSync(contentFile)) {
+                  content = JSON.parse(fs.readFileSync(contentFile, 'utf-8'));
+                }
+              } catch (e) {
+                console.warn('Notice reading site content file:', e);
+              }
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              if (sectionKey) {
+                return res.end(JSON.stringify({
+                  success: true,
+                  content: content[sectionKey] ? { [sectionKey]: content[sectionKey] } : {}
+                }));
+              }
+              return res.end(JSON.stringify({ success: true, content }));
+            }
+
+            if (req.method === 'POST') {
+              let bodyStr = '';
+              try {
+                for await (const chunk of req) {
+                  bodyStr += chunk.toString();
+                }
+                const body = JSON.parse(bodyStr || '{}');
+                let current: Record<string, any> = {};
+                if (!fs.existsSync(dataDir)) {
+                  fs.mkdirSync(dataDir, { recursive: true });
+                }
+                if (fs.existsSync(contentFile)) {
+                  try {
+                    current = JSON.parse(fs.readFileSync(contentFile, 'utf-8'));
+                  } catch {}
+                }
+
+                if (body.sectionKey && body.contentJson !== undefined) {
+                  current[body.sectionKey] = body.contentJson;
+                } else if (body.siteContent && typeof body.siteContent === 'object') {
+                  Object.assign(current, body.siteContent);
+                } else if (typeof body === 'object') {
+                  Object.assign(current, body);
+                }
+
+                fs.writeFileSync(contentFile, JSON.stringify(current, null, 2), 'utf-8');
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: true, persisted: true }));
+              } catch (err: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: false, error: err?.message || 'Server error' }));
+              }
+            }
+
+            res.statusCode = 405;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
           });
         },
       },

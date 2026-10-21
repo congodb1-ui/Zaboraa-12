@@ -1741,13 +1741,37 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
           this.setLocalAppSettings(forPublic ? { ...local, ...remoteSettings } : remoteSettings);
           return remoteSettings;
         } else if (error) {
-          console.warn('Notice fetching app_settings from Supabase (falling back to local cache):', error.message || error);
+          console.warn('Notice fetching app_settings from Supabase (falling back to server API):', error.message || error);
         }
       } catch (err: any) {
-        console.warn('Notice fetching app_settings from Supabase (using local cache):', err?.message || err);
+        console.warn('Notice fetching app_settings from Supabase (using server API):', err?.message || err);
       }
     }
 
+    // 2. Query application server API (/api/settings) to sync settings across all browsers & incognito sessions
+    if (typeof fetch !== 'undefined') {
+      try {
+        const resp = await fetch(`/api/settings?forPublic=${forPublic ? 'true' : 'false'}`);
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json && json.success && json.settings && typeof json.settings === 'object' && Object.keys(json.settings).length > 0) {
+            const serverSettings = json.settings;
+            for (const [k, v] of Object.entries(local)) {
+              if (forPublic && k === 'ai_configuration') continue;
+              if (!(k in serverSettings)) {
+                serverSettings[k] = v;
+              }
+            }
+            this.setLocalAppSettings(forPublic ? { ...local, ...serverSettings } : serverSettings);
+            return serverSettings;
+          }
+        }
+      } catch (apiErr) {
+        // Fallback to local cache in offline/test environments
+      }
+    }
+
+    // 3. Fallback to browser local cache
     if (forPublic) {
       const sanitized = { ...local };
       delete sanitized['ai_configuration'];
@@ -1783,6 +1807,23 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
     let persistedToCloud = false;
     let cloudError: string | undefined;
 
+    // 1. Persist to server API (/api/settings) so changes immediately reach Incognito & other devices
+    if (typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, value, category: deducedCategory, description })
+        });
+        if (res.ok) {
+          persistedToCloud = true;
+        }
+      } catch (apiErr: any) {
+        // Handled gracefully
+      }
+    }
+
+    // 2. Persist to Supabase PostgreSQL if configured
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.from('app_settings').upsert({
@@ -1863,6 +1904,32 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
         console.warn('Notice querying site_content from Supabase:', err?.message || err);
       }
     }
+
+    // 2. Query application server API (/api/site-content) for cross-browser & incognito consistency
+    if (typeof fetch !== 'undefined') {
+      try {
+        const url = `/api/site-content${sectionKey ? '?sectionKey=' + encodeURIComponent(sectionKey) : ''}`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json && json.success && json.content && typeof json.content === 'object' && Object.keys(json.content).length > 0) {
+            const serverContent = json.content;
+            for (const [k, v] of Object.entries(localCache)) {
+              if (!(k in serverContent)) {
+                serverContent[k] = v;
+              }
+            }
+            try {
+              localStorage.setItem(localKey, JSON.stringify(serverContent));
+            } catch {}
+            return serverContent;
+          }
+        }
+      } catch (apiErr) {
+        // Fallback to local cache in offline/test environments
+      }
+    }
+
     return localCache;
   }
 
@@ -1883,6 +1950,23 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
     let persistedToCloud = false;
     let cloudError: string | undefined;
 
+    // 1. Persist to server API (/api/site-content) for cross-browser & incognito consistency
+    if (typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/api/site-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sectionKey, contentJson, title })
+        });
+        if (res.ok) {
+          persistedToCloud = true;
+        }
+      } catch (apiErr: any) {
+        // Handled gracefully
+      }
+    }
+
+    // 2. Persist to Supabase if configured
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.from('site_content').upsert({

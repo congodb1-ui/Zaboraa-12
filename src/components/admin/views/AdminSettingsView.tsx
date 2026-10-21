@@ -113,7 +113,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
       if (admin.authRequiredForTools !== undefined) setAuthRequiredForTools(admin.authRequiredForTools);
       if (admin.publicAccessEnabled !== undefined) setPublicAccessEnabled(admin.publicAccessEnabled);
 
-      const mode = admin.blueprintAccessMode || admin.featureControls?.blueprintAccessMode || 'everyone';
+      const mode = admin.blueprintAccessMode || admin.featureControls?.blueprintAccessMode || 'signed_in';
       setBlueprintAccessMode(mode);
 
       if (admin.featureControls) {

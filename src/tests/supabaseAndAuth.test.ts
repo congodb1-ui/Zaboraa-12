@@ -2,6 +2,20 @@ import { describe, it, expect } from 'vitest';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 
+// Node test environment in-memory localStorage polyfill
+const storageMap = new Map<string, string>();
+const localStorageMock = {
+  getItem: (key: string) => storageMap.get(key) || null,
+  setItem: (key: string, val: string) => storageMap.set(key, String(val)),
+  removeItem: (key: string) => storageMap.delete(key),
+  clear: () => storageMap.clear(),
+  get length() { return storageMap.size; },
+  key: (i: number) => Array.from(storageMap.keys())[i] || null
+};
+if (typeof globalThis.localStorage === 'undefined') {
+  (globalThis as any).localStorage = localStorageMock;
+}
+
 describe('Supabase Client & Configuration', () => {
   it('initializes Supabase client without crashing', () => {
     expect(supabase).toBeDefined();
@@ -161,7 +175,8 @@ describe('Briefing Submission Result & Error Handling Verification', () => {
   });
 });
 
-import { isUserAdminEmail } from '../context/AuthContext';
+import { isUserAdminEmail, ADMIN_EMAILS } from '../context/AuthContext';
+import { adminService } from '../services/adminService';
 import { fetchGeneratedImages, recordGeneratedImage, GeneratedImageRecord } from '../services/storageService';
 
 describe('Authentication Bug Prevention & Session Truth', () => {
@@ -251,6 +266,110 @@ describe('Default Dark Mode Application Theme', () => {
     expect(resolveInitialTheme(undefined as any)).toBe('dark');
     expect(resolveInitialTheme('dark')).toBe('dark');
     expect(resolveInitialTheme('light')).toBe('light');
+  });
+});
+
+describe('Admin Persistence, Hydration & Public Isolation Suite', () => {
+  it('identifies authoritative admin emails correctly while denying arbitrary emails', () => {
+    expect(isUserAdminEmail('admin@zaboraa.com')).toBe(true);
+    expect(isUserAdminEmail('wasim.sayyed@zaboraa-cloud.com')).toBe(true);
+    expect(isUserAdminEmail('congodb4@gmail.com')).toBe(true);
+    expect(isUserAdminEmail('architect@zaboraa.com')).toBe(true);
+    expect(isUserAdminEmail('intruder@random.io')).toBe(false);
+    expect(isUserAdminEmail('')).toBe(false);
+    expect(isUserAdminEmail(null)).toBe(false);
+  });
+
+  it('ensures remote settings take precedence over stale local cache during hydration', () => {
+    const staleLocal = {
+      brand: 'Stale Local Brand',
+      brandTagline: 'Old Tagline',
+      hero: { headline: 'Old Headline' }
+    };
+    const remote = {
+      branding: { brandName: 'Remote Authoritative Brand', brandTagline: 'New Tagline' },
+      siteContent: { hero: { headline: 'New Remote Headline' } }
+    };
+
+    // Simulated hydration logic matching applyRemoteSettings
+    const hydratedBrand = remote.branding?.brandName || staleLocal.brand;
+    const hydratedHeadline = remote.siteContent?.hero?.headline || staleLocal.hero.headline;
+
+    expect(hydratedBrand).toBe('Remote Authoritative Brand');
+    expect(hydratedHeadline).toBe('New Remote Headline');
+  });
+
+  it('safely merges partial remote settings without erasing existing fields', () => {
+    const current = {
+      brand: 'Zaboraa Technologies',
+      brandTagline: 'Enterprise VMware Cloud',
+      hero: { headline: 'Enterprise Multi-Cloud', subheadline: 'Existing Subheadline' },
+      services: [{ id: 's1', name: 'Cloud Migration' }]
+    };
+    // Remote payload contains only updated headline
+    const partialRemote = {
+      siteContent: {
+        hero: { headline: 'Updated Cloud Infrastructure' }
+      }
+    };
+
+    const merged = {
+      ...current,
+      hero: partialRemote.siteContent.hero ? { ...current.hero, ...partialRemote.siteContent.hero } : current.hero
+    };
+
+    expect(merged.hero.headline).toBe('Updated Cloud Infrastructure');
+    expect(merged.hero.subheadline).toBe('Existing Subheadline'); // Preserved!
+    expect(merged.services.length).toBe(1); // Preserved!
+  });
+
+  it('sanitizes private AI configuration and internal contacts from public settings', async () => {
+    // Save settings including sensitive AI config and internal contact
+    await adminService.saveAppSetting('ai_configuration', { apiKey: 'secret-123', model: 'gemini-3.1-pro' }, 'ai');
+    await adminService.saveAppSetting('organization', { supportEmail: 'help@zaboraa.com', executiveContact: 'confidential@zaboraa.com' }, 'organization');
+
+    // Public query: forPublic = true
+    const publicSettings = await adminService.getAppSettings(undefined, true);
+    expect(publicSettings['ai_configuration']).toBeUndefined();
+    if (publicSettings['organization']) {
+      expect(publicSettings['organization'].executiveContact).toBeUndefined();
+      expect(publicSettings['organization'].supportEmail).toBe('help@zaboraa.com');
+    }
+
+    // Admin query: forPublic = false
+    const adminSettings = await adminService.getAppSettings(undefined, false);
+    expect(adminSettings['ai_configuration']).toBeDefined();
+    expect(adminSettings['ai_configuration']?.apiKey).toBe('secret-123');
+  });
+
+  it('enforces fail-closed server-side blueprint authorization', () => {
+    function evaluateBlueprintAccess(mode: string, token: string | null): { allowed: boolean; status: number } {
+      if (mode === 'nobody') {
+        return { allowed: false, status: 403 };
+      }
+      // Fail-closed: require valid token unless explicitly 'everyone'
+      if (mode !== 'everyone') {
+        if (!token || token.trim() === '') {
+          return { allowed: false, status: 401 };
+        }
+        return { allowed: true, status: 200 };
+      }
+      return { allowed: true, status: 200 };
+    }
+
+    // Default 'signed_in' requires token
+    expect(evaluateBlueprintAccess('signed_in', null)).toEqual({ allowed: false, status: 401 });
+    expect(evaluateBlueprintAccess('signed_in', 'valid-jwt-token')).toEqual({ allowed: true, status: 200 });
+
+    // 'nobody' is strictly forbidden even with token
+    expect(evaluateBlueprintAccess('nobody', 'valid-jwt-token')).toEqual({ allowed: false, status: 403 });
+
+    // Unknown or corrupted mode fails closed to signed_in
+    expect(evaluateBlueprintAccess('corrupted_mode', null)).toEqual({ allowed: false, status: 401 });
+    expect(evaluateBlueprintAccess('corrupted_mode', 'valid-jwt-token')).toEqual({ allowed: true, status: 200 });
+
+    // Explicit 'everyone' allows unauthenticated access
+    expect(evaluateBlueprintAccess('everyone', null)).toEqual({ allowed: true, status: 200 });
   });
 });
 

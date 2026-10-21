@@ -164,7 +164,8 @@ export default defineConfig(({ mode }) => {
                     return;
                   }
 
-                  if (accessMode === 'signed_in') {
+                  // Fail closed: enforce signed-in authentication unless accessMode is explicitly 'everyone'
+                  if (accessMode !== 'everyone') {
                     const authHeader = req.headers['authorization'] || req.headers['Authorization'];
                     const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
                       ? authHeader.slice(7)

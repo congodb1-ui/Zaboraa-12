@@ -3,6 +3,7 @@ import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePil
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { useAuth, isUserAdminEmail } from './AuthContext';
 import { adminService } from '../services/adminService';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_KEY = 'zaboraa_site_config_v8';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
@@ -200,7 +201,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           } else {
             const rawAccessMode = merged.adminSettings.blueprintAccessMode ||
                                   merged.adminSettings.featureControls?.blueprintAccessMode ||
-                                  'everyone';
+                                  'signed_in';
             merged.adminSettings = {
               ...INITIAL_SITE_DATA.adminSettings,
               ...merged.adminSettings,
@@ -1354,7 +1355,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             primaryRegion: updatedAdminSettings.primaryRegion,
             authRequiredForTools: updatedAdminSettings.authRequiredForTools,
             publicAccessEnabled: updatedAdminSettings.publicAccessEnabled,
-            blueprintAccessMode: updatedAdminSettings.blueprintAccessMode || updatedAdminSettings.featureControls?.blueprintAccessMode || 'everyone'
+            blueprintAccessMode: updatedAdminSettings.blueprintAccessMode || updatedAdminSettings.featureControls?.blueprintAccessMode || 'signed_in'
           }
         },
         user?.email || 'admin@zaboraa.com'

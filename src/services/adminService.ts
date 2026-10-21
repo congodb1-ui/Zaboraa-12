@@ -1732,12 +1732,13 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
 
           // Only keep local cache keys that have not yet been stored remotely in Supabase
           for (const [k, v] of Object.entries(local)) {
+            if (forPublic && k === 'ai_configuration') continue;
             if (!(k in remoteSettings)) {
               remoteSettings[k] = v;
             }
           }
 
-          this.setLocalAppSettings(remoteSettings);
+          this.setLocalAppSettings(forPublic ? { ...local, ...remoteSettings } : remoteSettings);
           return remoteSettings;
         } else if (error) {
           console.warn('Notice fetching app_settings from Supabase (falling back to local cache):', error.message || error);
@@ -1747,9 +1748,13 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
       }
     }
 
-    if (forPublic && local['ai_configuration']) {
+    if (forPublic) {
       const sanitized = { ...local };
       delete sanitized['ai_configuration'];
+      if (sanitized['organization']) {
+        const { executiveContact, ...safeOrg } = sanitized['organization'];
+        sanitized['organization'] = safeOrg;
+      }
       return sanitized;
     }
 

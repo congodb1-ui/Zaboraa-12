@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCustomization } from '../../../context/CustomizationContext';
 import { adminService } from '../../../services/adminService';
 import { BlueprintAccessMode } from '../../../types/siteData';
@@ -93,6 +93,37 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+
+  // Synchronize form states when siteConfig hydrates from Supabase
+  useEffect(() => {
+    if (siteConfig.brand) setBrandName(siteConfig.brand);
+    if (siteConfig.brandTagline) setBrandTagline(siteConfig.brandTagline);
+    if (siteConfig.brandLogoUrl !== undefined) setBrandLogoUrl(siteConfig.brandLogoUrl || '');
+
+    const admin = siteConfig.adminSettings;
+    if (admin) {
+      if (admin.supportEmail) setSupportEmail(admin.supportEmail);
+      if (admin.executiveContact) setExecutiveContact(admin.executiveContact);
+      if (admin.defaultCloudPlatform) setDefaultCloud(admin.defaultCloudPlatform);
+      if (admin.defaultVcpuOvercommit !== undefined) setDefaultOvercommit(admin.defaultVcpuOvercommit);
+      if (admin.defaultRamBufferPercent !== undefined) setDefaultRamBuffer(admin.defaultRamBufferPercent);
+      if (admin.defaultTargetRpoMinutes !== undefined) setDefaultRpoMinutes(admin.defaultTargetRpoMinutes);
+      if (admin.defaultTargetRtoHours !== undefined) setDefaultRtoHours(admin.defaultTargetRtoHours);
+      if (admin.primaryRegion) setPrimaryRegion(admin.primaryRegion);
+      if (admin.authRequiredForTools !== undefined) setAuthRequiredForTools(admin.authRequiredForTools);
+      if (admin.publicAccessEnabled !== undefined) setPublicAccessEnabled(admin.publicAccessEnabled);
+
+      const mode = admin.blueprintAccessMode || admin.featureControls?.blueprintAccessMode || 'everyone';
+      setBlueprintAccessMode(mode);
+
+      if (admin.featureControls) {
+        if (admin.featureControls.export4k !== undefined) setExport4k(admin.featureControls.export4k);
+        if (admin.featureControls.exportDossier !== undefined) setExportDossier(admin.featureControls.exportDossier);
+        if (admin.featureControls.exportExecutiveSummary !== undefined) setExportExecutiveSummary(admin.featureControls.exportExecutiveSummary);
+        if (admin.featureControls.generateBlueprint !== undefined) setGenerateBlueprint(admin.featureControls.generateBlueprint);
+      }
+    }
+  }, [siteConfig]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

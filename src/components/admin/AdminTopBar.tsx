@@ -19,7 +19,8 @@ import {
   Download,
   UserCheck,
   SlidersHorizontal,
-  Cpu
+  Cpu,
+  RefreshCw
 } from 'lucide-react';
 import { AdminViewId } from './AdminSidebar';
 import { AdminNotification, adminService } from '../../services/adminService';
@@ -36,6 +37,8 @@ interface AdminTopBarProps {
   onRefreshNotifications: () => void;
   onGlobalSearch: (term: string) => void;
   onQuickAction: (actionKey: string) => void;
+  onRefreshAll?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const AdminTopBar: React.FC<AdminTopBarProps> = ({
@@ -49,7 +52,9 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
   notifications,
   onRefreshNotifications,
   onGlobalSearch,
-  onQuickAction
+  onQuickAction,
+  onRefreshAll,
+  isRefreshing = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -153,6 +158,20 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
           />
           <span>{isOnline ? 'CLOUD SYNC ONLINE' : 'LOCAL VAULT ACTIVE'}</span>
         </div>
+
+        {/* Refresh All Console Telemetry & Settings Button */}
+        {onRefreshAll && (
+          <button
+            onClick={onRefreshAll}
+            disabled={isRefreshing}
+            title="Refresh all metrics, users, profiles, settings, and integrations from actual data sources"
+            aria-label="Refresh console data"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-200 hover:text-white text-xs font-semibold transition cursor-pointer disabled:opacity-50 shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline font-mono text-[11px]">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        )}
 
         {/* Quick Action Dropdown */}
         <div className="relative" ref={quickRef}>

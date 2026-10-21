@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 
 const MODEL = 'gemini-3.1-flash-image';
 const FALLBACK_URL =
@@ -11,6 +12,70 @@ export default async function handler(req, res) {
       success: false,
       error: 'Method not allowed',
     });
+  }
+
+  // Server-side enforcement of Blueprint Access Mode ('everyone' | 'signed_in' | 'nobody')
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+  if (supabaseUrl && supabaseKey && !supabaseUrl.includes('mock-zaboraa')) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      let accessMode = 'everyone';
+      const { data: fcData } = await supabase
+        .from('admin_feature_controls')
+        .select('blueprint_access_mode')
+        .eq('id', 'global_feature_controls')
+        .maybeSingle();
+
+      if (fcData?.blueprint_access_mode) {
+        accessMode = fcData.blueprint_access_mode;
+      } else {
+        const { data: appData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'feature_controls')
+          .maybeSingle();
+        if (appData?.value?.blueprintAccessMode) {
+          accessMode = appData.value.blueprintAccessMode;
+        }
+      }
+
+      if (accessMode === 'nobody') {
+        return res.status(403).json({
+          success: false,
+          error: 'Blueprint generation has been administratively disabled (Access Mode: Nobody).',
+          accessMode: 'nobody'
+        });
+      }
+
+      if (accessMode === 'signed_in') {
+        const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+        const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+          ? authHeader.slice(7)
+          : null;
+
+        if (!token) {
+          return res.status(401).json({
+            success: false,
+            error: 'Blueprint generation requires a signed-in user account. Please log in to continue.',
+            accessMode: 'signed_in'
+          });
+        }
+
+        const { data: userData, error: userError } = await supabase.auth.getUser(token);
+        if (userError || !userData?.user) {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication failed or session expired. Please sign in again.',
+            accessMode: 'signed_in'
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Notice verifying blueprint access mode in handler:', e?.message || e);
+    }
   }
 
   const apiKey = process.env.GEMINI_API_KEY;

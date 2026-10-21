@@ -41,6 +41,7 @@ import {
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
 import { useCustomization } from '../../context/CustomizationContext';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { saveGeneratedBlueprint } from '../../services/storageService';
 import {
   ArchitectureTemplateId,
@@ -1012,8 +1013,8 @@ export function buildTrackVisualSpec(
 }
 
 export const DesignGeneratorPage: React.FC = () => {
-  const { setIsBriefingModalOpen, featureControls } = useCustomization();
-  const { user } = useAuth();
+  const { setIsBriefingModalOpen, featureControls, siteConfig } = useCustomization();
+  const { user, setIsCommercializeModalOpen } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const blueprintSectionRef = useRef<HTMLDivElement>(null);
   const wizardStepContainerRef = useRef<HTMLDivElement>(null);
@@ -2213,6 +2214,25 @@ export const DesignGeneratorPage: React.FC = () => {
       return;
     }
 
+    const currentAccessMode = siteConfig.adminSettings?.blueprintAccessMode ||
+                             siteConfig.adminSettings?.featureControls?.blueprintAccessMode ||
+                             'everyone';
+
+    if (currentAccessMode === 'nobody') {
+      setShowPreFlightModal(false);
+      setSaveSuccessNotice('Blueprint generation has been administratively disabled (Access Mode: Nobody).');
+      setTimeout(() => setSaveSuccessNotice(null), 5000);
+      return;
+    }
+
+    if (currentAccessMode === 'signed_in' && !user) {
+      setShowPreFlightModal(false);
+      setSaveSuccessNotice('Blueprint generation requires a signed-in user account. Please log in.');
+      setIsCommercializeModalOpen(true);
+      setTimeout(() => setSaveSuccessNotice(null), 5000);
+      return;
+    }
+
     setCurrentStep(5);
     setIsGenerating3D(true);
     setShowPreFlightModal(false);
@@ -2233,14 +2253,38 @@ export const DesignGeneratorPage: React.FC = () => {
     }, 1800);
 
     try {
+      let authToken: string | undefined;
+      try {
+        if (supabase) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          authToken = sessionData?.session?.access_token;
+        }
+      } catch {}
+
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authToken) {
+        reqHeaders['Authorization'] = `Bearer ${authToken}`;
+      }
+
       // FIX: Use the clean relative path handled by Vite middleware (locally) and Vercel (production)
       const resp = await fetch('/api/generate-blueprint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({ prompt })
       });
 
       const data = await resp.json();
+
+      if (!resp.ok) {
+        setIsGenerating3D(false);
+        setSaveSuccessNotice(data.error || `Generation request failed (${resp.status})`);
+        if (resp.status === 401 && (data.accessMode === 'signed_in' || !user)) {
+          setIsCommercializeModalOpen(true);
+        }
+        setTimeout(() => setSaveSuccessNotice(null), 6000);
+        return;
+      }
+
       setGenerationProgress(100);
       setGenerationStep('Finalizing 4K dark blueprint render...');
 

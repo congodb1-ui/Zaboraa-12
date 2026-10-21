@@ -54,8 +54,8 @@ const VALID_VIEWS: AdminViewId[] = [
 ];
 
 export const AdminControlCenterPage: React.FC = () => {
-  const { user, isAdmin, signOut, setIsCommercializeModalOpen } = useAuth();
-  const { theme, toggleTheme, siteConfig } = useCustomization();
+  const { user, isAdmin, signOut, setIsCommercializeModalOpen, refreshUserProfile } = useAuth();
+  const { theme, toggleTheme, siteConfig, refreshRemoteSettings } = useCustomization();
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
 
@@ -63,6 +63,7 @@ export const AdminControlCenterPage: React.FC = () => {
 
   const initialView: AdminViewId = (tab && VALID_VIEWS.includes(tab as AdminViewId)) ? (tab as AdminViewId) : 'overview';
   const [activeView, setActiveView] = useState<AdminViewId>(initialView);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Sync state if URL tab parameter changes
   useEffect(() => {
@@ -155,6 +156,22 @@ export const AdminControlCenterPage: React.FC = () => {
       }
     } catch (err) {
       console.warn('Notice loading admin data:', err);
+    }
+  };
+
+  // Comprehensive Refresh: re-fetch metrics, users, profiles, settings, and integrations
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refreshRemoteSettings(),
+        refreshUserProfile(),
+        loadAllAdminData()
+      ]);
+    } catch (err) {
+      console.warn('Notice refreshing console data:', err);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -285,6 +302,8 @@ export const AdminControlCenterPage: React.FC = () => {
           onRefreshNotifications={loadAllAdminData}
           onGlobalSearch={handleGlobalSearch}
           onQuickAction={handleQuickAction}
+          onRefreshAll={handleRefreshAll}
+          isRefreshing={isRefreshing}
         />
 
         {/* Viewport Content */}

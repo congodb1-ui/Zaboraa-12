@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCustomization } from '../../../context/CustomizationContext';
 import { adminService } from '../../../services/adminService';
@@ -26,7 +26,7 @@ interface AdminProfileViewProps {
 }
 
 export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserEmail }) => {
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const { siteConfig, updateFounderPhoto, updateFounderCredentials } = useCustomization();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +59,26 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+
+  // Synchronize form states when user profile or siteConfig updates from Supabase
+  useEffect(() => {
+    if (user?.displayName) {
+      setFullName(user.displayName);
+    } else if (siteConfig.founder?.name) {
+      setFullName(siteConfig.founder.name);
+    }
+
+    if (user?.photoURL) {
+      setAvatarUrl(user.photoURL);
+    } else if (siteConfig.founder?.portraitImage) {
+      setAvatarUrl(siteConfig.founder.portraitImage);
+    }
+
+    if (siteConfig.founder?.role) setRoleTitle(siteConfig.founder.role);
+    if (siteConfig.founder?.phone) setPhone(siteConfig.founder.phone);
+    if (siteConfig.founder?.location) setLocation(siteConfig.founder.location);
+    if (siteConfig.founder?.bio) setBio(siteConfig.founder.bio);
+  }, [user, siteConfig.founder]);
 
   // Handle Avatar Image File Upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,17 +152,21 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
         try {
           const { error } = await supabase
             .from('profiles')
-            .update({
+            .upsert({
+              id: user.uid,
+              email: user.email,
               full_name: fullName.trim(),
               avatar_url: avatarUrl.trim() || null,
               updated_at: new Date().toISOString()
-            })
-            .eq('id', user.uid);
+            }, { onConflict: 'id' });
 
           if (error) {
             cloudError = error.message;
           } else {
             persistedToCloud = true;
+            try {
+              await refreshUserProfile();
+            } catch {}
           }
         } catch (e: any) {
           cloudError = e?.message || 'Database update failed';

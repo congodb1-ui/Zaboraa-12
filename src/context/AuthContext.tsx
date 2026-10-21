@@ -83,7 +83,8 @@ function saveLocalStoredUser(profile: AuthUserProfile | null) {
 export const ADMIN_EMAILS = [
   'admin@zaboraa.com',
   'congodb4@gmail.com',
-  'wasim.sayyed@zaboraa-cloud.com'
+  'wasim.sayyed@zaboraa-cloud.com',
+  'anansari678@gmail.com'
 ];
 
 export function isUserAdminEmail(email?: string | null): boolean {
@@ -145,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
 
         if (!error && data) {
-          if (data.role === 'admin') {
+          if (data.role === 'admin' || isUserAdminEmail(sbUser.email)) {
             role = 'admin';
           } else if (data.role === 'authorized' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'pro') {
             role = 'authorized';
@@ -153,7 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role = 'public';
           }
 
-          if (data.subscription_tier === 'pro' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'free') {
+          if (isUserAdminEmail(sbUser.email)) {
+            tier = 'enterprise';
+          } else if (data.subscription_tier === 'pro' || data.subscription_tier === 'enterprise' || data.subscription_tier === 'free') {
             tier = data.subscription_tier;
           }
 
@@ -170,8 +173,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             photoURL = data.avatar_url;
           }
 
-          // If database profile is missing avatar or full name that Google provided, update profile
-          const needsSync = (!data.avatar_url && metaAvatarUrl) || (isGenericName && metaFullName && metaFullName !== sbUser.email?.split('@')[0]);
+          // If database profile is missing avatar or full name that Google provided, or role needs update
+          const roleNeedsUpdate = isUserAdminEmail(sbUser.email) && data.role !== 'admin';
+          const needsSync = (!data.avatar_url && metaAvatarUrl) || (isGenericName && metaFullName && metaFullName !== sbUser.email?.split('@')[0]) || roleNeedsUpdate;
           if (needsSync) {
             try {
               await supabase
@@ -179,6 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .update({
                   full_name: displayName,
                   avatar_url: photoURL,
+                  ...(roleNeedsUpdate ? { role: 'admin', subscription_tier: 'enterprise' } : {}),
                   last_sign_in_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 })
@@ -193,8 +198,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: sbUser.email,
               full_name: metaFullName,
               avatar_url: metaAvatarUrl,
-              role: role,
-              subscription_tier: tier,
+              role: isUserAdminEmail(sbUser.email) ? 'admin' : role,
+              subscription_tier: isUserAdminEmail(sbUser.email) ? 'enterprise' : tier,
               status: 'active',
               last_sign_in_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
@@ -607,6 +612,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
+  const refreshUserProfile = async (): Promise<AuthUserProfile | null> => {
+    if (!supabase) return user;
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session?.user) return user;
+      const profile = await mapSupabaseUserToProfile(session.user);
+      setUser(profile);
+      setSubscriptionTierState(profile.licenseTier);
+      saveLocalStoredUser(profile);
+      return profile;
+    } catch {
+      return user;
+    }
+  };
+
   const clearAuthError = () => setAuthError(null);
 
   // Live admin verification
@@ -631,6 +651,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         requestPasswordReset,
         quickDemoLogin,
         signOut,
+        refreshUserProfile,
         isCommercializeModalOpen,
         setIsCommercializeModalOpen,
         authError,

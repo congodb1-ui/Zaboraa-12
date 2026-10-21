@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -116,6 +117,79 @@ export default defineConfig(({ mode }) => {
                   error: 'Prompt must be a string of at most 10000 characters.',
                 }));
                 return;
+              }
+
+              // 1. Enforce Blueprint Access Mode server-side
+              const supabaseUrl = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+              const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+              if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('mock-zaboraa')) {
+                try {
+                  const sb = createClient(supabaseUrl, supabaseAnonKey);
+
+                  let accessMode = 'everyone';
+                  const { data: fcData } = await sb
+                    .from('admin_feature_controls')
+                    .select('blueprint_access_mode')
+                    .eq('id', 'global_feature_controls')
+                    .maybeSingle();
+
+                  if (fcData?.blueprint_access_mode) {
+                    accessMode = fcData.blueprint_access_mode;
+                  } else {
+                    const { data: appData } = await sb
+                      .from('app_settings')
+                      .select('value')
+                      .eq('key', 'feature_controls')
+                      .maybeSingle();
+                    if (appData?.value?.blueprintAccessMode) {
+                      accessMode = appData.value.blueprintAccessMode;
+                    }
+                  }
+
+                  if (accessMode === 'nobody') {
+                    res.statusCode = 403;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                      success: false,
+                      error: 'Blueprint generation has been administratively disabled (Access Mode: Nobody).',
+                      accessMode: 'nobody'
+                    }));
+                    return;
+                  }
+
+                  if (accessMode === 'signed_in') {
+                    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+                    const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+                      ? authHeader.slice(7)
+                      : null;
+
+                    if (!token) {
+                      res.statusCode = 401;
+                      res.setHeader('Content-Type', 'application/json');
+                      res.end(JSON.stringify({
+                        success: false,
+                        error: 'Blueprint generation requires a signed-in user account. Please log in to continue.',
+                        accessMode: 'signed_in'
+                      }));
+                      return;
+                    }
+
+                    const { data: userData, error: userError } = await sb.auth.getUser(token);
+                    if (userError || !userData?.user) {
+                      res.statusCode = 401;
+                      res.setHeader('Content-Type', 'application/json');
+                      res.end(JSON.stringify({
+                        success: false,
+                        error: 'Authentication failed or session expired. Please sign in again.',
+                        accessMode: 'signed_in'
+                      }));
+                      return;
+                    }
+                  }
+                } catch (accessErr: any) {
+                  console.warn('Notice verifying blueprint access mode in vite middleware:', accessErr?.message || accessErr);
+                }
               }
 
               if (!apiKey) {

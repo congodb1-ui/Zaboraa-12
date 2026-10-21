@@ -96,9 +96,22 @@ export const CreateDesignModal: React.FC<CreateDesignModalProps> = ({
     setImageUrl('');
 
     try {
+      let authToken: string | undefined;
+      try {
+        if (supabase) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          authToken = sessionData?.session?.access_token;
+        }
+      } catch {}
+
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authToken) {
+        reqHeaders['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const res = await fetch('/api/generate-blueprint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({ prompt: promptToUse }),
       });
 

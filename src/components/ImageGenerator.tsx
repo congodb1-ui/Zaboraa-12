@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { uploadAssetImage } from '../services/storageService';
+import { supabase } from '../lib/supabase';
 
 export const ImageGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -39,10 +40,23 @@ export const ImageGenerator: React.FC = () => {
     setStorageNotice('');
 
     try {
+      let authToken: string | undefined;
+      try {
+        if (supabase) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          authToken = sessionData?.session?.access_token;
+        }
+      } catch {}
+
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (authToken) {
+        reqHeaders['Authorization'] = `Bearer ${authToken}`;
+      }
+
       // Vercel serves this API route from /api/generate-blueprint.
       const res = await fetch('/api/generate-blueprint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: reqHeaders,
         body: JSON.stringify({ prompt: selectedPrompt }),
       });
 

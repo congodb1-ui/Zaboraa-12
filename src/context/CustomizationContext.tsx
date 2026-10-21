@@ -468,17 +468,39 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   const brandLogoUrl = siteConfig.brandLogoUrl || siteConfig.adminSettings?.brandLogoUrl;
 
   const updateBranding = (data: { brandName: string; brandLogoUrl?: string; brandTagline?: string }) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      brand: data.brandName,
-      brandLogoUrl: data.brandLogoUrl !== undefined ? data.brandLogoUrl : prev.brandLogoUrl,
-      brandTagline: data.brandTagline !== undefined ? data.brandTagline : prev.brandTagline,
-      adminSettings: {
-        ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
-        brandName: data.brandName,
-        brandLogoUrl: data.brandLogoUrl !== undefined ? data.brandLogoUrl : prev.adminSettings?.brandLogoUrl
+    setSiteConfig(prev => {
+      const updatedBrand = data.brandName;
+      const updatedTagline = data.brandTagline !== undefined ? data.brandTagline : prev.brandTagline;
+      const updatedLogo = data.brandLogoUrl !== undefined ? data.brandLogoUrl : prev.brandLogoUrl;
+
+      const updated: SiteConfig = {
+        ...prev,
+        brand: updatedBrand,
+        brandLogoUrl: updatedLogo,
+        brandTagline: updatedTagline,
+        adminSettings: {
+          ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
+          brandName: updatedBrand,
+          brandLogoUrl: updatedLogo
+        }
+      };
+
+      if (isAdmin) {
+        adminService.saveAppSetting(
+          'branding',
+          {
+            brandName: updatedBrand,
+            brandTagline: updatedTagline,
+            brandLogoUrl: updatedLogo
+          },
+          'branding',
+          'Global platform brand identity',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting branding to Supabase:', e));
       }
-    }));
+
+      return updated;
+    });
   };
 
   // Dynamically synchronize document.title and meta descriptions with branding state
@@ -606,29 +628,67 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [selectedTutorial, selectedDiagram, selectedVideo]);
 
   const updateGeneralInfo = (info: { brand: string; brandTagline: string; brandLogoUrl?: string; founder: SiteConfig['founder'] }) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      brand: info.brand,
-      brandTagline: info.brandTagline,
-      brandLogoUrl: info.brandLogoUrl !== undefined ? info.brandLogoUrl : prev.brandLogoUrl,
-      founder: info.founder,
-      adminSettings: {
-        ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
-        brandName: info.brand,
-        brandLogoUrl: info.brandLogoUrl !== undefined ? info.brandLogoUrl : prev.adminSettings?.brandLogoUrl
+    setSiteConfig(prev => {
+      const updated: SiteConfig = {
+        ...prev,
+        brand: info.brand,
+        brandTagline: info.brandTagline,
+        brandLogoUrl: info.brandLogoUrl !== undefined ? info.brandLogoUrl : prev.brandLogoUrl,
+        founder: info.founder,
+        adminSettings: {
+          ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
+          brandName: info.brand,
+          brandLogoUrl: info.brandLogoUrl !== undefined ? info.brandLogoUrl : prev.adminSettings?.brandLogoUrl
+        }
+      };
+
+      if (isAdmin) {
+        adminService.saveAppSetting(
+          'branding',
+          {
+            brandName: info.brand,
+            brandTagline: info.brandTagline,
+            brandLogoUrl: info.brandLogoUrl
+          },
+          'branding',
+          'Global platform brand identity',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting branding:', e));
+
+        adminService.saveSiteContent(
+          'founder',
+          info.founder,
+          'Executive Founder Profile',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting founder:', e));
       }
-    }));
+
+      return updated;
+    });
   };
 
   const updateFounderPhoto = (portraitImage: string, photoStyle?: PhotoStyle) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      founder: {
+    setSiteConfig(prev => {
+      const updatedFounder = {
         ...prev.founder,
         portraitImage,
         photoStyle: photoStyle !== undefined ? photoStyle : prev.founder.photoStyle
+      };
+
+      if (isAdmin && (!portraitImage.startsWith('data:') || portraitImage.length < 50000)) {
+        adminService.saveSiteContent(
+          'founder',
+          updatedFounder,
+          'Executive Founder Profile',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting founder photo:', e));
       }
-    }));
+
+      return {
+        ...prev,
+        founder: updatedFounder
+      };
+    });
   };
 
   const setFeaturedVideoId = (id: string) => {
@@ -779,10 +839,23 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateHero = (hero: SiteConfig['hero']) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      hero
-    }));
+    setSiteConfig(prev => {
+      const updated = {
+        ...prev,
+        hero
+      };
+
+      if (isAdmin) {
+        adminService.saveSiteContent(
+          'hero',
+          hero,
+          'Homepage Hero Section',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting hero:', e));
+      }
+
+      return updated;
+    });
   };
 
   const addDiagram = (diagram: ArchitectureDiagram) => {
@@ -891,33 +964,72 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateFounderCredentials = (founder: Partial<SiteConfig['founder']>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      founder: {
+    setSiteConfig(prev => {
+      const updatedFounder = {
         ...prev.founder,
         ...founder
+      };
+
+      if (isAdmin) {
+        adminService.saveSiteContent(
+          'founder',
+          updatedFounder,
+          'Executive Founder Profile',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting founder credentials:', e));
       }
-    }));
+
+      return {
+        ...prev,
+        founder: updatedFounder
+      };
+    });
   };
 
   const updateHeroStats = (stats: SiteConfig['hero']['stats']) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      hero: {
+    setSiteConfig(prev => {
+      const updatedHero = {
         ...prev.hero,
         stats
+      };
+
+      if (isAdmin) {
+        adminService.saveSiteContent(
+          'hero',
+          updatedHero,
+          'Homepage Hero Section',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting hero stats:', e));
       }
-    }));
+
+      return {
+        ...prev,
+        hero: updatedHero
+      };
+    });
   };
 
   const updateHeroContent = (hero: Partial<SiteConfig['hero']>) => {
-    setSiteConfig(prev => ({
-      ...prev,
-      hero: {
+    setSiteConfig(prev => {
+      const updatedHero = {
         ...prev.hero,
         ...hero
+      };
+
+      if (isAdmin) {
+        adminService.saveSiteContent(
+          'hero',
+          updatedHero,
+          'Homepage Hero Section',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting hero content:', e));
       }
-    }));
+
+      return {
+        ...prev,
+        hero: updatedHero
+      };
+    });
   };
 
   const resetToDefaults = () => {

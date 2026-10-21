@@ -562,7 +562,9 @@ class AdminService {
 
     // Fallback: Check local cache or active signed-in user
     try {
-      const activeUserRaw = typeof localStorage !== 'undefined' ? localStorage.getItem('zaboraa_auth_user') : null;
+      const activeUserRaw = typeof localStorage !== 'undefined'
+        ? (localStorage.getItem('zaboraa_auth_user_v2') || localStorage.getItem('zaboraa_auth_user'))
+        : null;
       if (activeUserRaw) {
         const activeUser = JSON.parse(activeUserRaw);
         if (activeUser?.email) {

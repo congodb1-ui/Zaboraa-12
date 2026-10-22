@@ -39,9 +39,9 @@ export const FounderCredentialsModal: React.FC = () => {
     if (founder) {
       setName(founder.name || 'Wasim Sayyed');
       setRole(founder.role || 'Lead Principal Multi-Cloud Solutions Architect');
-      setLocation(founder.location || 'Dallas, TX · Global Availability');
+      setLocation(founder.location || 'Global Availability');
       setEmail(founder.email || 'wasim@zaboraa.com');
-      setPhone(founder.phone || '+1 (800) 555-0199');
+      setPhone(founder.phone || '+91 74986 24807');
       setBio(founder.bio || '');
       setCertifications(founder.certifications || []);
     }

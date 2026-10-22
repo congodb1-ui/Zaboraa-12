@@ -47,7 +47,7 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
   onPrev
 }) => {
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = useState<'external' | 'internal' | 'dfw' | 'publishing' | 'loadbalancer' | 'waf' | 'traffic' | null>(null);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ external: true, waf: true });
   const [showAdvancedExternal, setShowAdvancedExternal] = useState(false);
   const [showAdvancedInternal, setShowAdvancedInternal] = useState(false);
   const [paramControls, setParamControls] = useState(() => getAdminControlState().parameterControls);
@@ -258,10 +258,28 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
     });
   };
 
+  const SECTION_IDS = ['external', 'internal', 'dfw', 'publishing', 'loadbalancer', 'waf', 'traffic'];
+
+  const renderToggle = (id: string, summary: string) => (
+    <button
+      type="button"
+      onClick={() => setOpenSections((p) => ({ ...p, [id]: !p[id] }))}
+      aria-expanded={Boolean(openSections[id])}
+      className="w-full px-4 py-2 border-t border-slate-800/80 bg-slate-950/30 hover:bg-slate-950/60 flex items-center justify-between gap-3 text-left cursor-pointer transition"
+    >
+      <span className="text-[11px] text-slate-400 font-mono truncate">{summary}</span>
+      <span className="text-[11px] font-semibold text-cyan-300 flex items-center gap-1 shrink-0">
+        {openSections[id] ? 'Hide details' : 'Show details'}
+        {openSections[id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </span>
+    </button>
+  );
+
   const handleContinue = () => {
     const check = validateWizardStep(4, wizardState);
     if (!check.isValid) {
       setValidationError(check.errors[0] || 'Please complete required security settings.');
+      setOpenSections(Object.fromEntries(SECTION_IDS.map((id) => [id, true])));
       return;
     }
     setValidationError(null);
@@ -284,7 +302,7 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </span>
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
-          Configure independent external and internal firewalls with multi-vendor support, optional NSX microsegmentation, customer VAP publishing, and traffic flow inspection.
+          External firewall and WAF are shown first. Other sections are summarized; open one to edit it.
         </p>
       </div>
 
@@ -362,7 +380,9 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </div>
         </div>
 
-        {externalFw.status !== 'not-applicable' && (
+        {externalFw.status !== 'not-applicable' &&
+          renderToggle('external', `${externalFw.vendor || 'No vendor'} ${externalFw.model || ''} · ${externalFw.deploymentMode || ''}`)}
+        {externalFw.status !== 'not-applicable' && openSections.external && (
           <div className="p-4 space-y-4 bg-slate-950/40 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Vendor */}
@@ -589,7 +609,9 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </div>
         </div>
 
-        {internalFw.status !== 'not-applicable' && (
+        {internalFw.status !== 'not-applicable' &&
+          renderToggle('internal', `${internalFw.vendor || 'No vendor'} ${internalFw.model || ''} · ${internalFw.deploymentMode || ''}`)}
+        {internalFw.status !== 'not-applicable' && openSections.internal && (
           <div className="p-4 space-y-4 bg-slate-950/40 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Vendor (Independent from External) */}
@@ -788,7 +810,8 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </button>
         </div>
 
-        {nsxDfw.enabled && (
+        {nsxDfw.enabled && renderToggle('dfw', `${nsxDfw.version || 'NSX'} · ${nsxDfw.policyMode || ''}`)}
+        {nsxDfw.enabled && openSections.dfw && (
           <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div className="space-y-1.5">
               <label className="text-slate-300 font-medium">Policy Enforcement Mode</label>
@@ -869,7 +892,8 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </button>
         </div>
 
-        {publishing.enabled && (
+        {publishing.enabled && renderToggle('publishing', publishing.platformName?.trim() || 'Platform name not set')}
+        {publishing.enabled && openSections.publishing && (
           <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 space-y-3 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Configurable Platform Name (Preserves Customer VAP) */}
@@ -982,7 +1006,8 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </button>
         </div>
 
-        {loadBalancing.enabled && (
+        {loadBalancing.enabled && renderToggle('loadbalancer', loadBalancing.platform || 'Platform not set')}
+        {loadBalancing.enabled && openSections.loadbalancer && (
           <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-slate-300 font-medium">Load Balancing Platform</label>
@@ -1059,7 +1084,9 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </button>
         </div>
 
-        {wizardState.securityNvaConfig.wafEnabled && (
+        {wizardState.securityNvaConfig.wafEnabled &&
+          renderToggle('waf', wizardState.securityNvaConfig.wafSolution || 'Solution not set')}
+        {wizardState.securityNvaConfig.wafEnabled && openSections.waf && (
           <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div className="space-y-1.5">
               <label className="text-slate-300 font-medium">WAF Appliance / Managed Engine</label>
@@ -1111,6 +1138,8 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
           </div>
         </div>
 
+        {renderToggle('traffic', `${trafficFlows.length} traffic flow paths`)}
+        {openSections.traffic && (
         <div className="p-4 space-y-3 bg-slate-950/50">
           {trafficFlows.map((flow) => {
             const hasExternal = flow.inspectingControls.includes('external-firewall');
@@ -1252,6 +1281,7 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Navigation Footer */}

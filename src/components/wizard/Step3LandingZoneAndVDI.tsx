@@ -216,7 +216,7 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
           Cloud Foundation, Native Services & VDI
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
-          Configure the cloud landing zone architecture, interconnecting hub-and-spoke topologies, optional native platform services, and virtual desktop infrastructure. Choices are dynamically filtered to match your selected source and target cloud providers.
+          Choose the network topology and management CIDR. Cloud-native services and VDI are optional.
         </p>
       </div>
 
@@ -232,7 +232,7 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
             <Network className="w-4 h-4 text-cyan-400" />
-            <span>Section A: Landing Zone Network Architecture</span>
+            <span>Landing zone network</span>
           </div>
           <div className="flex items-center gap-1.5 text-[10px] font-mono">
             {activeAzure && <span className="px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800/60">Azure</span>}
@@ -293,7 +293,7 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
             <Cloud className="w-4 h-4 text-cyan-400" />
-            <span>Section B: Cloud-Native Services (Provider-Filtered)</span>
+            <span>Cloud-native services (optional)</span>
           </div>
           <button
             type="button"
@@ -304,16 +304,14 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
                 : 'bg-slate-950 border-slate-800 text-slate-500'
             }`}
           >
-            {wizardState.cloudNativeEnabled ? 'Services: ACTIVE' : 'Services: EXCLUDED'}
+            {wizardState.cloudNativeEnabled ? `Included · ${(wizardState.cloudNativeConfig.selectedServices || []).length} selected` : 'Excluded'}
           </button>
         </div>
 
         {wizardState.cloudNativeEnabled && (
           <div className="space-y-2 pt-1">
-            <p className="text-[11px] text-slate-400">
-              Select which platform services connect to your SDDC workloads via private peering and endpoints:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <p className="text-[11px] text-slate-400">Pick the services your workloads connect to over private endpoints.</p>
+            <div className="flex flex-wrap gap-2 text-xs">
               {providerServices.map((svc) => {
                 const isChecked = (wizardState.cloudNativeConfig.selectedServices || []).includes(svc.name);
                 return (
@@ -321,17 +319,17 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
                     key={svc.name}
                     type="button"
                     onClick={() => handleToggleCloudService(svc.name)}
-                    className={`p-2.5 rounded-lg border text-left transition flex items-center justify-between gap-2 cursor-pointer ${
+                    className={`px-2.5 py-1.5 rounded-lg border text-left transition flex items-center gap-2 cursor-pointer ${
                       isChecked
                         ? 'bg-cyan-950/30 border-cyan-500/50 text-white'
                         : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2">
                       <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-cyan-400 shrink-0">
                         {svc.provider}
                       </span>
-                      <span className="text-[11px] font-medium truncate">{svc.name}</span>
+                      <span className="text-[11px] font-medium whitespace-nowrap">{svc.name}</span>
                     </div>
                     <span className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 border ${
                       isChecked ? 'bg-cyan-500 border-cyan-500 text-slate-950' : 'border-slate-700'
@@ -351,7 +349,7 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
             <Monitor className="w-4 h-4 text-cyan-400" />
-            <span>Section C: Virtual Desktop Infrastructure (VDI)</span>
+            <span>Virtual desktops (VDI, optional)</span>
           </div>
           <button
             type="button"
@@ -362,7 +360,7 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
                 : 'bg-slate-950 border-slate-800 text-slate-500'
             }`}
           >
-            {wizardState.vdiEnabled ? 'VDI: ENABLED' : 'VDI: DISABLED'}
+            {wizardState.vdiEnabled ? 'Included' : 'Excluded'}
           </button>
         </div>
 

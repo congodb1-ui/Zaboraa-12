@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { useAuth, isUserAdminEmail } from './AuthContext';
 import { adminService } from '../services/adminService';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { externalizeImages } from '../services/siteAssets';
 
 const STORAGE_KEY = 'zaboraa_site_config_v8';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
@@ -446,6 +447,9 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         brandTagline,
         brandLogoUrl,
         founder: siteContent.founder ? { ...INITIAL_SITE_DATA.founder, ...prev.founder, ...siteContent.founder } : prev.founder,
+        featuredVideoId: siteContent.misc?.featuredVideoId ?? prev.featuredVideoId,
+        enableHotspots: siteContent.misc?.enableHotspots ?? prev.enableHotspots,
+        watermark: siteContent.misc?.watermark ? { ...prev.watermark, ...siteContent.misc.watermark } : prev.watermark,
         hero: siteContent.hero ? { ...INITIAL_SITE_DATA.hero, ...prev.hero, ...siteContent.hero } : prev.hero,
         diagrams: Array.isArray(siteContent.diagrams) && siteContent.diagrams.length > 0 ? siteContent.diagrams : prev.diagrams,
         videos: Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos,
@@ -1389,7 +1393,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const syncAllContentToCloud = async (): Promise<{ success: boolean; message: string; persistedToCloud: boolean }> => {
     try {
-      const payload: Record<string, any> = {
+      const rawPayload: Record<string, any> = {
         hero: siteConfig.hero,
         founder: siteConfig.founder,
         platformShowcases: siteConfig.platformShowcases,
@@ -1398,15 +1402,45 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         tutorials: siteConfig.tutorials,
         caseStudies: siteConfig.caseStudies,
         services: siteConfig.services,
-        knowledgeBase: siteConfig.knowledgeBase
+        knowledgeBase: siteConfig.knowledgeBase,
+        misc: {
+          featuredVideoId: siteConfig.featuredVideoId,
+          enableHotspots: siteConfig.enableHotspots,
+          watermark: siteConfig.watermark
+        }
       };
+
+      // Upload any embedded images to Supabase Storage so only short URLs are stored
+      const original = { payload: rawPayload, logo: siteConfig.brandLogoUrl };
+      const cleaned: any = await externalizeImages(original);
+      const payload: Record<string, any> = cleaned.payload;
+      const brandLogoUrl: string | undefined = cleaned.logo;
+
+      if (JSON.stringify(cleaned) !== JSON.stringify(original)) {
+        setSiteConfig(prev => ({
+          ...prev,
+          hero: payload.hero,
+          founder: payload.founder,
+          platformShowcases: payload.platformShowcases,
+          diagrams: payload.diagrams,
+          videos: payload.videos,
+          tutorials: payload.tutorials,
+          caseStudies: payload.caseStudies,
+          services: payload.services,
+          knowledgeBase: payload.knowledgeBase,
+          featuredVideoId: payload.misc?.featuredVideoId,
+          enableHotspots: payload.misc?.enableHotspots,
+          watermark: payload.misc?.watermark,
+          brandLogoUrl
+        }));
+      }
 
       const result = await adminService.saveGlobalSettings(
         {
           branding: {
             brandName: siteConfig.brand || brandName,
             brandTagline: siteConfig.brandTagline,
-            brandLogoUrl: siteConfig.brandLogoUrl
+            brandLogoUrl
           },
           announcement: {
             announcementBannerEnabled: siteConfig.adminSettings?.announcementBannerEnabled ?? false,
@@ -1448,6 +1482,43 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     }
   };
+
+  const lastSyncedRef = useRef<string>('');
+
+  // Auto-save: any admin change is uploaded to Supabase (images to Storage, content to site_content/app_settings)
+  useEffect(() => {
+    if (!isAdmin || !isHydrated || !isSupabaseConfigured) return;
+
+    const snapshot = JSON.stringify({
+      c: [
+        siteConfig.hero, siteConfig.founder, siteConfig.platformShowcases, siteConfig.diagrams,
+        siteConfig.videos, siteConfig.tutorials, siteConfig.caseStudies, siteConfig.services,
+        siteConfig.knowledgeBase, siteConfig.featuredVideoId, siteConfig.enableHotspots, siteConfig.watermark
+      ],
+      b: [siteConfig.brand, siteConfig.brandTagline, siteConfig.brandLogoUrl],
+      a: siteConfig.adminSettings
+    });
+
+    // First run after loading from Supabase: remember the state, don't save
+    if (!lastSyncedRef.current) {
+      lastSyncedRef.current = snapshot;
+      return;
+    }
+    if (snapshot === lastSyncedRef.current) return;
+
+    const timer = setTimeout(async () => {
+      lastSyncedRef.current = snapshot;
+      const result = await syncAllContentToCloud();
+      if (!result.persistedToCloud) {
+        lastSyncedRef.current = ''; // retry on the next change
+        console.error('Auto-save to Supabase failed:', result.message);
+        alert('Your last change could NOT be saved to Supabase: ' + result.message);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteConfig, isAdmin, isHydrated]);
 
   return (
     <CustomizationContext.Provider

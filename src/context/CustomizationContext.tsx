@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
-import { useAuth, isUserAdminEmail } from './AuthContext';
+import { useAuth } from './AuthContext';
 import { adminService } from '../services/adminService';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { externalizeImages } from '../services/siteAssets';
@@ -242,7 +242,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   const { user, isAdmin: isAuthAdmin, signOut: authSignOut } = useAuth();
 
   // Authoritative admin verification: true when authenticated through Supabase with admin role or admin email
-  const isAdmin = Boolean(isAuthAdmin || user?.role === 'admin' || isUserAdminEmail(user?.email));
+  const isAdmin = Boolean(isAuthAdmin);
   const setIsAdmin = (_val: boolean) => {
     // Only real Supabase authentication modifies admin status
   };

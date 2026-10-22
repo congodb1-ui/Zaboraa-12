@@ -17,6 +17,16 @@ import { useLocation } from 'react-router-dom';
 
 const IMG = '/Data_center_module_illustration_2K_20261022173328-Photoroom.png';
 
+/**
+ * The Photoroom PNG is 1977 x 1536, i.e. cropped from the original 2576 x 1438 render.
+ * All overlay coordinates below are written in the ORIGINAL render's pixel space, and the SVG
+ * viewBox is the crop rectangle, so aligning the overlay means tuning just these four numbers:
+ *   x, y = top-left corner of the PNG inside the original render
+ *   w, h = size of that area in original pixels (keep w / h = 1977 / 1536)
+ */
+const CROP = { x: 450, y: 58, w: 1776, h: 1380 };
+const IMG_RATIO = '1977 / 1536';
+
 type Mode = 'migration' | 'dr' | 'impl';
 
 const MODES: Record<Mode, { title: string; text: string; color: string }> = {
@@ -26,20 +36,17 @@ const MODES: Record<Mode, { title: string; text: string; color: string }> = {
 };
 
 const LEDS: Array<[number, number]> = [
-  [745, 562], [745, 596], [745, 630], [745, 661],
-  [860, 560], [860, 594], [860, 628], [860, 660]
+  [1200, 905], [1200, 960], [1200, 1014], [1200, 1064],
+  [1385, 902], [1385, 956], [1385, 1011], [1385, 1063]
 ];
 
 const css = `
 .dcm-tilt{transform:perspective(1000px) rotateY(calc(var(--dc-p,0)*-6deg + 3deg)) translateY(calc(var(--dc-p,0)*-18px));transition:transform .15s linear}
 .dcm-float{animation:dcm-fl 7s ease-in-out infinite}
 @keyframes dcm-fl{50%{transform:translateY(-8px)}}
-.dcm-gl{position:absolute;border-radius:9999px;opacity:0;transition:opacity .7s;pointer-events:none}
-.dcm-gc{left:30%;top:6%;width:36%;height:44%;background:radial-gradient(closest-side,rgba(34,211,238,.45),transparent)}
-.dcm-ga{left:56%;top:22%;width:36%;height:42%;background:radial-gradient(closest-side,rgba(251,191,36,.5),transparent)}
-.dcm-gg{left:30%;top:50%;width:34%;height:46%;background:radial-gradient(closest-side,rgba(52,211,153,.4),transparent)}
+.dcm-gl{opacity:0;transition:opacity .7s}
 .dcm-layer{opacity:0;transition:opacity .7s}
-.dcm-f{fill:none;stroke-linecap:round;stroke-width:3}
+.dcm-f{fill:none;stroke-linecap:round;stroke-width:5}
 .dcm-up{stroke:#22d3ee;stroke-dasharray:2 16;animation:dcm-flow 1.1s linear infinite}
 .dcm-am{stroke:#fbbf24;stroke-dasharray:3 12;animation:dcm-flow 1.4s linear infinite}
 .dcm-gr{stroke:#34d399;stroke-dasharray:6 10;animation:dcm-flow 1.6s linear infinite}
@@ -113,7 +120,7 @@ export const FloatingDataCenter: React.FC = () => {
         <>
           <div className="dcm-tilt">
             <div className="dcm-float">
-              <div data-dcm={mode} className="relative" style={{ aspectRatio: '2576 / 1438' }}>
+              <div data-dcm={mode} className="relative" style={{ aspectRatio: IMG_RATIO }}>
                 <img
                   src={IMG}
                   alt=""
@@ -121,43 +128,48 @@ export const FloatingDataCenter: React.FC = () => {
                   draggable={false}
                   className="absolute inset-0 w-full h-full"
                 />
-                <div className="dcm-gl dcm-gc" />
-                <div className="dcm-gl dcm-ga" />
-                <div className="dcm-gl dcm-gg" />
 
                 <svg
-                  viewBox="0 0 1600 893"
+                  viewBox={`${CROP.x} ${CROP.y} ${CROP.w} ${CROP.h}`}
                   preserveAspectRatio="none"
                   aria-hidden="true"
                   className="absolute inset-0 w-full h-full"
                 >
                   <defs>
                     <filter id="dcm-blur" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="2.5" />
+                      <feGaussianBlur stdDeviation="3" />
                     </filter>
+                    <radialGradient id="dcm-gc"><stop offset="0" stopColor="#22d3ee" stopOpacity=".45" /><stop offset="1" stopColor="#22d3ee" stopOpacity="0" /></radialGradient>
+                    <radialGradient id="dcm-ga"><stop offset="0" stopColor="#fbbf24" stopOpacity=".5" /><stop offset="1" stopColor="#fbbf24" stopOpacity="0" /></radialGradient>
+                    <radialGradient id="dcm-gg"><stop offset="0" stopColor="#34d399" stopOpacity=".4" /><stop offset="1" stopColor="#34d399" stopOpacity="0" /></radialGradient>
                   </defs>
+
+                  {/* Glows */}
+                  <ellipse className="dcm-gl dcm-gc" cx="1150" cy="400" rx="480" ry="330" fill="url(#dcm-gc)" />
+                  <ellipse className="dcm-gl dcm-ga" cx="1890" cy="590" rx="420" ry="300" fill="url(#dcm-ga)" />
+                  <ellipse className="dcm-gl dcm-gg" cx="1250" cy="1000" rx="560" ry="380" fill="url(#dcm-gg)" />
 
                   {/* Migration: data rises from the on-prem racks to the cloud */}
                   <g className="dcm-layer dcm-lm" filter="url(#dcm-blur)">
-                    <path className="dcm-f dcm-up" d="M560 490V290" />
-                    <path className="dcm-f dcm-up" d="M610 495V285" style={{ animationDelay: '-.3s' }} />
-                    <path className="dcm-f dcm-up" d="M660 500V280" style={{ animationDelay: '-.6s' }} />
-                    <path className="dcm-f dcm-up" d="M715 495V290" style={{ animationDelay: '-.2s' }} />
-                    <path className="dcm-f dcm-up" d="M770 490V300" style={{ animationDelay: '-.5s' }} />
+                    <path className="dcm-f dcm-up" d="M905 790V470" />
+                    <path className="dcm-f dcm-up" d="M985 800V460" style={{ animationDelay: '-.3s' }} />
+                    <path className="dcm-f dcm-up" d="M1065 805V450" style={{ animationDelay: '-.6s' }} />
+                    <path className="dcm-f dcm-up" d="M1150 800V460" style={{ animationDelay: '-.2s' }} />
+                    <path className="dcm-f dcm-up" d="M1240 790V480" style={{ animationDelay: '-.5s' }} />
                   </g>
 
                   {/* Disaster recovery: replication to the DR site */}
                   <g className="dcm-layer dcm-ld" filter="url(#dcm-blur)">
-                    <path className="dcm-f dcm-am" d="M807 484C870 350 1025 236 1155 323" />
-                    <path className="dcm-f dcm-am" d="M815 490C890 370 1040 260 1160 335" style={{ animationDelay: '-.4s' }} />
-                    <path className="dcm-f dcm-am" d="M822 498C905 390 1050 285 1165 348" style={{ animationDelay: '-.8s' }} />
+                    <path className="dcm-f dcm-am" d="M1300 780C1400 560 1650 380 1860 520" />
+                    <path className="dcm-f dcm-am" d="M1313 790C1430 590 1675 420 1870 540" style={{ animationDelay: '-.4s' }} />
+                    <path className="dcm-f dcm-am" d="M1325 805C1460 625 1690 460 1880 560" style={{ animationDelay: '-.8s' }} />
                   </g>
 
                   {/* Implementation: links up, circuits green */}
                   <g className="dcm-layer dcm-li" filter="url(#dcm-blur)">
-                    <path className="dcm-f dcm-gr" d="M610 770C520 810 420 850 330 893" />
-                    <path className="dcm-f dcm-gr" d="M700 775C640 830 560 870 520 893" style={{ animationDelay: '-.5s' }} />
-                    <path className="dcm-f dcm-gr" d="M1010 700C1150 660 1290 600 1330 540" style={{ animationDelay: '-.9s' }} />
+                    <path className="dcm-f dcm-gr" d="M982 1240C838 1305 676 1370 531 1438" />
+                    <path className="dcm-f dcm-gr" d="M1127 1250C1030 1340 900 1400 837 1438" style={{ animationDelay: '-.5s' }} />
+                    <path className="dcm-f dcm-gr" d="M1626 1127C1855 1063 2077 966 2144 870" style={{ animationDelay: '-.9s' }} />
                   </g>
 
                   <g filter="url(#dcm-blur)">
@@ -168,7 +180,7 @@ export const FloatingDataCenter: React.FC = () => {
                         style={{ ['--i' as any]: i }}
                         cx={x}
                         cy={y}
-                        r={5}
+                        r={8}
                       />
                     ))}
                   </g>

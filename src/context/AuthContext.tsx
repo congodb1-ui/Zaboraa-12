@@ -88,15 +88,14 @@ export const ADMIN_EMAILS = [
   'anansari678@gmail.com'
 ];
 
-export function isUserAdminEmail(email?: string | null): boolean {
-  if (!email) return false;
-  const lower = email.toLowerCase().trim();
-  return (
-    ADMIN_EMAILS.includes(lower) ||
-    lower.startsWith('admin@') ||
-    lower.endsWith('@zaboraa.com') ||
-    lower === 'wasim.sayyed@zaboraa-cloud.com'
-  );
+/**
+ * SECURITY: an email address must never grant admin rights. Anyone can sign up with
+ * "admin@anything.com", and this runs in the browser, so it can be bypassed anyway.
+ * Admin status comes ONLY from the database (public.profiles.role / is_admin()).
+ * Kept as an exported no-op so existing imports keep compiling.
+ */
+export function isUserAdminEmail(_email?: string | null): boolean {
+  return false;
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -446,23 +445,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     const cleanEmail = email.trim().toLowerCase();
 
-    // Dedicated Master Administrator Credentials for initial system provisioning
-    if (cleanEmail === 'admin@zaboraa.com' && pass === 'Zaboraa@123!') {
-      const adminProfile: AuthUserProfile = {
-        uid: 'admin-master-root',
-        email: cleanEmail,
-        displayName: 'Enterprise Administrator',
-        photoURL: null,
-        licenseTier: 'enterprise',
-        role: 'admin',
-        provider: 'password'
-      };
-      setUser(adminProfile);
-      setSubscriptionTierState('enterprise');
-      saveLocalStoredUser(adminProfile);
-      return adminProfile;
-    }
-
     try {
       if (supabase && isSupabaseConfigured) {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -548,15 +530,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     const demo: AuthUserProfile = {
       uid: 'demo-architect-' + Date.now(),
-      email: 'wasim.sayyed@zaboraa-cloud.com',
-      displayName: 'Wasim Sayyed (Lead Architect)',
+      email: 'demo@example.invalid',
+      displayName: 'Demo Architect',
       photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-      licenseTier: 'enterprise',
-      role: 'admin',
+      licenseTier: 'free',
+      role: 'public',
       provider: 'demo'
     };
     setUser(demo);
-    setSubscriptionTierState('enterprise');
+    setSubscriptionTierState('free');
     saveLocalStoredUser(demo);
     return demo;
   };
@@ -612,11 +594,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const reauthenticateAdmin = async (password: string): Promise<boolean> => {
     if (!password) return false;
 
-    // Check hardcoded master admin credentials
-    if (user?.email?.toLowerCase() === 'admin@zaboraa.com' && password === 'Zaboraa@123!') {
-      return true;
-    }
-
     if (supabase && isSupabaseConfigured && user?.email) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -632,7 +609,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id', data.user.id)
           .maybeSingle();
 
-        return profileData?.role === 'admin' || user.email.toLowerCase() === 'admin@zaboraa.com';
+        return profileData?.role === 'admin';
       } catch {
         return false;
       }
@@ -659,7 +636,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearAuthError = () => setAuthError(null);
 
   // Live admin verification
-  const isAdmin = user?.role === 'admin' || isUserAdminEmail(user?.email);
+  const isAdmin = user?.role === 'admin' && user?.provider !== 'demo';
   const isAuthorized = isAdmin || user?.role === 'authorized';
 
   return (

@@ -275,13 +275,16 @@ export const AdminDashboardModal: React.FC = () => {
     }
   };
 
+  // Only a verified admin (or an unlocked offline admin vault) may use the console.
+  const canUseConsole = isAdmin || isOfflineAdminSession;
+
   useEffect(() => {
-    if (isAdminDashboardOpen) {
+    if (isAdminDashboardOpen && canUseConsole) {
       loadData();
     }
-  }, [isAdminDashboardOpen, isOnline]);
+  }, [isAdminDashboardOpen, isOnline, canUseConsole]);
 
-  if (!isAdminDashboardOpen) return null;
+  if (!isAdminDashboardOpen || !canUseConsole) return null;
 
   // Handle Briefing Status Change
   const handleUpdateBriefingStatus = async (briefingId: string, newStatus: string) => {

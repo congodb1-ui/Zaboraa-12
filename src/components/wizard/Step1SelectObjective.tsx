@@ -177,7 +177,7 @@ export const Step1SelectObjective: React.FC<Step1SelectObjectiveProps> = ({
           What is the primary architecture goal?
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
-          Select the strategic outcome for your enterprise cloud architecture. This drives sizing recommendations, interconnect configurations, and allowed target topology constraints.
+          Pick the outcome you want. This drives sizing, interconnects and the allowed target setup.
         </p>
       </div>
 
@@ -214,7 +214,7 @@ export const Step1SelectObjective: React.FC<Step1SelectObjectiveProps> = ({
             <div
               key={opt.id}
               onClick={() => handleSelectObjective(opt.id)}
-              className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between group ${
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between group ${
                 isSelected
                   ? 'bg-gradient-to-br from-slate-900 via-cyan-950/40 to-slate-900 border-cyan-500 shadow-lg shadow-cyan-500/10 ring-1 ring-cyan-500/40'
                   : 'bg-slate-900/70 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
@@ -257,15 +257,18 @@ export const Step1SelectObjective: React.FC<Step1SelectObjectiveProps> = ({
                   }`}>
                     {opt.targetRule}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    ({opt.targetRoleDesc})
-                  </span>
+                  {isSelected && (
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ({opt.targetRoleDesc})
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs text-slate-300 leading-relaxed">
                   {opt.description}
                 </p>
 
+                {isSelected && (
                 <div className="space-y-1 pt-1 border-t border-slate-800/80">
                   {opt.highlights.map((h, i) => (
                     <div key={i} className="text-[11px] text-slate-400 flex items-center gap-1.5">
@@ -274,6 +277,7 @@ export const Step1SelectObjective: React.FC<Step1SelectObjectiveProps> = ({
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             </div>
           );
@@ -287,7 +291,7 @@ export const Step1SelectObjective: React.FC<Step1SelectObjectiveProps> = ({
           <div>
             <span className="font-semibold text-white">Target Enforcement: </span>
             <span className="text-cyan-300 font-medium">{activeConstraints.ruleTitle}</span>
-            <span className="text-slate-400 hidden sm:inline"> — {activeConstraints.ruleDescription}</span>
+            <span className="text-slate-400 hidden xl:inline"> — {activeConstraints.ruleDescription}</span>
           </div>
         </div>
         <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold shrink-0 ${

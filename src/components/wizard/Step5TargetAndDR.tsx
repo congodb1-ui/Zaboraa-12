@@ -131,6 +131,7 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
   onScrollToBlueprint
 }) => {
   const [collapsedTargets, setCollapsedTargets] = useState<Record<string, boolean>>({});
+  const [expandedAdvanced, setExpandedAdvanced] = useState<Record<string, boolean>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const constraints = getTargetConstraintsForObjective(wizardState.objective);
@@ -263,6 +264,9 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
       setValidationError(
         check.errors[0] || 'Please ensure target node counts, SKUs, and interconnect circuits are valid.'
       );
+      // Reveal hidden sections so the field behind an error is never out of sight
+      setCollapsedTargets({});
+      setExpandedAdvanced(Object.fromEntries(activeTargets.map((t) => [t.id, true])));
       return;
     }
     setValidationError(null);
@@ -288,7 +292,7 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
           </span>
         </div>
         <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
-          Configure one or multiple target platforms (Azure VMware Solution, Nutanix NC2 on Azure, Google Cloud VMware Engine, AWS VMC, or Azure Native). Assign environment roles, node SKUs, decoupled storage capacity, and replication SLAs.
+          Set the role, platform, node SKU and count for each target. Storage, migration and connectivity are summarized; open them to edit.
         </p>
       </div>
 
@@ -581,6 +585,30 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
                     </div>
                   </div>
 
+                  {/* Storage, migration and connectivity: summarized, expands to full controls */}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedAdvanced((p) => ({ ...p, [target.id]: !p[target.id] }))}
+                    aria-expanded={Boolean(expandedAdvanced[target.id])}
+                    className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-600 flex items-center justify-between gap-3 text-left cursor-pointer transition"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="text-xs font-bold text-slate-200">Storage, migration & connectivity</div>
+                      <div className="text-[11px] text-slate-400 font-mono truncate">
+                        {target.decoupledStorageEnabled ? `${target.decoupledStorageTB} TB decoupled storage` : 'No decoupled storage'}
+                        {' · '}
+                        {target.migrationTool || 'No migration tool'}
+                        {' · '}
+                        {target.interconnectCircuitType || wizardState.interconnectConfig?.type || 'No circuit'}
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-cyan-300 flex items-center gap-1 shrink-0">
+                      {expandedAdvanced[target.id] ? 'Hide' : 'Edit'}
+                      {expandedAdvanced[target.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </span>
+                  </button>
+                  {expandedAdvanced[target.id] && (
+                    <>
                   {/* Grid 3: Decoupled Storage, Migration Appliance, Interconnect Circuit */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* Decoupled Storage */}
@@ -686,6 +714,8 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
                       </div>
                     </div>
                   </div>
+                    </>
+                  )}
 
                   {/* Section: Disaster Recovery Replication SLA (Shown for DR role or when objective includes DR) */}
                   {(isDrRole ||
@@ -780,7 +810,7 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
               </h3>
             </div>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Synthesizes your configured multi-source and multi-target hybrid cloud topology into a photorealistic 3D isometric diagram illustrating only your selected components, direct interconnect conduits, isolated security perimeter, and DR targets.
+              Turns your configuration into a 3D architecture diagram you can review, export and share.
             </p>
           </div>
 

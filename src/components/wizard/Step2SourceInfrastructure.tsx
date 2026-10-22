@@ -116,6 +116,8 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
 }) => {
   const [collapsedSources, setCollapsedSources] = useState<Record<string, boolean>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [expandedExtras, setExpandedExtras] = useState<Record<string, boolean>>({});
+  const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({});
 
   // Ensure wizardState.sources is populated and initialized
   const activeSources: SourceInfrastructureItem[] =
@@ -268,6 +270,9 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
     });
     if (!check.isValid) {
       setValidationError(check.errors[0] || 'Please complete all required fields.');
+      // Open the hidden sections so the field behind an error is never out of sight
+      setExpandedClusters(Object.fromEntries(activeSources.map((src) => [src.id, true])));
+      setExpandedExtras(Object.fromEntries(activeSources.map((src) => [src.id, true])));
       return;
     }
     setValidationError(null);
@@ -317,7 +322,7 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
           </span>
         </div>
         <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
-          Select one or multiple source infrastructures (on-premises VMware, Nutanix, Microsoft Azure, AWS VMC, AVS, GCVE, or NC2). Expand each source below to customize platform-specific hypervisors, management subnets, and cluster capacities.
+          Pick your source platforms, then fill in the required fields for each one. Optional details and cluster sizing are one click away.
         </p>
       </div>
 
@@ -381,23 +386,18 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
         </div>
       </div>
 
-      {/* SECTION 1: Multi-Source Platform Selection Grid */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-          <div className="space-y-0.5">
-            <div className="text-xs font-bold text-slate-200">
-              Select Source Infrastructure Platforms (Multiple Selection Supported)
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Click any platform to add or remove it from your hybrid architecture inventory.
-            </div>
+      {/* Platform selection: compact chips (same toggle handler) */}
+      <div className="p-3 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-bold text-slate-200">
+            Source platforms
+            <span className="text-slate-400 font-normal"> · click to add or remove</span>
           </div>
-          <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/50 px-2.5 py-1 rounded border border-cyan-800/40">
-            {activeSources.length} of 7 Platforms Active
+          <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-800/40">
+            {activeSources.length} of {SUPPORTED_SOURCE_PLATFORMS.length} active
           </span>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+        <div className="flex flex-wrap gap-2">
           {SUPPORTED_SOURCE_PLATFORMS.map((plat) => {
             const isSelected = activeSources.some((s) => s.platform === plat.id);
             return (
@@ -405,44 +405,22 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
                 key={plat.id}
                 type="button"
                 onClick={() => handleTogglePlatformSelection(plat.id)}
-                className={`p-3 rounded-xl border text-left transition relative cursor-pointer flex flex-col justify-between ${
+                title={plat.desc}
+                aria-pressed={isSelected}
+                className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
                   isSelected
-                    ? 'bg-cyan-950/40 border-cyan-500 text-white shadow-lg shadow-cyan-950/30 ring-1 ring-cyan-500/50'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    ? 'bg-cyan-950/50 border-cyan-500 text-white ring-1 ring-cyan-500/40'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <span
-                      className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded font-semibold ${
-                        isSelected
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                          : 'bg-slate-800 text-slate-500'
-                      }`}
-                    >
-                      {plat.badge}
-                    </span>
-                    <div
-                      className={`w-4 h-4 rounded-md flex items-center justify-center border transition ${
-                        isSelected
-                          ? 'bg-cyan-500 border-cyan-500 text-slate-950 font-bold'
-                          : 'border-slate-700 bg-slate-900'
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                  </div>
-                  <div className="font-bold text-xs text-white pt-1">{plat.label}</div>
-                  <div className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">
-                    {plat.desc}
-                  </div>
-                </div>
-
-                <div className="pt-2 text-[10px] font-mono flex items-center gap-1">
-                  <span className={isSelected ? 'text-cyan-400 font-semibold' : 'text-slate-500'}>
-                    {isSelected ? '✓ Configured & Active' : '+ Click to Enable'}
-                  </span>
-                </div>
+                <span
+                  className={`w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0 ${
+                    isSelected ? 'bg-cyan-500 border-cyan-500 text-slate-950' : 'border-slate-700 bg-slate-900'
+                  }`}
+                >
+                  {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                </span>
+                <span className="whitespace-nowrap">{plat.label}</span>
               </button>
             );
           })}
@@ -681,6 +659,23 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
                       />
                     </div>
 
+                    {/* Optional fields: collapsed by default, nothing removed */}
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedExtras((p) => ({ ...p, [source.id]: !p[source.id] }))}
+                        aria-expanded={Boolean(expandedExtras[source.id])}
+                        className="text-[11px] font-semibold text-cyan-300 hover:text-cyan-200 flex items-center gap-1 cursor-pointer"
+                      >
+                        {expandedExtras[source.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        <span>
+                          Optional details
+                          <span className="text-slate-500 font-normal"> · endpoint, hardware model, notes</span>
+                        </span>
+                      </button>
+                    </div>
+                    {expandedExtras[source.id] && (
+                      <>
                     {/* Field 4: Management Endpoint / FQDN (Optional) */}
                     <div className="space-y-1">
                       <label className="text-slate-400">
@@ -735,8 +730,39 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
                         className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400"
                       />
                     </div>
+                      </>
+                    )}
                   </div>
 
+                  {/* Compute fabric: summary line, expands to the full cluster editor */}
+                  {!expandedClusters[source.id] ? (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedClusters((p) => ({ ...p, [source.id]: true }))}
+                      className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-600 flex items-center justify-between gap-3 text-left cursor-pointer transition"
+                    >
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="text-xs font-bold text-slate-200">
+                          Compute fabric · {source.clusters.length} cluster{source.clusters.length > 1 ? 's' : ''}
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono truncate">
+                          {hostCount} hosts · {source.clusters.reduce((acc, c) => acc + c.hostCount * c.sockets * c.coresPerSocket, 0)} cores · {(source.clusters.reduce((acc, c) => acc + c.hostCount * c.ramGB, 0) / 1024).toFixed(1)} TB RAM
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-cyan-300 flex items-center gap-1 shrink-0">
+                        Edit clusters <ChevronDown className="w-3.5 h-3.5" />
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedClusters((p) => ({ ...p, [source.id]: false }))}
+                        className="text-[11px] font-semibold text-cyan-300 hover:text-cyan-200 flex items-center gap-1 cursor-pointer"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                        <span>Hide cluster editor</span>
+                      </button>
                   {/* Compute Fabric / Clustered Nodes for this Source */}
                   <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
                     <div className="flex items-center justify-between">
@@ -887,6 +913,8 @@ export const Step2SourceInfrastructure: React.FC<Step2SourceInfrastructureProps>
                       ))}
                     </div>
                   </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

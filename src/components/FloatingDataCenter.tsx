@@ -10,11 +10,11 @@ import { useLocation } from 'react-router-dom';
  *   second third -> Disaster recovery (amber replication to the DR box)
  *   last third   -> Implementation (LEDs on one by one, circuits turn green)
  *
- * Put the PNG in /public with this exact name.
+ * Put data-center.webp in /public (public/data-center.webp). Open /data-center.webp on your site to confirm it loads.
  * All overlay coordinates are in the PNG's OWN pixel space (1977 x 1536).
  */
 
-const IMG = '/Data_center_module_illustration_2K_20261022173328-Photoroom.png';
+const IMG = '/data-center.webp';
 const W = 1977;
 const H = 1536;
 
@@ -32,10 +32,10 @@ const MODES: Record<Mode, { title: string; text: string; color: string }> = {
  * Tune these to keep it clear of your text blocks.
  */
 const WAYPOINTS = [
-  { p: 0.0, x: 24, y: 2, s: 1.0 },
-  { p: 0.34, x: -24, y: 4, s: 0.92 },
-  { p: 0.67, x: 25, y: -2, s: 0.98 },
-  { p: 1.0, x: 31, y: 22, s: 0.55 }
+  { p: 0.0, x: 36, y: 8, s: 1.0 },
+  { p: 0.34, x: -38, y: 10, s: 1.0 },
+  { p: 0.67, x: 37, y: 8, s: 1.0 },
+  { p: 1.0, x: 38, y: 24, s: 0.7 }
 ];
 
 const sample = (p: number) => {
@@ -89,6 +89,7 @@ export const FloatingDataCenter: React.FC = () => {
   const tiltRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<Mode>('migration');
   const [open, setOpen] = useState(true);
+  const [imgOk, setImgOk] = useState(true);
 
   useEffect(() => {
     if (!onHome) return;
@@ -168,7 +169,7 @@ export const FloatingDataCenter: React.FC = () => {
       ) : (
         <div
           ref={posRef}
-          className="hidden lg:block fixed left-1/2 top-1/2 z-10 w-[min(46vw,680px)] pointer-events-none select-none will-change-transform"
+          className="hidden lg:block fixed left-1/2 top-1/2 z-10 w-[min(24vw,360px)] pointer-events-none select-none will-change-transform"
         >
           <div ref={tiltRef} className="dcm-tilt">
             <div className="dcm-float">
@@ -178,8 +179,15 @@ export const FloatingDataCenter: React.FC = () => {
                   alt=""
                   aria-hidden="true"
                   draggable={false}
-                  className="absolute inset-0 w-full h-full"
+                  onError={() => setImgOk(false)}
+                  className="absolute inset-0 w-full h-full drop-shadow-[0_10px_30px_rgba(34,211,238,0.25)]"
                 />
+
+                {!imgOk && (
+                  <div className="absolute inset-0 flex items-center justify-center text-center text-[11px] text-rose-300 bg-slate-950/80 rounded-xl p-3">
+                    Image not found: put data-center.webp in /public
+                  </div>
+                )}
 
                 <svg
                   viewBox={`0 0 ${W} ${H}`}

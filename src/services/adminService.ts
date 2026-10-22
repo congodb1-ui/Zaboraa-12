@@ -1807,21 +1807,7 @@ Sitemap: ${getCanonicalDomain()}/sitemap.xml
     let persistedToCloud = false;
     let cloudError: string | undefined;
 
-    // 1. Persist to server API (/api/settings) so changes immediately reach Incognito & other devices
-    if (typeof fetch !== 'undefined') {
-      try {
-        const res = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key, value, category: deducedCategory, description })
-        });
-        if (res.ok) {
-          persistedToCloud = true;
-        }
-      } catch (apiErr: any) {
-        // Handled gracefully
-      }
-    }
+
 
     // 2. Persist to Supabase PostgreSQL if configured
     if (isSupabaseConfigured && supabase) {

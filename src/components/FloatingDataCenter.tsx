@@ -10,11 +10,11 @@ import { useLocation } from 'react-router-dom';
  *   second third -> Disaster recovery (amber replication to the DR box)
  *   last third   -> Implementation (LEDs on one by one, circuits turn green)
  *
- * Put data-center.webp in /public (public/data-center.webp). Open /data-center.webp on your site to confirm it loads.
+ * Image lives at public/assets/images/data-center.webp (served as /assets/images/data-center.webp).
  * All overlay coordinates are in the PNG's OWN pixel space (1977 x 1536).
  */
 
-const IMG = '/data-center.webp';
+const IMG = '/assets/images/data-center.webp';
 const W = 1977;
 const H = 1536;
 
@@ -185,7 +185,7 @@ export const FloatingDataCenter: React.FC = () => {
 
                 {!imgOk && (
                   <div className="absolute inset-0 flex items-center justify-center text-center text-[11px] text-rose-300 bg-slate-950/80 rounded-xl p-3">
-                    Image not found: put data-center.webp in /public
+                    Image not found: /assets/images/data-center.webp
                   </div>
                 )}
 

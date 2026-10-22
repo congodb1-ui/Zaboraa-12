@@ -1,7 +1,8 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { TelemetryBackground } from '../TelemetryBackground';
 import { useCustomization } from '../../context/CustomizationContext';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Isolated AdminLayout:
@@ -10,6 +11,18 @@ import { useCustomization } from '../../context/CustomizationContext';
  */
 export const AdminLayout: React.FC = () => {
   const { theme, siteConfig } = useCustomization();
+  const { isAdmin, isOfflineAdminSession, loading } = useAuth();
+
+  // Defense in depth: even if a route is added without the RequireAdmin wrapper,
+  // this layout never renders for a non-admin.
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
+        Verifying access…
+      </div>
+    );
+  }
+  if (!isAdmin && !isOfflineAdminSession) return <Navigate to="/" replace />;
 
   return (
     <div

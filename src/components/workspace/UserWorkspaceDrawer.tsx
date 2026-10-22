@@ -44,7 +44,10 @@ export const UserWorkspaceDrawer: React.FC = () => {
     restoreSnapshot,
     exportCurrentWorkspace,
     importWorkspaceFromFile,
-    snapshots
+    snapshots,
+    recentlyDeleted,
+    undoDelete,
+    dismissDeleteUndo
   } = useWorkspace();
 
   const [activeTab, setActiveTab] = useState<'workspaces' | 'snapshots' | 'export_import'>('workspaces');
@@ -168,6 +171,28 @@ export const UserWorkspaceDrawer: React.FC = () => {
                   title="Rename workspace"
                 >
                   Rename
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Undo bar after deleting a workspace */}
+          {recentlyDeleted && (
+            <div className="px-6 py-3 bg-amber-950/60 border-b border-amber-500/40 flex items-center justify-between text-xs text-amber-100">
+              <span className="truncate pr-3">"{recentlyDeleted.name}" was deleted.</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={undoDelete}
+                  className="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black cursor-pointer"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={dismissDeleteUndo}
+                  aria-label="Dismiss"
+                  className="p-1 rounded-lg text-amber-200 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>

@@ -167,7 +167,7 @@ const PublicLayout: React.FC = () => {
  * This is the UI layer only; the database rules are what actually protect the data.
  */
 const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, isOfflineAdminSession, loading } = useAuth();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
@@ -175,7 +175,7 @@ const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       </div>
     );
   }
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin && !isOfflineAdminSession) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceProvider } from './context/WorkspaceContext';
@@ -161,6 +161,24 @@ const PublicLayout: React.FC = () => {
   );
 };
 
+/**
+ * Route guard: only a signed-in user whose role is 'admin' (loaded from the database)
+ * can render the admin console. Everyone else is sent to the home page.
+ * This is the UI layer only; the database rules are what actually protect the data.
+ */
+const RequireAdmin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAdmin, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
+        Verifying access…
+      </div>
+    );
+  }
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 export default function App() {
   return (
     <AuthErrorBoundary fallbackTitle="Enterprise Cloud Workspace">
@@ -190,11 +208,11 @@ export default function App() {
                 </Route>
 
                 {/* 2. Dedicated Admin Console Routes (Completely Isolated Layout) */}
-                <Route path="/admin" element={<AdminLayout />}>
+                <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
                   <Route index element={<AdminControlCenterPage />} />
                   <Route path=":tab" element={<AdminControlCenterPage />} />
                 </Route>
-                <Route path="/console" element={<AdminLayout />}>
+                <Route path="/console" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
                   <Route index element={<AdminControlCenterPage />} />
                   <Route path=":tab" element={<AdminControlCenterPage />} />
                 </Route>

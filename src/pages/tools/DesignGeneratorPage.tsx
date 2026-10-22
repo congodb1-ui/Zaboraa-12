@@ -36,7 +36,8 @@ import {
   GripVertical,
   Activity,
   Settings2,
-  FolderGit2
+  FolderGit2,
+  ChevronDown
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
 import { useCustomization } from '../../context/CustomizationContext';
@@ -1070,6 +1071,7 @@ export const DesignGeneratorPage: React.FC = () => {
   const [zoomScale, setZoomScale] = useState<number>(1.0);
   const [showDossierModal, setShowDossierModal] = useState<boolean>(false);
   const [showPreFlightModal, setShowPreFlightModal] = useState<boolean>(false);
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [show3DModal, setShow3DModal] = useState<boolean>(false);
   const [importedNotice, setImportedNotice] = useState<string | null>(null);
 
@@ -2563,18 +2565,15 @@ export const DesignGeneratorPage: React.FC = () => {
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-              <span>Enterprise 4K Architecture & 3D Blueprint Engine</span>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 font-mono font-semibold">
-                Dual Mode: Vector + 3D AI
-              </span>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              Enterprise 4K Architecture & 3D Blueprint Engine
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-3xl">
-              Synthesize enterprise VMware hybrid topologies into presentation-ready 3840×2160 (4K) blueprints and AI-generated 3D isometric architecture diagrams with glowing neon transit paths.
+              Choose a template, answer a few questions, and generate a presentation-ready architecture blueprint.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2.5">
             {/* Primary AI Generation Trigger Button */}
             <button
               onClick={() => {
@@ -2597,72 +2596,99 @@ export const DesignGeneratorPage: React.FC = () => {
               <span>Generate 3D Blueprint</span>
             </button>
 
-            {/* Save Design */}
-            <button
-              onClick={handlePersistLegacyState}
-              className="px-3.5 py-2.5 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow transition-all hover:scale-[1.02]"
-              title="Save current architecture design state and synchronize storage"
-            >
-              <Save className="w-4 h-4 text-cyan-400" />
-              <span>Save Design</span>
-            </button>
+            {/* Save & Export menu (same actions as before, grouped) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowExportMenu((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={showExportMenu}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow"
+              >
+                <Save className="w-4 h-4 text-cyan-400" />
+                <span>Save & Export</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
 
-            {/* Export Complete Blueprint JSON */}
-            <button
-              onClick={handleExportBlueprintJSON}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow"
-              title="Export complete multi-cloud architecture topology model as JSON"
-            >
-              <FileDown className="w-4 h-4 text-cyan-400" />
-              <span>Export JSON</span>
-            </button>
-
-            {/* Export BOM Excel */}
-            <button
-              onClick={handleExportBOMExcel}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow"
-              title="Generate Bill of Materials Excel spreadsheet and sync storage"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Export BOM (.xlsx)</span>
-            </button>
-
-            {/* Export 4K Canvas */}
-            <button
-              onClick={() => handleExport4K('png')}
-              disabled={!activeFeatureControls.export4k}
-              className={`px-3.5 py-2.5 rounded-xl border font-semibold text-xs flex items-center gap-2 shadow transition ${
-                activeFeatureControls.export4k
-                  ? 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200 cursor-pointer'
-                  : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed opacity-60'
-              }`}
-              title={activeFeatureControls.export4k ? "Download high-resolution 4K canvas vector render" : "4K Export disabled by Administrator"}
-            >
-              <Download className="w-4 h-4 text-cyan-400" />
-              <span>Export 4K Canvas</span>
-            </button>
-
-            {/* Executive Dossier */}
-            <button
-              onClick={() => {
-                if (!activeFeatureControls.exportDossier) {
-                  setSaveSuccessNotice('Executive Dossier is disabled by Administrator Feature Controls.');
-                  setTimeout(() => setSaveSuccessNotice(null), 4000);
-                  return;
-                }
-                setShowDossierModal(true);
-              }}
-              disabled={!activeFeatureControls.exportDossier}
-              className={`px-3.5 py-2.5 rounded-xl border font-semibold text-xs flex items-center gap-2 shadow transition ${
-                activeFeatureControls.exportDossier
-                  ? 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200 cursor-pointer'
-                  : 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed opacity-60'
-              }`}
-              title={activeFeatureControls.exportDossier ? "Open Executive Architecture Dossier" : "Executive Dossier disabled by Administrator"}
-            >
-              <Printer className="w-4 h-4 text-emerald-400" />
-              <span>Executive Dossier</span>
-            </button>
+              {showExportMenu && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowExportMenu(false)} />
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-60 z-40 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 space-y-0.5"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setShowExportMenu(false); handlePersistLegacyState(); }}
+                      className="w-full px-3 py-2 rounded-lg text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                      title="Save current architecture design state and synchronize storage"
+                    >
+                      <Save className="w-4 h-4 text-cyan-400" />
+                      <span>Save Design</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setShowExportMenu(false); handleExportBlueprintJSON(); }}
+                      className="w-full px-3 py-2 rounded-lg text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                      title="Export complete multi-cloud architecture topology model as JSON"
+                    >
+                      <FileDown className="w-4 h-4 text-cyan-400" />
+                      <span>Export JSON</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setShowExportMenu(false); handleExportBOMExcel(); }}
+                      className="w-full px-3 py-2 rounded-lg text-left text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                      title="Generate Bill of Materials Excel spreadsheet and sync storage"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                      <span>Export BOM (.xlsx)</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setShowExportMenu(false); handleExport4K('png'); }}
+                      disabled={!activeFeatureControls.export4k}
+                      className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center gap-2 ${
+                        activeFeatureControls.export4k
+                          ? 'text-slate-200 hover:bg-slate-800 cursor-pointer'
+                          : 'text-slate-500 opacity-60 cursor-not-allowed'
+                      }`}
+                      title={activeFeatureControls.export4k ? "Download high-resolution 4K canvas vector render" : "4K Export disabled by Administrator"}
+                    >
+                      <Download className="w-4 h-4 text-cyan-400" />
+                      <span>Export 4K Canvas</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowExportMenu(false);
+                        if (!activeFeatureControls.exportDossier) {
+                          setSaveSuccessNotice('Executive Dossier is disabled by Administrator Feature Controls.');
+                          setTimeout(() => setSaveSuccessNotice(null), 4000);
+                          return;
+                        }
+                        setShowDossierModal(true);
+                      }}
+                      disabled={!activeFeatureControls.exportDossier}
+                      className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center gap-2 ${
+                        activeFeatureControls.exportDossier
+                          ? 'text-slate-200 hover:bg-slate-800 cursor-pointer'
+                          : 'text-slate-500 opacity-60 cursor-not-allowed'
+                      }`}
+                      title={activeFeatureControls.exportDossier ? "Open Executive Architecture Dossier" : "Executive Dossier disabled by Administrator"}
+                    >
+                      <Printer className="w-4 h-4 text-emerald-400" />
+                      <span>Executive Dossier</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -14,7 +14,6 @@ import { WatermarkSettingsModal } from './components/WatermarkSettingsModal';
 import { CommercializeModal } from './components/CommercializeModal';
 import { AuthErrorBoundary } from './components/AuthErrorBoundary';
 import { TelemetryBackground } from './components/TelemetryBackground';
-import { FloatingDataCenter } from './components/FloatingDataCenter';
 import { AdminDashboardModal } from './components/admin/AdminDashboardModal';
 import { PWAInstallPrompt } from './components/offline/PWAInstallPrompt';
 import { TrackRecordEditorModal } from './components/TrackRecordEditorModal';

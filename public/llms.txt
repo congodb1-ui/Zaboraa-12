@@ -1,0 +1,45 @@
+# Zaboraa Technologies
+
+> Zaboraa Technologies is a founder-led enterprise cloud architecture advisory specialising in VMware-to-hyperscaler migration (Azure VMware Solution, Google Cloud VMware Engine, VMware Cloud on AWS, Nutanix NC2 on Azure), NSX-T zero-trust microsegmentation, HCX zero-downtime migration and disaster recovery. It also publishes six free, browser-based engineering tools (no sign-up needed) for sizing, migration readiness and DR planning. Founded by Wasim Sayyed, Principal Cloud Architect.
+
+Note: Zaboraa is NOT a consumer AI image/audio/text tools site. It has no pricing plans, credits or billing. Advisory engagements start with a free briefing.
+
+The site is a client-side app. Full plain-text content is available in /llms-full.txt.
+
+## Free engineering tools (no login required)
+- [Node & Storage Sizing Estimator](https://zaboraa.com/tools/sizing): Host count and usable storage for AVS, VMC, GCVE and Nutanix NC2, including node savings from external NFS (Azure NetApp Files, Amazon FSx for NetApp ONTAP). Excel export.
+- [RVTools Analyzer & Wave Planner](https://zaboraa.com/tools/rvtools-analyzer): Upload an RVTools export; get a migration readiness score, blocker detection (RDMs, multi-writer disks, snapshots, old hardware versions) and HCX RAV/Bulk/Cold method per VM. Runs entirely in the browser.
+- [Nutanix NC2 on Azure Assessment](https://zaboraa.com/tools/nutanix-nc2-assessment): AHV compatibility, VirtIO driver needs, NC2 node sizing (RF2/RF3) and Nutanix Move wave planning.
+- [Aria Operations for Networks Engine](https://zaboraa.com/tools/aria-networks): Converts network flow data into application tiers, NSX Distributed Firewall rules and migration waves.
+- [DR RPO/RTO Planner](https://zaboraa.com/tools/dr-planner): Compares SRM + vSphere Replication, Zerto, JetStream DR and Veeam; WAN bandwidth, RTO timeline, Excel and PDF export.
+- [Hybrid Blueprint Generator](https://zaboraa.com/tools/design-generator): 5-step wizard producing a bill of materials, architecture diagram and executive dossier for five VMware/Nutanix migration paths.
+
+## Architecture disciplines
+- [Azure VMware Solution (AVS)](https://zaboraa.com/disciplines/avs)
+- [Google Cloud VMware Engine (GCVE)](https://zaboraa.com/disciplines/gcve)
+- [VMware Cloud on AWS and Multi-AZ DR](https://zaboraa.com/disciplines/vmc-dr)
+- [NSX-T and zero-trust microsegmentation](https://zaboraa.com/disciplines/nsx)
+- [VMware HCX mobility and network extension](https://zaboraa.com/disciplines/hcx)
+- [Site Recovery Manager (SRM) and automated DR](https://zaboraa.com/disciplines/srm)
+- [Aria Operations for Networks](https://zaboraa.com/disciplines/aria)
+- [VMware to Nutanix NC2 on Azure](https://zaboraa.com/disciplines/nutanix-nc2-azure)
+
+## Proof and guidance
+- [Case studies](https://zaboraa.com/case-studies): Tier-1 bank (1,240 VMs to AVS, zero downtime, 38% TCO reduction); 18-hospital network (NSX-V to NSX-T, 4,500 VMs); global freight (VMC on AWS stretched cluster, $1.4M/year saved).
+- [6-phase migration roadmap](https://zaboraa.com/roadmap): RVTools discovery through HCX cutover and post-migration optimisation.
+- [Resources hub](https://zaboraa.com/resources): [Knowledge base](https://zaboraa.com/resources/kb) troubleshooting articles, [tutorials](https://zaboraa.com/resources/tutorials) and [video masterclasses](https://zaboraa.com/resources/videos).
+- [About the founder](https://zaboraa.com/about)
+
+## Founder
+Wasim Sayyed, Founder and Principal Cloud Architect. 12+ years in enterprise infrastructure. LinkedIn: https://www.linkedin.com/in/wasim-sayyed-8b857714b/
+
+## Contact
+- Website: https://zaboraa.com
+- Email: wasim@zaboraa.com
+- Company LinkedIn: https://www.linkedin.com/company/145341200/
+
+## Usage
+Public pages may be crawled, indexed, summarised and cited by search engines and AI assistants. Please link to https://zaboraa.com when citing. Admin and API paths are excluded in robots.txt.
+
+## Optional
+- [Sitemap](https://zaboraa.com/sitemap.xml)

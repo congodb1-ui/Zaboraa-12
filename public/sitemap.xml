@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://zaboraa.com/</loc><lastmod>2026-11-02</lastmod><priority>1.0</priority></url>
+  <url><loc>https://zaboraa.com/about</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/case-studies</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/roadmap</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+
+  <url><loc>https://zaboraa.com/tools</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+  <url><loc>https://zaboraa.com/tools/sizing</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+  <url><loc>https://zaboraa.com/tools/rvtools-analyzer</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+  <url><loc>https://zaboraa.com/tools/nutanix-nc2-assessment</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+  <url><loc>https://zaboraa.com/tools/aria-networks</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+  <url><loc>https://zaboraa.com/tools/dr-planner</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+  <url><loc>https://zaboraa.com/tools/design-generator</loc><lastmod>2026-11-02</lastmod><priority>0.9</priority></url>
+
+  <url><loc>https://zaboraa.com/disciplines/avs</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/gcve</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/vmc-dr</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/nsx</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/hcx</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/srm</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/aria</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+  <url><loc>https://zaboraa.com/disciplines/nutanix-nc2-azure</loc><lastmod>2026-11-02</lastmod><priority>0.8</priority></url>
+
+  <url><loc>https://zaboraa.com/resources</loc><lastmod>2026-11-02</lastmod><priority>0.7</priority></url>
+  <url><loc>https://zaboraa.com/resources/kb</loc><lastmod>2026-11-02</lastmod><priority>0.7</priority></url>
+  <url><loc>https://zaboraa.com/resources/tutorials</loc><lastmod>2026-11-02</lastmod><priority>0.7</priority></url>
+  <url><loc>https://zaboraa.com/resources/videos</loc><lastmod>2026-11-02</lastmod><priority>0.7</priority></url>
+</urlset>

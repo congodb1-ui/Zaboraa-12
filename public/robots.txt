@@ -1,0 +1,92 @@
+# zaboraa.com — Zaboraa Technologies
+# Canonical host is the apex domain (www redirects to it).
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+
+# --- AI search and answer engines (these decide whether you get cited) ---
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+# --- AI training crawlers (allow = your content can shape future models) ---
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: CCBot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+# --- Classic search (also feeds Google AI Overviews and ChatGPT/Copilot via Bing) ---
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /console
+Disallow: /api/
+
+Sitemap: https://zaboraa.com/sitemap.xml

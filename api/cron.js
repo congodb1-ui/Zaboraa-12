@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     )
     
     // Real DB hit - this resets the 7-day timer
-    const { error } = await supabase.from('app_settings').select('id').limit(1)
+    const { error } = await supabase.from('app_settings').select('*').limit(1)
     
     if (error) throw error
     

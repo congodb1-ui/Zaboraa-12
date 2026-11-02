@@ -19,8 +19,9 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!robots.txt|llms.txt|llms-full.txt|sitemap.xml|manifest.json|favicon.ico|api/).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "cleanUrls": true
 }

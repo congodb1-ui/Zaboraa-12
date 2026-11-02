@@ -79,11 +79,14 @@ const PublicLayout: React.FC = () => {
         theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       } theme-root flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative`}
     >
+
+
       {/* Live Ambient Telemetry Particles */}
       <TelemetryBackground />
-      <FloatingDataCenter />
 
       {/* Site-wide Announcement Banner (Admin Configurable) */}
+
+      
       {siteConfig.adminSettings?.announcementBannerEnabled && (
         <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-b border-emerald-500/40 px-4 py-2 text-center text-xs font-semibold text-emerald-200 flex items-center justify-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />

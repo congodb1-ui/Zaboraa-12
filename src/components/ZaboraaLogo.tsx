@@ -134,7 +134,7 @@ export const ZaboraaLogo: React.FC<ZaboraaLogoProps> = ({
   logoUrl: propLogoUrl
 }) => {
   const { brandName: contextBrandName, brandLogoUrl: contextLogoUrl, siteConfig } = useCustomization();
-  const effectiveBrandName = propBrandName || contextBrandName || 'Zaboraa Technologies';
+  const effectiveBrandName = propBrandName || contextBrandName || 'Zaboraa';
   const effectiveLogoUrl = propLogoUrl || contextLogoUrl;
 
   const sizeMap = {

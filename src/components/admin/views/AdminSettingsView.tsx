@@ -120,10 +120,10 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
     siteConfig.founder?.role || 'Lead Principal Hybrid Cloud Architect'
   );
   const [founderLocation, setFounderLocation] = useState(
-    siteConfig.founder?.location || 'Pune, Maharashtra, India'
+    siteConfig.founder?.location || 'Pune & Global Advisory'
   );
   const [founderPhone, setFounderPhone] = useState(
-    siteConfig.founder?.phone || '+91 9028 920 892'
+    siteConfig.founder?.phone || '+91 7497624807'
   );
   const [founderEmail, setFounderEmail] = useState(
     siteConfig.founder?.email || 'wasim.sayyed@zaboraa.com'

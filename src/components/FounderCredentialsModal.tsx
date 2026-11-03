@@ -266,7 +266,7 @@ export const FounderCredentialsModal: React.FC = () => {
                     handleAddCert();
                   }
                 }}
-                placeholder="Add certification (e.g. VCAP-NV Deploy 2026, Azure Solutions Architect Expert)..."
+                placeholder="Add certification (e.g. NCP-CI-Azure 6.10, VCAP-DCV Design 2023)..."
                 className="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
               />
               <button

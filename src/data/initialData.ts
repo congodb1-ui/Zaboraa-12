@@ -600,17 +600,17 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     name: 'Wasim Sayyed',
     role: 'Founder & Principal VMware Architect',
     certifications: [
-      'VCAP-DCV Design & Deploy',
-      'VMC on AWS Master Specialist',
-      'VMware Cloud Foundation (VCF) Specialist',
-      'Azure Solutions Architect Expert',
-      'Google Cloud Professional Cloud Architect',
-      'NSX-T Advanced Network Security'
+      'Nutanix Certified Professional - Cloud Integration - Azure (NCP-CI-Azure) 6.10 | Nutanix | May 2026',
+      'VMware Certified Advanced Professional - Data Center Virtualization Design 2023 (VCAP-DCV Design 2023) | VMware by Broadcom | Oct 2023',
+      'VMware Certified Professional - Network Virtualization 2023 (VCP-NV 2023) | VMware by Broadcom | Feb 2023',
+      'VMware Certified Professional - Data Center Virtualization 2023 (VCP-DCV 2023) | VMware by Broadcom | Jan 2023',
+      'VMware Certified Specialist - Cloud Foundation 2023 | VMware by Broadcom | Jan 2023',
+      'Master Specialist - VMware Cloud on AWS 2023 | VMware by Broadcom | Jan 2023'
     ],
-    bio: 'Architecting high-consequence enterprise cloud evacuations and sovereign VMware environments across Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC), and NSX-T SDN. Zero-downtime RAV for eligible workloads; minimal-downtime Bulk for the rest.',
+    bio: 'Founder-led VMware and Nutanix cloud migration and disaster-recovery advisory across Azure AVS, NC2, GCVE and VMC.',
     phone: '+91 7497624807',
     email: 'wasim@zaboraa.com',
-    location: 'Pune, Maharashtra, India',
+    location: 'Pune & Global Advisory',
     portraitImage: '/assets/images/Wasim-Pic-02.png',
     photoStyle: {
       zoom: 1.0,
@@ -626,9 +626,9 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     subheadline: 'Architecting mission-critical enterprise cloud evacuations, sovereign VMware software-defined datacenters, and automated disaster recovery across Azure (AVS), AWS (VMC), and Google Cloud (GCVE).',
     stats: [
       { value: '14+', label: 'Middle East Government Entities' },
-      { value: '13', label: 'Years VMware Architecture' },
-      { value: 'AVS · GCVE · VMC', label: 'Hyperscaler Platforms' },
-      { value: '6×', label: 'Verified Certifications' }
+      { value: '12+', label: 'Years Enterprise Infrastructure' },
+      { value: 'AVS · NC2 · GCVE · VMC', label: 'Hyperscaler Platforms' },
+      { value: '6×', label: 'Verified Cloud Certifications' }
     ],
     heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.jpg'
   },

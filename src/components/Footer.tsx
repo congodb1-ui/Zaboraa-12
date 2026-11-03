@@ -106,21 +106,21 @@ export const Footer: React.FC = () => {
             <div className="space-y-2">
               <div className="font-semibold text-slate-200">{founder.name}</div>
               <div className="text-[11px] text-cyan-300">{founder.role}</div>
-              <div className="text-[11px] text-slate-400">{founder.location}</div>
+              <div className="text-[11px] text-slate-400">{founder.location || 'Pune & Global Advisory'}</div>
               <div className="pt-2 space-y-1.5">
                 <a
-                  href={`mailto:${founder.email}`}
+                  href={`mailto:${founder.email || 'wasim@zaboraa.com'}`}
                   className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors text-slate-300"
                 >
                   <Mail className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{founder.email}</span>
+                  <span>{founder.email || 'wasim@zaboraa.com'}</span>
                 </a>
                 <a
-                  href={`tel:${founder.phone}`}
+                  href={`tel:${(founder.phone || '+91 7497624807').replace(/\s+/g, '')}`}
                   className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors text-slate-300"
                 >
                   <Phone className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{founder.phone}</span>
+                  <span>{founder.phone || '+91 7497624807'}</span>
                 </a>
               </div>
               <div className="pt-2">

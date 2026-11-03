@@ -91,11 +91,11 @@ export const Hero: React.FC = () => {
               </button>
 
               <a
-                href={`tel:${founder.phone.replace(/\s+/g, '')}`}
+                href={`tel:${(founder.phone || '+91 7497624807').replace(/\s+/g, '')}`}
                 className="px-5 py-3 text-sm font-medium text-slate-800 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors flex items-center gap-2"
               >
                 <Phone className="w-4 h-4 text-sky-600 dark:text-cyan-400" />
-                <span>Direct: {founder.phone}</span>
+                <span>Direct: {founder.phone || '+91 7497624807'}</span>
               </a>
 
               <Link

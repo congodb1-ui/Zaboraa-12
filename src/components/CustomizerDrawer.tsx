@@ -1303,7 +1303,7 @@ export const CustomizerDrawer: React.FC = () => {
                         Lead Architect Credentials & Certifications
                       </h4>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        {siteConfig.founder.name} · {siteConfig.founder.certifications.length} verified badges (VCDX, Multi-Cloud)
+                        {siteConfig.founder.name} · {siteConfig.founder.certifications.length} verified badges (VCAP, NCP-CI, VCP, Master Specialist)
                       </p>
                     </div>
                     <button

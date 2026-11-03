@@ -227,11 +227,11 @@ export const ScheduleBriefingModal: React.FC = () => {
             </div>
             <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
               <a
-                href={`tel:${siteConfig.founder.phone.replace(/\s+/g, '')}`}
+                href={`tel:${(siteConfig.founder.phone || '+91 7497624807').replace(/\s+/g, '')}`}
                 className="py-2.5 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Phone className="w-3.5 h-3.5" />
-                <span>Call Directly Now ({siteConfig.founder.phone})</span>
+                <span>Call Directly Now ({siteConfig.founder.phone || '+91 7497624807'})</span>
               </a>
               <button
                 onClick={handleReset}

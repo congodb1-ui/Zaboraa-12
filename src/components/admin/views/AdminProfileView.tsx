@@ -37,9 +37,9 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
   const [roleTitle, setRoleTitle] = useState(
     siteConfig.founder?.role || 'Lead Cloud Infrastructure Architect'
   );
-  const [phone, setPhone] = useState('+1 (415) 890-2100');
+  const [phone, setPhone] = useState(siteConfig.founder?.phone || '+91 7497624807');
   const [department, setDepartment] = useState('Multi-Cloud Enterprise Solutions Practice');
-  const [location, setLocation] = useState(siteConfig.founder?.location || 'San Francisco, CA & Global');
+  const [location, setLocation] = useState(siteConfig.founder?.location || 'Pune & Global Advisory');
   const [bio, setBio] = useState(
     siteConfig.founder?.bio ||
       'Senior Infrastructure Architect specializing in enterprise VMware hyperscaler migrations across Azure AVS, AWS VMC, and Google Cloud GCVE.'

@@ -392,9 +392,9 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   {
     path: '/about',
     title: 'About Principal Architect Wasim Sayyed — Zaboraa',
-    description: 'Wasim Sayyed, Principal VMware Architect: 13 years VMware architecture experience, Pune, Maharashtra. Advisory across AVS, GCVE, VMC, and NC2.',
+    description: 'Wasim Sayyed, Principal VMware Architect: 12+ years enterprise infrastructure experience, Pune & Global Advisory. Advisory across AVS, NC2, GCVE, and VMC.',
     h1: 'Enterprise Cloud Architecture & Advisory',
-    summary: 'Founded by Wasim Sayyed, Principal VMware Architect with 13 years of VMware infrastructure architecture experience based in Pune, Maharashtra, India. Specialist in sovereign cloud migrations, Azure VMware Solution, Google Cloud VMware Engine, and VMware Cloud on AWS.',
+    summary: 'Founded by Wasim Sayyed, Principal VMware Architect with 12+ years of enterprise infrastructure experience, Pune & Global Advisory. Specialist in sovereign cloud migrations, Azure VMware Solution, Nutanix NC2 on Azure, Google Cloud VMware Engine, and VMware Cloud on AWS.',
     lastmod: '2026-11-03',
     jsonld: [
       BASE_ORGANIZATION_JSONLD,

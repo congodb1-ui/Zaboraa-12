@@ -296,13 +296,19 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             founder: {
               ...INITIAL_SITE_DATA.founder,
               ...(parsed.founder || {}),
+              phone: '+91 7497624807',
+              location: 'Pune & Global Advisory',
+              certifications: (Array.isArray(parsed.founder?.certifications) && parsed.founder.certifications.length > 0 && !parsed.founder.certifications.some((c: string) => c.includes('Azure Solutions') || c.includes('Professional Cloud Architect') || c.includes('Advanced Network Security')))
+                ? parsed.founder.certifications
+                : INITIAL_SITE_DATA.founder.certifications,
               portraitImage:
                 parsed.founder?.portraitImage || INITIAL_SITE_DATA.founder.portraitImage,
               photoStyle: parsed.founder?.photoStyle || INITIAL_SITE_DATA.founder.photoStyle
             },
             hero: {
               ...INITIAL_SITE_DATA.hero,
-              ...(parsed.hero || {})
+              ...(parsed.hero || {}),
+              stats: INITIAL_SITE_DATA.hero.stats
             },
             platformShowcases: (parsed.platformShowcases && parsed.platformShowcases.length > 0
               ? parsed.platformShowcases

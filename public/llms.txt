@@ -1,6 +1,6 @@
-# Zaboraa Technologies
+# Zaboraa
 
-> Zaboraa Technologies is a founder-led enterprise cloud architecture advisory specialising in VMware-to-hyperscaler migration (Azure VMware Solution, Google Cloud VMware Engine, VMware Cloud on AWS, Nutanix NC2 on Azure), NSX-T zero-trust microsegmentation, HCX zero-downtime migration and disaster recovery. It also publishes six free, browser-based engineering tools (no sign-up needed) for sizing, migration readiness and DR planning. Founded by Wasim Sayyed, Principal Cloud Architect.
+> Zaboraa is a founder-led enterprise cloud architecture advisory specialising in VMware-to-hyperscaler migration (Azure VMware Solution, Google Cloud VMware Engine, VMware Cloud on AWS, Nutanix NC2 on Azure), NSX-T zero-trust microsegmentation, HCX zero-downtime migration and disaster recovery. It also publishes six free, browser-based engineering tools (no sign-up needed) for sizing, migration readiness and DR planning. Founded by Wasim Sayyed, Principal Cloud Architect.
 
 Note: Zaboraa is NOT a consumer AI image/audio/text tools site. It has no pricing plans, credits or billing. Advisory engagements start with a free briefing.
 

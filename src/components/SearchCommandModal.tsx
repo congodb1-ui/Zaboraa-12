@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
 import { Search, X, Layers, BookOpen, Film, Server, ArrowRight, Cpu, HardDrive, FileSpreadsheet, ShieldAlert, History, Trash2 } from 'lucide-react';
+import { isDummyVideoUrl } from '../utils/videoUtils';
 
 const RECENT_SEARCHES_KEY = 'zaboraa_recent_searches_v1';
 
@@ -118,9 +119,10 @@ export const SearchCommandModal: React.FC = () => {
 
   const matchingVideos = siteConfig.videos.filter(
     v =>
-      v.title.toLowerCase().includes(lowerQuery) ||
-      v.summary.toLowerCase().includes(lowerQuery) ||
-      v.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+      !isDummyVideoUrl(v.embedUrl) &&
+      (v.title.toLowerCase().includes(lowerQuery) ||
+       v.summary.toLowerCase().includes(lowerQuery) ||
+       v.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
   );
 
   const engineeringTools = [

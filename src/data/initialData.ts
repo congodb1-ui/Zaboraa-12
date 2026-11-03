@@ -4,7 +4,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
   brand: 'Zaboraa',
   brandTagline: 'Founder-Led Enterprise VMware Cloud Architecture',
   enableHotspots: false,
-  featuredVideoId: 'video-hcx-masterclass',
+  featuredVideoId: undefined,
   watermark: {
     enabled: true,
     type: 'text',
@@ -44,8 +44,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Full-lifecycle private cloud engineering with native Azure peering, ExpressRoute FastPath routing, Azure NetApp Files (ANF) external NFS datastore decoupling, and zero-downtime HCX bulk migrations.',
       mediaType: 'image',
       imageUrl: '/assets/images/avs_architecture_showcase_1791541766807.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '24:18',
       keyDeliverables: [
         'ExpressRoute FastPath routing directly bypassing gateway CPU limits and bottlenecks',
         'Azure NetApp Files (ANF) NFS datastores decoupling storage volume growth from host licensing',
@@ -116,8 +114,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Dedicated GCVE private clouds with Private Services Access (PSA) peering, secure VPC connectivity, and direct BigQuery / Vertex AI analytics pipelines without traversing internet gateways.',
       mediaType: 'image',
       imageUrl: '/assets/images/gcve_architecture_showcase_1791541780539.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '21:05',
       keyDeliverables: [
         'Dedicated bare-metal SDDC clusters in 99.99% availability zones with ve1-standard-72 nodes',
         'Private Services Access (PSA) peering directly connecting GCVE overlay segments to Google VPC',
@@ -185,8 +181,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Resilient multi-availability zone stretched clusters providing synchronous vSAN replication and automated DRS failover, seamless Connected VPC cross-linking, and elastic Amazon FSx for NetApp ONTAP storage.',
       mediaType: 'image',
       imageUrl: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '18:42',
       keyDeliverables: [
         'Multi-AZ Stretched Clusters providing zero-RPO failover across AWS availability zones',
         'Connected VPC cross-account Elastic Network Interface (ENI) delivering line-rate private throughput',
@@ -256,8 +250,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Kernel-embedded Distributed Firewall (DFW) enforcing zero-trust microsegmentation at each virtual NIC before packets reach physical wires. Tier-0/Tier-1 Active-Active edge routing with ECMP, Avi Vantage load balancing, and automated security tag orchestration.',
       mediaType: 'image',
       imageUrl: '/assets/images/nsx_microsegmentation_showcase_1791541799407.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '32:15',
       keyDeliverables: [
         'Distributed Firewall (DFW) kernel-level East-West inspection independent of physical subnets',
         'Tier-0 Active-Active edge routing with ECMP multi-pathing and BGP route convergence',
@@ -327,8 +319,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Enterprise workload mobility platform interconnecting on-premises vSphere datacenters to Hyperscaler SDDCs. Features automated HCX Service Mesh fleet orchestration, Layer-2 Network Extension with Mobility Optimized Networking (MON) to prevent gateway hair-pinning, and Replication-Assisted vMotion (RAV) for zero-downtime transactional database migrations.',
       mediaType: 'image',
       imageUrl: '/assets/images/hcx_architecture_showcase_1791544913309.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '24:18',
       keyDeliverables: [
         'HCX Interconnect (IX) and WAN Optimization (WO) appliances with deduplication and LZ-compression',
         'High-Availability Layer-2 Network Extension (NE) pairs stretching up to 8 broadcast domains per appliance',
@@ -399,8 +389,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Automated business continuity and disaster recovery orchestration across hybrid cloud environments. Enables non-disruptive disaster recovery testing using isolated Test Bubble sandbox networks, bidirectional protection groups, automated IP re-addressing, and policy-driven failover/failback workflows for mission-critical enterprise applications.',
       mediaType: 'image',
       imageUrl: '/assets/images/srm_architecture_showcase_1791544923913.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '28:40',
       keyDeliverables: [
         'SRM Server appliances paired with vSphere Replication (vRA) for granular 5-minute RPO protection',
         'Non-disruptive Test Failover into isolated Test Bubble networks without interrupting production replication',
@@ -471,8 +459,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Comprehensive flow-based discovery, automated application tier clustering, migration wave planning, and intelligent Distributed Firewall (DFW) policy modeling to seamlessly transition unprotected legacy non-NSX workloads into zero-trust NSX microsegmentation.',
       mediaType: 'image',
       imageUrl: '/assets/images/aria_network_microseg_showcase_1791551934452.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '28:45',
       keyDeliverables: [
         'Real-time flow-based discovery via IPFIX telemetry directly streaming from vSphere Distributed Switches (VDS)',
         'Machine-learning application dependency mapping and automated Web/App/Database tier clustering',
@@ -544,8 +530,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       description: 'Enterprise architecture discipline and migration methodology for transitioning VMware vSphere SDDC workloads to Nutanix Cloud Clusters (NC2) on Microsoft Azure bare-metal infrastructure. Combines Nutanix AHV hypervisor, Distributed Storage Fabric (DSF), Flow Virtual Networking, and Nutanix Move cross-hypervisor migration.',
       mediaType: 'image',
       imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
-      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      videoDuration: '31:20',
       keyDeliverables: [
         'Dedicated Azure bare-metal node architecture (AN36, AN36P, AN64, AN100) running native Nutanix AHV and CVM storage fabric',
         'Direct Azure Virtual Network (VNet) flow integration without overlay encapsulation or nested virtualization penalties',
@@ -1142,100 +1126,7 @@ resource "nsxt_policy_security_policy" "db_isolation" {
       }
     }
   ],
-  videos: [
-    {
-      id: 'video-hcx-masterclass',
-      title: 'Zero-Downtime HCX Migration: Bulk vs Replication-Assisted vMotion (RAV)',
-      provider: 'Azure AVS',
-      duration: '24:18',
-      category: 'Migration Runbook',
-      embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', // Clean embed player
-      summary: 'In-depth architectural comparison of VMware HCX migration methodologies. When to use Bulk Migration with scheduled cutover vs Replication-Assisted vMotion (RAV) for mission-critical transactional databases.',
-      chapters: [
-        { time: '00:00', title: 'Architecture Overview & WAN Prerequisites' },
-        { time: '04:15', title: 'HCX Service Mesh Deployment & Fleet Sizing' },
-        { time: '09:30', title: 'Network Extension (NE) L2 Monocast & Multicast Handling' },
-        { time: '14:45', title: 'Bulk vs RAV: Delta Synchronization & Switchover Mechanics' },
-        { time: '19:20', title: 'Live Cutover Demo & Rollback Runbook' }
-      ],
-      takeaways: [
-        'Use HCX Bulk Migration for tier-2/3 workloads in batch waves of 100+ VMs with minimal admin intervention.',
-        'Reserve RAV or Live vMotion for latency-sensitive OLTP databases requiring zero packet loss during switchover.',
-        'Always verify MTU 1500 on the WAN uplink and ensure UDP ports 4500/500 (IPsec) and 8123 (Mobility Agent) are open.'
-      ],
-      tags: ['HCX', 'vMotion', 'AVS Migration', 'Zero-Downtime', 'PowerCLI'],
-      publishedDate: 'September 2026'
-    },
-    {
-      id: 'video-anf-datastore-sizing',
-      title: 'Azure NetApp Files (ANF) Datastores for AVS: Cost & IOPS Architecture',
-      provider: 'Azure AVS',
-      duration: '18:42',
-      category: 'Storage Sizing',
-      embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      summary: 'Learn how to avoid the "storage-bound node sprawl" trap on Azure VMware Solution. Architecting external ANF NFSv3 datastores to reduce monthly AVS infrastructure spend by over 38%.',
-      chapters: [
-        { time: '00:00', title: 'The Problem: Storage-Bound ESXi Nodes' },
-        { time: '03:10', title: 'ANF Ultra vs Premium Performance Tiers' },
-        { time: '07:25', title: 'ExpressRoute FastPath Gateway Configuration' },
-        { time: '11:40', title: 'Mounting NFS Datastores in AVS vCenter via Azure Portal & CLI' },
-        { time: '15:10', title: 'Benchmark IOPS Results & Production Failover Testing' }
-      ],
-      takeaways: [
-        'ANF allows enterprise workloads with high capacity requirements (e.g. file servers, archive DBs) to scale storage independently from compute nodes.',
-        'ExpressRoute FastPath must be enabled on the GatewaySubnet to bypass CPU-bound gateways.',
-        'Enable cross-region replication on the ANF volume pool for automated disaster recovery.'
-      ],
-      tags: ['Azure NetApp Files', 'AVS', 'Storage Decoupling', 'FinOps', 'ExpressRoute'],
-      publishedDate: 'August 2026'
-    },
-    {
-      id: 'video-nsxt-dfw-zero-trust',
-      title: 'NSX-T Distributed Firewall: Enterprise Microsegmentation Masterclass',
-      provider: 'NSX-T SDN',
-      category: 'Network Architecture',
-      duration: '32:15',
-      embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      summary: 'Step-by-step masterclass on migrating from perimeter physical firewalls to kernel-level NSX-T Distributed Firewall (DFW). How to build dynamic tag-based policies without breaking production traffic.',
-      chapters: [
-        { time: '00:00', title: 'Why Perimeter Firewalls Fail in Hybrid Cloud' },
-        { time: '05:20', title: 'The NSX-T DFW Rule Category Pipeline (Emergency to Application)' },
-        { time: '11:45', title: 'Tagging Strategies & Dynamic Group Membership in PowerCLI' },
-        { time: '18:10', title: 'Audit Mode & Aria Operations for Networks Flow Discovery' },
-        { time: '26:00', title: 'Flipping the Switch: From Allow-All to Zero-Trust Default Drop' }
-      ],
-      takeaways: [
-        'Always run new security policies in "Allow with Logging" mode for at least 14 business days to uncover hidden service ports.',
-        'Use Aria Operations for Networks (vRNI) to ingest NetFlow data and auto-generate DFW microsegmentation boundaries.',
-        'Group security rules by application domain rather than subnet IP ranges to allow workloads to migrate freely.'
-      ],
-      tags: ['NSX-T', 'Microsegmentation', 'Zero-Trust', 'Aria Operations', 'DFW'],
-      publishedDate: 'July 2026'
-    },
-    {
-      id: 'video-gcve-interconnect-peering',
-      title: 'Google Cloud VMware Engine (GCVE): Private Services Access & Analytics',
-      provider: 'Google Cloud GCVE',
-      duration: '21:05',
-      category: 'Hands-on Labs',
-      embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-      summary: 'Architecting dedicated private links into GCVE Private Services Access. High-throughput data ingestion into Google Cloud BigQuery and Vertex AI models.',
-      chapters: [
-        { time: '00:00', title: 'GCVE Architecture & Global Network Backbone' },
-        { time: '04:00', title: 'Configuring Private Services Access (PSA) Peering' },
-        { time: '08:30', title: 'Route Exchange: Custom Route Export & BGP Advertisements' },
-        { time: '13:15', title: 'Connecting VMware VM to BigQuery via Private Google Access' },
-        { time: '17:50', title: 'Throughput Benchmarks & High-Availability Test' }
-      ],
-      takeaways: [
-        'Verify route limits on Cloud Routers before advertising complex route tables to GCVE.',
-        'Use Private Google Access (PGA) to query GCP PaaS services without traversing internet NAT gateways.',
-        'GCVE clusters can be expanded dynamically in less than 30 minutes from the Google Cloud Console.'
-      ],
-      tags: ['GCVE', 'Google Cloud', 'Private Services Access', 'BigQuery', 'Networking'],
-      publishedDate: 'June 2026'
-    }
-  ],
+  videos: [],
   tutorials: [
     {
       id: 'tut-avs-fastpath-guide',

@@ -119,7 +119,7 @@ export const CustomizerDrawer: React.FC = () => {
   const [newVideoProvider, setNewVideoProvider] = useState<CloudProvider>('Azure AVS');
   const [newVideoDuration, setNewVideoDuration] = useState('15:00');
   const [newVideoCategory, setNewVideoCategory] = useState<'Migration Runbook' | 'Network Architecture' | 'Storage Sizing' | 'Hands-on Labs'>('Migration Runbook');
-  const [newVideoUrl, setNewVideoUrl] = useState('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+  const [newVideoUrl, setNewVideoUrl] = useState('');
   const [newVideoSummary, setNewVideoSummary] = useState('');
   const [newVideoTakeaway, setNewVideoTakeaway] = useState('');
 
@@ -273,7 +273,7 @@ export const CustomizerDrawer: React.FC = () => {
 
   const handleCreateVideo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVideoTitle) return;
+    if (!newVideoTitle || !newVideoUrl.trim()) return;
 
     const created: VideoItem = {
       id: `video-${Date.now()}`,
@@ -281,7 +281,7 @@ export const CustomizerDrawer: React.FC = () => {
       provider: newVideoProvider,
       duration: newVideoDuration,
       category: newVideoCategory,
-      embedUrl: newVideoUrl,
+      embedUrl: newVideoUrl.trim(),
       summary: newVideoSummary || 'Technical deep dive and architectural walkthrough.',
       chapters: [
         { time: '00:00', title: 'Introduction & Scope' },
@@ -296,6 +296,7 @@ export const CustomizerDrawer: React.FC = () => {
 
     addVideo(created);
     setNewVideoTitle('');
+    setNewVideoUrl('');
     setNewVideoSummary('');
     setNewVideoTakeaway('');
     showNotification('Video Masterclass published!');
@@ -1963,6 +1964,7 @@ export const CustomizerDrawer: React.FC = () => {
                     type="text"
                     value={newVideoUrl}
                     onChange={e => setNewVideoUrl(e.target.value)}
+                    placeholder="https://www.youtube-nocookie.com/embed/..."
                     className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px]"
                   />
                 </div>
@@ -1991,7 +1993,8 @@ export const CustomizerDrawer: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-colors"
+                  disabled={!newVideoUrl.trim()}
+                  className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg transition-colors"
                 >
                   Publish Video
                 </button>

@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { adminService } from '../services/adminService';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { externalizeImages } from '../services/siteAssets';
+import { isDummyVideoUrl } from '../utils/videoUtils';
 
 const STORAGE_KEY = 'zaboraa_site_config_v8';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
@@ -41,6 +42,21 @@ function sanitizeImagePaths<T>(data: T): T {
   } catch {
     return data;
   }
+}
+
+function sanitizePlatformShowcase(p: PlatformShowcase): PlatformShowcase {
+  if (p.videoUrl && isDummyVideoUrl(p.videoUrl)) {
+    const copy = { ...p };
+    delete copy.videoUrl;
+    delete copy.videoDuration;
+    return copy;
+  }
+  return p;
+}
+
+function sanitizeVideosList(rawVideos: any[]): VideoItem[] {
+  if (!Array.isArray(rawVideos)) return [];
+  return rawVideos.filter(v => v && v.embedUrl && !isDummyVideoUrl(v.embedUrl));
 }
 
 interface CustomizationContextType {
@@ -186,11 +202,14 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
               ...INITIAL_SITE_DATA.hero,
               ...(parsed.hero || {})
             },
-            platformShowcases: parsed.platformShowcases && parsed.platformShowcases.length > 0
+            platformShowcases: (parsed.platformShowcases && parsed.platformShowcases.length > 0
               ? parsed.platformShowcases
-              : INITIAL_SITE_DATA.platformShowcases,
+              : INITIAL_SITE_DATA.platformShowcases).map(sanitizePlatformShowcase),
             diagrams: parsed.diagrams || INITIAL_SITE_DATA.diagrams,
-            videos: parsed.videos || INITIAL_SITE_DATA.videos,
+            videos: sanitizeVideosList(parsed.videos || INITIAL_SITE_DATA.videos),
+            featuredVideoId: sanitizeVideosList(parsed.videos || INITIAL_SITE_DATA.videos).some(v => v.id === parsed.featuredVideoId)
+              ? parsed.featuredVideoId
+              : undefined,
             tutorials: parsed.tutorials || INITIAL_SITE_DATA.tutorials,
             knowledgeBase: parsed.knowledgeBase || INITIAL_SITE_DATA.knowledgeBase,
             caseStudies: parsed.caseStudies || INITIAL_SITE_DATA.caseStudies,
@@ -518,22 +537,23 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         brand,
         brandTagline,
         brandLogoUrl,
-        founder: siteContent.founder ? { ...INITIAL_SITE_DATA.founder, ...prev.founder, ...siteContent.founder } : prev.founder,
-        featuredVideoId: siteContent.misc?.featuredVideoId ?? prev.featuredVideoId,
+        featuredVideoId: sanitizeVideosList(Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos).some(v => v.id === (siteContent.misc?.featuredVideoId ?? prev.featuredVideoId))
+          ? (siteContent.misc?.featuredVideoId ?? prev.featuredVideoId)
+          : undefined,
         enableHotspots: siteContent.misc?.enableHotspots ?? prev.enableHotspots,
         watermark: siteContent.misc?.watermark ? { ...prev.watermark, ...siteContent.misc.watermark } : prev.watermark,
         hero: siteContent.hero ? { ...INITIAL_SITE_DATA.hero, ...prev.hero, ...siteContent.hero } : prev.hero,
         diagrams: Array.isArray(siteContent.diagrams) && siteContent.diagrams.length > 0 ? siteContent.diagrams : prev.diagrams,
-        videos: Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos,
+        videos: sanitizeVideosList(Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos),
         tutorials: Array.isArray(siteContent.tutorials) && siteContent.tutorials.length > 0 ? siteContent.tutorials : prev.tutorials,
         knowledgeBase: Array.isArray(siteContent.knowledgeBase) && siteContent.knowledgeBase.length > 0 ? siteContent.knowledgeBase : prev.knowledgeBase,
         caseStudies: Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0 ? siteContent.caseStudies : prev.caseStudies,
         services: Array.isArray(siteContent.services) && siteContent.services.length > 0 ? siteContent.services : prev.services,
-        platformShowcases: Array.isArray(siteContent.platformShowcases) && siteContent.platformShowcases.length > 0
+        platformShowcases: (Array.isArray(siteContent.platformShowcases) && siteContent.platformShowcases.length > 0
           ? siteContent.platformShowcases
           : Array.isArray(siteContent.platforms) && siteContent.platforms.length > 0
           ? siteContent.platforms
-          : prev.platformShowcases,
+          : prev.platformShowcases).map(sanitizePlatformShowcase),
         adminSettings: {
           ...currentAdminSettings,
           ...(remote.adminSettings || {}),
@@ -1139,6 +1159,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const addVideo = (video: VideoItem) => {
     if (!isAdmin) return;
+    if (!video || !video.embedUrl || isDummyVideoUrl(video.embedUrl)) return;
     setSiteConfig(prev => {
       const updatedList = [video, ...prev.videos];
       if (isAdmin) {
@@ -1154,6 +1175,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateVideo = (id: string, updated: Partial<VideoItem>) => {
     if (!isAdmin) return;
+    if (updated.embedUrl && isDummyVideoUrl(updated.embedUrl)) return;
     setSiteConfig(prev => {
       const updatedList = prev.videos.map(v => (v.id === id ? { ...v, ...updated } : v));
       if (isAdmin) {

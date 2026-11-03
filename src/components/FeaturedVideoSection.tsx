@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { VideoItem } from '../types/siteData';
+import { isDummyVideoUrl } from '../utils/videoUtils';
 import {
   Play,
   Clock,
@@ -18,10 +19,11 @@ export const FeaturedVideoSection: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
 
-  // Find featured video or fallback to the first video
-  const featuredVideo: VideoItem =
-    siteConfig.videos.find(v => v.id === siteConfig.featuredVideoId) ||
-    siteConfig.videos[0];
+  // Find valid featured video or fallback to the first valid video
+  const validVideos = (siteConfig.videos || []).filter(v => !isDummyVideoUrl(v.embedUrl));
+  const featuredVideo: VideoItem | undefined =
+    validVideos.find(v => v.id === siteConfig.featuredVideoId) ||
+    validVideos[0];
 
   if (!featuredVideo) return null;
 

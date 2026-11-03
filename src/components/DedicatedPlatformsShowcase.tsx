@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { resolveMediaUrl } from '../data/mediaAssets';
 import { SubsectionDiagramCardsGallery } from './SubsectionDiagramCardsGallery';
+import { isDummyVideoUrl } from '../utils/videoUtils';
 
 export const DedicatedPlatformsShowcase: React.FC = () => {
   const {
@@ -186,6 +187,8 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
           };
 
           const currentMode = getMediaMode(item);
+          const hasVideo = Boolean(item.videoUrl && !isDummyVideoUrl(item.videoUrl));
+          const effectiveMode = hasVideo && currentMode === 'video' ? 'video' : 'image';
           const activeDesign = getActiveDesign(item);
           const designs = item.designs || [];
 
@@ -227,36 +230,38 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
 
                   {/* Header Actions */}
                   <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto shrink-0">
-                    {/* Media Type Toggle */}
-                    <div className="flex items-center p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => toggleMediaMode(item.id, 'image')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                          currentMode === 'image'
-                            ? 'bg-slate-800 text-cyan-300 font-semibold shadow-sm'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Show architecture diagram image"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5" />
-                        <span>Diagrams ({designs.length || 1})</span>
-                      </button>
+                    {/* Media Type Toggle - only rendered if platform has a real, non-dummy video */}
+                    {hasVideo && (
+                      <div className="flex items-center p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => toggleMediaMode(item.id, 'image')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
+                            effectiveMode === 'image'
+                              ? 'bg-slate-800 text-cyan-300 font-semibold shadow-sm'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                          title="Show architecture diagram image"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          <span>Diagrams ({designs.length || 1})</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => toggleMediaMode(item.id, 'video')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                          currentMode === 'video'
-                            ? 'bg-slate-800 text-cyan-300 font-semibold shadow-sm'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Show video walkthrough"
-                      >
-                        <Film className="w-3.5 h-3.5" />
-                        <span>Video</span>
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleMediaMode(item.id, 'video')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
+                            effectiveMode === 'video'
+                              ? 'bg-slate-800 text-cyan-300 font-semibold shadow-sm'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                          title="Show video walkthrough"
+                        >
+                          <Film className="w-3.5 h-3.5" />
+                          <span>Video</span>
+                        </button>
+                      </div>
+                    )}
 
                     {/* Section Edit Modal Trigger (Visible to Admin Only) */}
                     {isAdmin && (
@@ -288,7 +293,7 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
                 </div>
 
                 {/* Subsections Selector Strip: Clean, Uncluttered, Elegant Tab Bar */}
-                {designs.length > 0 && currentMode === 'image' && (
+                {designs.length > 0 && effectiveMode === 'image' && (
                   <div className="flex flex-wrap items-center gap-2 py-1">
                     <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-cyan-400" />
@@ -324,7 +329,7 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
                   {/* Left Column: Visual Media Box (7 cols) */}
                   <div className="lg:col-span-7 space-y-3">
-                    {currentMode === 'image' ? (
+                    {effectiveMode === 'image' ? (
                       <InteractiveHotspotImage
                         key={`${item.id}-${activeDesign?.id || displayImageUrl}`}
                         imageUrl={displayImageUrl}
@@ -333,17 +338,17 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
                         subtitle={item.platform}
                         description={displayDescription}
                       />
-                    ) : (
+                    ) : hasVideo ? (
                       <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl">
                         <iframe
-                          src={item.videoUrl || 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'}
+                          src={item.videoUrl}
                           title={item.title}
                           className="w-full h-full"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                         />
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Media Footer Strip */}
                     <div className="flex items-center justify-between text-xs text-slate-500 px-1">
@@ -351,7 +356,7 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
                         <span>High-Resolution Engineering Asset · Click image to expand</span>
                       </div>
-                      {currentMode === 'video' && item.videoDuration && (
+                      {effectiveMode === 'video' && item.videoDuration && (
                         <span className="font-mono text-cyan-400">Duration: {item.videoDuration}</span>
                       )}
                     </div>

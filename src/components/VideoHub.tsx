@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { VideoItem } from '../types/siteData';
+import { isDummyVideoUrl } from '../utils/videoUtils';
 import {
   Play,
   Clock,
@@ -21,7 +22,9 @@ export const VideoHub: React.FC = () => {
 
   const categories = ['All', 'Migration Runbook', 'Network Architecture', 'Storage Sizing', 'Hands-on Labs'];
 
-  const filteredVideos = siteConfig.videos.filter(v => {
+  const validVideos = (siteConfig.videos || []).filter(v => !isDummyVideoUrl(v.embedUrl));
+
+  const filteredVideos = validVideos.filter(v => {
     if (activeCategory === 'All') return true;
     return v.category === activeCategory;
   });
@@ -69,99 +72,105 @@ export const VideoHub: React.FC = () => {
           ))}
         </div>
 
-        {/* Video Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredVideos.map(video => (
-            <div
-              key={video.id}
-              onClick={() => setSelectedVideo(video)}
-              className="cursor-pointer group rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 p-5 transition-all hover:border-slate-700 hover:shadow-xl hover:shadow-cyan-950/20 flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                {/* Video Mock Screen / Thumbnail Area */}
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center group-hover:border-cyan-500/50 transition-colors">
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                  
-                  {/* Decorative mesh background */}
-                  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:16px_16px]" />
+        {/* Video Grid or Empty State */}
+        {filteredVideos.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-12 text-center text-slate-400">
+            <p className="text-sm font-medium">Video tutorials coming soon - Check back later</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredVideos.map(video => (
+              <div
+                key={video.id}
+                onClick={() => setSelectedVideo(video)}
+                className="cursor-pointer group rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 p-5 transition-all hover:border-slate-700 hover:shadow-xl hover:shadow-cyan-950/20 flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  {/* Video Mock Screen / Thumbnail Area */}
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center group-hover:border-cyan-500/50 transition-colors">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                    
+                    {/* Decorative mesh background */}
+                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:16px_16px]" />
 
-                  {/* Play Button Icon */}
-                  <div className="relative w-12 h-12 rounded-full bg-cyan-500/90 group-hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                    <Play className="w-5 h-5 fill-current ml-0.5" />
-                  </div>
-
-                  {/* Duration Overlay */}
-                  <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-slate-950/90 border border-slate-800 text-[11px] font-mono text-slate-200 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-cyan-400" />
-                    <span>{video.duration}</span>
-                  </div>
-
-                  {/* Provider Pill */}
-                  <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-800 text-[10px] font-mono text-cyan-400">
-                    {video.provider}
-                  </div>
-                </div>
-
-                {/* Video Info */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <div className="flex items-center gap-2">
-                      <span>{video.category}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{video.chapters.length} Chapters</span>
+                    {/* Play Button Icon */}
+                    <div className="relative w-12 h-12 rounded-full bg-cyan-500/90 group-hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+                      <Play className="w-5 h-5 fill-current ml-0.5" />
                     </div>
 
-                    {siteConfig.featuredVideoId === video.id && (
-                      <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800 flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        <span>Featured on Main</span>
-                      </span>
-                    )}
+                    {/* Duration Overlay */}
+                    <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-slate-950/90 border border-slate-800 text-[11px] font-mono text-slate-200 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-cyan-400" />
+                      <span>{video.duration}</span>
+                    </div>
+
+                    {/* Provider Pill */}
+                    <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-800 text-[10px] font-mono text-cyan-400">
+                      {video.provider}
+                    </div>
                   </div>
 
-                  <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2">
-                    {video.title}
-                  </h3>
+                  {/* Video Info */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <span>{video.category}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{video.chapters.length} Chapters</span>
+                      </div>
 
-                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                    {video.summary}
-                  </p>
+                      {siteConfig.featuredVideoId === video.id && (
+                        <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800 flex items-center gap-1">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>Featured on Main</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2">
+                      {video.title}
+                    </h3>
+
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                      {video.summary}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action */}
+                <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeaturedVideoId(video.id);
+                      const el = document.getElementById('featured-video');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className={`text-[11px] font-medium transition-colors flex items-center gap-1 ${
+                      siteConfig.featuredVideoId === video.id
+                        ? 'text-cyan-400 font-semibold'
+                        : 'hover:text-cyan-300 text-slate-500'
+                    }`}
+                    title="Showcase this video as the main video on the homepage"
+                  >
+                    <Star className={`w-3 h-3 ${siteConfig.featuredVideoId === video.id ? 'fill-current text-cyan-400' : ''}`} />
+                    <span>{siteConfig.featuredVideoId === video.id ? 'Main Feature Active' : 'Set as Main Feature'}</span>
+                  </button>
+
+                  <span className="text-cyan-400 font-medium group-hover:underline flex items-center gap-1">
+                    <span>Watch Session</span>
+                    <Play className="w-3 h-3" />
+                  </span>
                 </div>
               </div>
-
-              {/* Action */}
-              <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFeaturedVideoId(video.id);
-                    const el = document.getElementById('featured-video');
-                    el?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className={`text-[11px] font-medium transition-colors flex items-center gap-1 ${
-                    siteConfig.featuredVideoId === video.id
-                      ? 'text-cyan-400 font-semibold'
-                      : 'hover:text-cyan-300 text-slate-500'
-                  }`}
-                  title="Showcase this video as the main video on the homepage"
-                >
-                  <Star className={`w-3 h-3 ${siteConfig.featuredVideoId === video.id ? 'fill-current text-cyan-400' : ''}`} />
-                  <span>{siteConfig.featuredVideoId === video.id ? 'Main Feature Active' : 'Set as Main Feature'}</span>
-                </button>
-
-                <span className="text-cyan-400 font-medium group-hover:underline flex items-center gap-1">
-                  <span>Watch Session</span>
-                  <Play className="w-3 h-3" />
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Video Player Modal */}
-      {selectedVideo && (
+      {selectedVideo && !isDummyVideoUrl(selectedVideo.embedUrl) && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/90 backdrop-blur-md p-4 sm:p-6 lg:p-10 flex justify-center animate-in fade-in duration-150">
           <div className="relative w-full max-w-4xl bg-slate-900 rounded-2xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6 my-auto">
             {/* Header */}

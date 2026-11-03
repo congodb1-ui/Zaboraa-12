@@ -1,6 +1,6 @@
-# Zaboraa Technologies — full plain-text reference
+# Zaboraa — full plain-text reference
 
-Zaboraa Technologies (https://zaboraa.com) is a founder-led enterprise cloud architecture advisory. Tagline: Minimal Downtime VMware Cloud and Hyperscaler Migration Authority. It serves CIOs, infrastructure architects and migration leads at regulated, high-uptime organisations (banks, hospitals, logistics) moving VMware datacenters to Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC) or Nutanix NC2 on Azure.
+Zaboraa (https://zaboraa.com) is a founder-led enterprise cloud architecture advisory. Tagline: Minimal Downtime VMware Cloud and Hyperscaler Migration Authority. It serves CIOs, infrastructure architects and migration leads at regulated, high-uptime organisations (banks, hospitals, logistics) moving VMware datacenters to Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC) or Nutanix NC2 on Azure.
 
 Primary call to action: Book Briefing (free consultation). Secondary: use the free tools at https://zaboraa.com/tools. There is no pricing page, credits system or billing.
 

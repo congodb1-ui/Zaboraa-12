@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { externalizeImages } from '../services/siteAssets';
 import { isDummyVideoUrl } from '../utils/videoUtils';
 
-const STORAGE_KEY = 'zaboraa_site_config_v8';
+const STORAGE_KEY = 'zaboraa_site_config_v9';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
 
 function cleanOldStorageKeys() {
@@ -16,7 +16,7 @@ function cleanOldStorageKeys() {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (key.startsWith('zaboraa_site_config_') || key.startsWith('zaboraa_config_'))) {
-        if (key !== STORAGE_KEY) {
+        if (key !== STORAGE_KEY && key !== 'zaboraa_site_config_v8') {
           keysToRemove.push(key);
         }
       }
@@ -68,6 +68,51 @@ function mergeKnowledgeBaseArticles(
   const merged = defaults.map(d => storedMap.get(d.id) || d);
   const defaultIds = new Set(defaults.map(d => d.id));
   const customOnly = stored.filter(a => !defaultIds.has(a.id));
+  return [...merged, ...customOnly];
+}
+
+function mergeCaseStudies(
+  stored: any[] | undefined,
+  defaults: CaseStudy[] = INITIAL_SITE_DATA.caseStudies || []
+): CaseStudy[] {
+  if (!stored || !Array.isArray(stored) || stored.length === 0) return defaults;
+  const storedMap = new Map<string, any>();
+  stored.forEach(cs => {
+    const key = cs.slug || cs.id;
+    if (key) storedMap.set(key, cs);
+  });
+
+  const merged = defaults.map(def => {
+    const key = def.slug || def.id;
+    const existing = key ? storedMap.get(key) : undefined;
+    if (!existing) return def;
+
+    const hasValidSections = Array.isArray(existing.sections) && existing.sections.length > 0;
+    const hasValidFacts = existing.facts && typeof existing.facts === 'object' && existing.facts.scale;
+
+    return {
+      ...def,
+      ...existing,
+      h1: existing.h1 || def.h1,
+      facts: hasValidFacts ? { ...def.facts, ...existing.facts } : def.facts,
+      sections: hasValidSections ? existing.sections : def.sections,
+      lessonsLearned: (Array.isArray(existing.lessonsLearned) && existing.lessonsLearned.length > 0)
+        ? existing.lessonsLearned
+        : def.lessonsLearned,
+      faq: (Array.isArray(existing.faq) && existing.faq.length > 0) ? existing.faq : def.faq,
+      relatedTools: (Array.isArray(existing.relatedTools) && existing.relatedTools.length > 0) ? existing.relatedTools : def.relatedTools,
+      relatedDisciplines: (Array.isArray(existing.relatedDisciplines) && existing.relatedDisciplines.length > 0) ? existing.relatedDisciplines : def.relatedDisciplines,
+      platforms: (Array.isArray(existing.platforms) && existing.platforms.length > 0) ? existing.platforms : def.platforms,
+      diagram: existing.diagram || def.diagram
+    };
+  });
+
+  const defaultKeys = new Set(defaults.map(d => d.slug || d.id).filter(Boolean));
+  const customOnly = stored.filter(cs => {
+    const key = cs.slug || cs.id;
+    return key && !defaultKeys.has(key);
+  });
+
   return [...merged, ...customOnly];
 }
 
@@ -166,7 +211,13 @@ interface CustomizationContextType {
   importConfigJson: (json: string) => boolean;
   savePersistentAdminSettings: (
     updates: Partial<AdminSettings>,
-    brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
+    brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string },
+    extraUpdates?: {
+      watermark?: Partial<WatermarkConfig>;
+      enableHotspots?: boolean;
+      founder?: Partial<SiteConfig['founder']>;
+      hero?: Partial<SiteConfig['hero']>;
+    }
   ) => Promise<{ success: boolean; message: string }>;
   refreshRemoteSettings: () => Promise<void>;
   syncAllContentToCloud: () => Promise<{ success: boolean; message: string; persistedToCloud: boolean }>;
@@ -193,6 +244,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       cleanOldStorageKeys();
       const saved =
         localStorage.getItem(STORAGE_KEY) ||
+        localStorage.getItem('zaboraa_site_config_v8') ||
         localStorage.getItem('zaboraa_site_config_v6') ||
         localStorage.getItem('zaboraa_site_config_v3');
       if (saved) {
@@ -224,10 +276,15 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
               : undefined,
             tutorials: parsed.tutorials || INITIAL_SITE_DATA.tutorials,
             knowledgeBase: mergeKnowledgeBaseArticles(parsed.knowledgeBase),
-            caseStudies: Array.isArray(parsed.caseStudies) && parsed.caseStudies.length > 0 ? parsed.caseStudies : INITIAL_SITE_DATA.caseStudies,
+            caseStudies: mergeCaseStudies(parsed.caseStudies),
             services: parsed.services || INITIAL_SITE_DATA.services,
             enableHotspots: parsed.enableHotspots !== undefined ? parsed.enableHotspots : true
           };
+
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            localStorage.removeItem('zaboraa_site_config_v8');
+          } catch {}
           if (!merged.adminSettings) {
             merged.adminSettings = INITIAL_SITE_DATA.adminSettings;
           } else {
@@ -559,7 +616,11 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         videos: sanitizeVideosList(Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos),
         tutorials: Array.isArray(siteContent.tutorials) && siteContent.tutorials.length > 0 ? siteContent.tutorials : prev.tutorials,
         knowledgeBase: mergeKnowledgeBaseArticles(Array.isArray(siteContent.knowledgeBase) && siteContent.knowledgeBase.length > 0 ? siteContent.knowledgeBase : prev.knowledgeBase),
-        caseStudies: Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0 ? siteContent.caseStudies : (Array.isArray(prev.caseStudies) && prev.caseStudies.length > 0 ? prev.caseStudies : INITIAL_SITE_DATA.caseStudies),
+        caseStudies: mergeCaseStudies(
+          Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0
+            ? siteContent.caseStudies
+            : prev.caseStudies
+        ),
         services: Array.isArray(siteContent.services) && siteContent.services.length > 0 ? siteContent.services : prev.services,
         platformShowcases: (Array.isArray(siteContent.platformShowcases) && siteContent.platformShowcases.length > 0
           ? siteContent.platformShowcases
@@ -1435,7 +1496,13 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const savePersistentAdminSettings = async (
     updates: Partial<AdminSettings>,
-    brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
+    brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string },
+    extraUpdates?: {
+      watermark?: Partial<WatermarkConfig>;
+      enableHotspots?: boolean;
+      founder?: Partial<SiteConfig['founder']>;
+      hero?: Partial<SiteConfig['hero']>;
+    }
   ): Promise<{ success: boolean; message: string }> => {
     if (!isAdmin) {
       return { success: false, message: 'Unauthorized: Administrator session required.' };
@@ -1459,12 +1526,20 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       const newBrand = brandingUpdates?.brandName || siteConfig.brand;
       const newTagline = brandingUpdates?.brandTagline || siteConfig.brandTagline;
       const newLogo = brandingUpdates?.brandLogoUrl !== undefined ? brandingUpdates.brandLogoUrl : siteConfig.brandLogoUrl;
+      const newWatermark = extraUpdates?.watermark ? { ...(siteConfig.watermark || INITIAL_SITE_DATA.watermark), ...extraUpdates.watermark } : siteConfig.watermark;
+      const newHotspots = extraUpdates?.enableHotspots !== undefined ? extraUpdates.enableHotspots : siteConfig.enableHotspots;
+      const newFounder = extraUpdates?.founder ? { ...siteConfig.founder, ...extraUpdates.founder } : siteConfig.founder;
+      const newHero = extraUpdates?.hero ? { ...siteConfig.hero, ...extraUpdates.hero } : siteConfig.hero;
 
       const newConfig: SiteConfig = {
         ...siteConfig,
         brand: newBrand,
         brandTagline: newTagline,
         brandLogoUrl: newLogo,
+        watermark: newWatermark as WatermarkConfig,
+        enableHotspots: newHotspots,
+        founder: newFounder,
+        hero: newHero,
         adminSettings: updatedAdminSettings
       };
 

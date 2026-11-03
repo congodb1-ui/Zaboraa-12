@@ -18,13 +18,13 @@ import {
 } from 'lucide-react';
 
 const AVAILABLE_DIAGRAMS = [
-  { id: 'avs-migration-flow-pipeline', label: 'AVS Migration & FastPath Transit Topology' },
-  { id: 'vmc-aws-transit-gateway-dr', label: 'VMC on AWS Multi-AZ Transit Gateway & DR' },
-  { id: 'gcve-storage-datastore-scaling', label: 'GCVE Decoupled NetApp Storage Pools' },
-  { id: 'srm-ansible-replication-runbook', label: 'Cross-Region SRM & Ansible Automated Runbook' },
+  { id: 'avs-gov-network-flow', label: 'AVS Migration & FastPath Transit Topology' },
+  { id: 'avs-cross-region-flow', label: 'AVS Cross-Region Replication & Global Reach' },
+  { id: 'avs-dr-failover-timeline', label: 'AVS Disaster Recovery Failover Timeline (5-15 min RPO)' },
+  { id: 'gcve-vmc-hybrid-transit', label: 'GCVE & VMC on AWS Dual-Cloud Transit & Sizing' },
   { id: 'nsx-microseg-flow-pipeline', label: 'NSX-T Micro-segmentation & DFW Architecture' },
   { id: 'aria-ops-networks-architecture', label: 'Aria Operations for Networks Flow Analysis' },
-  { id: 'aria-automation-lifecycle', label: 'Aria Automation Multi-Tier Blueprint Lifecycle' }
+  { id: 'aria-automation-lifecycle', label: 'Aria Automation Multi-Tier Cloud Templates' }
 ];
 
 export const TrackRecordEditorModal: React.FC = () => {

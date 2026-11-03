@@ -352,24 +352,6 @@ export const Navbar: React.FC = () => {
           <NavLink to="/about" className={navLinkClass}>
             About
           </NavLink>
-
-          {/* Admin Console Tab (Visible whenever user logs in with admin account) */}
-          {isAdmin && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) =>
-                `whitespace-nowrap shrink-0 transition-colors text-xs font-bold py-1.5 px-3 rounded-md flex items-center gap-1.5 ${
-                  isActive
-                    ? 'text-cyan-300 bg-cyan-950/90 border border-cyan-500/60 shadow-sm'
-                    : 'text-cyan-400 hover:text-cyan-200 hover:bg-cyan-950/40 border border-cyan-500/30'
-                }`
-              }
-              title="Enterprise Administrative Control Center"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Admin Console</span>
-            </NavLink>
-          )}
         </nav>
 
         {/* Zone 3: Primary Actions & Admin & Theme & Mobile Hamburger */}
@@ -397,16 +379,16 @@ export const Navbar: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
-          {/* Admin Controls (When logged in with admin account) */}
+          {/* Single Unified Admin Console Controls (When logged in with admin account) */}
           {isAdmin && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0">
               <Link
                 to="/admin"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 rounded-lg transition-colors cursor-pointer"
-                title="Open Administrative Console"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 rounded-lg transition-all hover:border-cyan-400 shadow-sm cursor-pointer"
+                title="Open Enterprise Administrative Control Center"
               >
                 <LayoutDashboard className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Console</span>
+                <span>Admin Console</span>
               </Link>
               <button
                 onClick={() => setIsCustomizerOpen(true)}

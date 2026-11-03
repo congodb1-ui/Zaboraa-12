@@ -3,11 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Zaboraa Technologies - Enterprise VMware Cloud Architecture</title>
-    <meta name="description" content="Founder-led VMware cloud architecture, hyperscaler migration, interactive diagrams, video masterclasses, and software tutorials across Azure AVS, AWS VMC, and Google Cloud GCVE." />
-    <meta property="og:title" content="Zaboraa Technologies - Enterprise VMware Cloud Architecture" />
-    <meta property="og:description" content="Founder-led VMware cloud architecture, hyperscaler migration, interactive diagrams, video masterclasses, and software tutorials across Azure AVS, AWS VMC, and Google Cloud GCVE." />
+    <title>Zaboraa - Enterprise VMware Cloud Architecture</title>
+    <meta name="description" content="Free VMware migration tools: RVTools Analyzer, AVS Sizing, NC2 Assessment. Enterprise cloud architecture by Wasim Sayyed, 40+ migrations." />
+    <meta property="og:title" content="Zaboraa - Enterprise VMware Cloud Architecture" />
+    <meta property="og:description" content="Free VMware migration tools: RVTools Analyzer, AVS Sizing, NC2 Assessment. Enterprise cloud architecture by Wasim Sayyed." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://zaboraa.com/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#020617" />
     <link rel="canonical" href="https://zaboraa.com/" />
@@ -15,6 +16,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- JSON-LD for Google AI Overviews + Bing - Fixes "No Markup found" -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Zaboraa",
+      "url": "https://zaboraa.com",
+      "logo": "https://zaboraa.com/favicon.ico",
+      "founder": {
+        "@type": "Person",
+        "name": "Wasim Sayyed",
+        "jobTitle": "Principal Cloud Architect",
+        "sameAs": "https://www.linkedin.com/in/wasim-sayyed-8b857714b/"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/145341200/"
+      ],
+      "description": "Enterprise VMware cloud architecture advisory and free browser-based migration tools for Azure AVS, AWS VMC, GCVE, Nutanix NC2"
+    }
+    </script>
   </head>
   <body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
     <script>
@@ -39,7 +61,15 @@
       })();
     </script>
     <div id="root"></div>
+    
+    <!-- Fixes H1 missing + Blank div issue for AI crawlers -->
+    <noscript>
+      <h1>Zaboraa - Enterprise VMware Cloud Migration Tools</h1>
+      <p>Free browser-based tools: RVTools Analyzer for migration readiness, Node & Storage Sizing Estimator for AVS/VMC/GCVE/NC2, Nutanix NC2 on Azure Assessment, Aria Operations for Networks Engine, DR RPO/RTO Planner, Hybrid Blueprint Generator. No login required, runs entirely in browser.</p>
+      <p>Founded by Wasim Sayyed, Principal Cloud Architect, 12+ years, 40+ enterprise migrations. Specializing in Azure VMware Solution, Google Cloud VMware Engine, VMware Cloud on AWS, Nutanix NC2, NSX-T microsegmentation, HCX zero-downtime migration.</p>
+      <p><a href="https://zaboraa.com/tools/rvtools-analyzer">RVTools Analyzer</a> | <a href="https://zaboraa.com/tools/sizing">Sizing Estimator</a> | <a href="https://zaboraa.com/llms-full.txt">Full site content in plain text</a></p>
+    </noscript>
+    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

@@ -9,6 +9,7 @@
 export interface DualCloudComparisonData {
   projectName: string;
   architectName?: string;
+  pricingNote?: string;
   cloudA: {
     name: string;
     nodeSku: string;
@@ -42,7 +43,7 @@ export interface DualCloudComparisonData {
 }
 
 export function exportDualCloudComparisonExcel(data: DualCloudComparisonData): void {
-  const { projectName, architectName = 'Wasim Sayyed, Principal VMware Architect', cloudA, cloudB } = data;
+  const { projectName, architectName = 'Wasim Sayyed, Principal Cloud Architect', cloudA, cloudB } = data;
   const exportDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -250,17 +251,21 @@ export function exportDualCloudComparisonExcel(data: DualCloudComparisonData): v
    </Row>
 
    <Row>
-    <Cell ss:StyleID="MetricLabel"><Data ss:Type="String">Estimated Monthly Operational Cost (OpEx)</Data></Cell>
+    <Cell ss:StyleID="MetricLabel"><Data ss:Type="String">Indicative Monthly Host Cost (USD, not a vendor list price)</Data></Cell>
     <Cell ss:StyleID="CurrencyValueA"><Data ss:Type="Number">${cloudA.monthlyOpex}</Data></Cell>
     <Cell ss:StyleID="CurrencyValueB"><Data ss:Type="Number">${cloudB.monthlyOpex}</Data></Cell>
     <Cell><Data ss:Type="String">$${costDifferenceMonthly.toLocaleString()} / mo</Data></Cell>
    </Row>
 
    <Row ss:Height="24">
-    <Cell ss:StyleID="MetricLabel"><Data ss:Type="String">36-Month Cumulative TCO (3-Yr Reserved)</Data></Cell>
+    <Cell ss:StyleID="MetricLabel"><Data ss:Type="String">36-Month Indicative Cost (flat monthly rate x 36, hosts only)</Data></Cell>
     <Cell ss:StyleID="CurrencyValueA"><Data ss:Type="Number">${cloudA.threeYearTco}</Data></Cell>
     <Cell ss:StyleID="CurrencyValueB"><Data ss:Type="Number">${cloudB.threeYearTco}</Data></Cell>
     <Cell ss:StyleID="WinnerBadge"><Data ss:Type="String">$${costDifference3Yr.toLocaleString()} Net Delta</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell><Data ss:Type="String">${(data.pricingNote ?? 'Prices are indicative planning figures, not vendor list prices.').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Data></Cell>
    </Row>
   </Table>
  </Worksheet>

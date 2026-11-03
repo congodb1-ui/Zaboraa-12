@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CASE_STUDIES } from '../data/caseStudies';
+import { CASE_STUDIES, CaseStudy } from '../data/caseStudies';
+import { useCustomization } from '../context/CustomizationContext';
 import { Shield, ArrowRight, AlertCircle, Wrench } from 'lucide-react';
 import { TiltCard } from './TiltCard';
 
 export const CaseStudiesSection: React.FC = () => {
+  const { siteConfig } = useCustomization();
+  const activeStudies: CaseStudy[] = ((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES) as CaseStudy[];
   return (
     <section id="case-studies" className="py-20 bg-slate-50/70 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 scroll-mt-12 relative overflow-hidden">
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -50,7 +53,7 @@ export const CaseStudiesSection: React.FC = () => {
 
         {/* Case Study Cards Grid - 3 Flagship Studies + Reproduction Tool */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {CASE_STUDIES.slice(0, 3).map((study) => (
+          {activeStudies.slice(0, 3).map((study) => (
             <TiltCard key={study.slug} maxTilt={3} className="h-full">
               <div className="h-full flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 p-6 sm:p-7 space-y-6 hover:border-cyan-500/50 dark:hover:border-cyan-500/50 transition-all shadow-sm hover:shadow-md group relative overflow-hidden">
                 <div className="space-y-4">

@@ -145,4 +145,50 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(getRouteSeo('/nonexistent-route')).toBeUndefined();
     });
   });
+
+  describe('4. Admin Controls & Edit-Side Settings Case Studies Integration', () => {
+    it('initializes INITIAL_SITE_DATA.caseStudies with all 7 active case studies', async () => {
+      const { INITIAL_SITE_DATA } = await import('../data/initialData');
+      expect(INITIAL_SITE_DATA.caseStudies).toHaveLength(7);
+      const initialSlugs = INITIAL_SITE_DATA.caseStudies.map(cs => cs.slug);
+      expect(initialSlugs).toEqual([
+        'middle-east-gov-avs-framework',
+        'avs-to-avs-cross-region',
+        'gov-dr-failover-drills',
+        'private-gcve-vmc-migration',
+        'nsxt-microsegmentation-aria-networks',
+        'aria-operations-networks-deployment',
+        'aria-automation-blueprints-vcenter'
+      ]);
+    });
+
+    it('adminService.getSeoMetadata returns all 30 routes including all 7 case studies', async () => {
+      const { adminService } = await import('../services/adminService');
+      const seoPages = await adminService.getSeoMetadata();
+      expect(seoPages.length).toBe(30);
+
+      const paths = seoPages.map(p => p.page_path);
+      expect(paths).toContain('/case-studies');
+      expect(paths).toContain('/case-studies/middle-east-gov-avs-framework');
+      expect(paths).toContain('/case-studies/avs-to-avs-cross-region');
+      expect(paths).toContain('/case-studies/gov-dr-failover-drills');
+      expect(paths).toContain('/case-studies/private-gcve-vmc-migration');
+      expect(paths).toContain('/case-studies/nsxt-microsegmentation-aria-networks');
+      expect(paths).toContain('/case-studies/aria-operations-networks-deployment');
+      expect(paths).toContain('/case-studies/aria-automation-blueprints-vcenter');
+      expect(paths).not.toContain('/cases');
+    });
+
+    it('adminService.generateSitemapXml produces clean sitemap with 30 URLs and no priority/changefreq', async () => {
+      const { adminService } = await import('../services/adminService');
+      const seoPages = await adminService.getSeoMetadata();
+      const xml = adminService.generateSitemapXml(seoPages);
+
+      expect(xml).toContain('https://zaboraa.com/case-studies/middle-east-gov-avs-framework');
+      expect(xml).toContain('https://zaboraa.com/case-studies/nsxt-microsegmentation-aria-networks');
+      expect(xml).not.toContain('<priority>');
+      expect(xml).not.toContain('<changefreq>');
+      expect(xml.split('<url>').length - 1).toBe(30);
+    });
+  });
 });

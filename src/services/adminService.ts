@@ -7,6 +7,7 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { offlineVaultService, VaultAuditLog } from './offlineVaultService';
 import { CANONICAL_PRODUCTION_DOMAIN, getCanonicalDomain } from '../utils/canonicalUrl';
+import { ROUTE_MANIFEST } from '../seo/routes';
 
 // ----------------------------------------------------------------------
 // Types & Interfaces
@@ -1088,76 +1089,34 @@ class AdminService {
       } catch {}
     }
 
-    // Verified default SEO registry for Zaboraa
-    return [
-      {
-        page_path: '/',
-        meta_title: 'Zaboraa - Enterprise VMware Cloud Architecture',
-        meta_description: 'Founder-led VMware cloud architecture, hyperscaler migration, interactive diagrams, video masterclasses, and software tutorials across Azure AVS, AWS VMC, and Google Cloud GCVE.',
-        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/`,
-        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/architecture_avs_mesh_1791450083586.jpg`,
-        keywords: ['VMware Cloud', 'Azure AVS', 'AWS VMC', 'Google GCVE', 'Nutanix NC2', 'NSX Distributed Firewall', 'Wasim Sayyed'],
-        structured_data_type: 'Organization',
+    // Verified default SEO registry for Zaboraa synchronized with ROUTE_MANIFEST (30 URLs)
+    const baseUrl = getCanonicalDomain();
+    return ROUTE_MANIFEST.map((route) => {
+      const isCaseStudy = route.path.startsWith('/case-studies/');
+      const structuredType = route.path === '/'
+        ? 'Organization'
+        : route.path.startsWith('/tools')
+        ? 'WebApplication'
+        : isCaseStudy
+        ? 'TechArticle'
+        : 'WebPage';
+
+      return {
+        page_path: route.path,
+        meta_title: route.title,
+        meta_description: route.description,
+        canonical_url: `${baseUrl}${route.path === '/' ? '' : route.path}`,
+        og_image_url: `${baseUrl}/assets/images/zaboraa-logo.png`,
+        keywords: isCaseStudy
+          ? ['VMware Migration', 'Disaster Recovery', 'Sovereign Cloud', 'Wasim Sayyed']
+          : ['VMware Cloud', 'Azure AVS', 'AWS VMC', 'Google GCVE', 'Wasim Sayyed'],
+        structured_data_type: structuredType,
         indexable: true,
         audit_score: 98,
-        audit_findings: [
-          { severity: 'low', issue: 'Favicon SVG could include theme-color meta tag for high contrast', recommendation: 'Verified present in index.html' }
-        ],
-        updated_at: '2026-10-19T08:00:00Z'
-      },
-      {
-        page_path: '/tools',
-        meta_title: 'Multi-Cloud Architecture Sizing & Engineering Workbench - Zaboraa',
-        meta_description: 'Eliminate sizing guesswork. Parse RVTools spreadsheets, model compute node counts, decouple storage with ANF/FSx, and calculate WAN bandwidth.',
-        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/tools`,
-        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg`,
-        keywords: ['RVTools Parser', 'Node Sizing Tool', 'ANF Decoupled Storage', 'Disaster Recovery Sizer'],
-        structured_data_type: 'WebApplication',
-        indexable: true,
-        audit_score: 95,
         audit_findings: [],
-        updated_at: '2026-10-19T08:00:00Z'
-      },
-      {
-        page_path: '/tools/sizing',
-        meta_title: 'Multi-Cloud Node & Decoupled Storage Sizer - Zaboraa',
-        meta_description: 'Model compute node counts across Azure AVS (AV36/AV64), AWS VMC (i3en/i4i), and Google GCVE (ve1/ve2). Decouple storage with Azure NetApp Files and Amazon FSx ONTAP.',
-        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/tools/sizing`,
-        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/avs_anf_storage_architecture_1791548263395.jpg`,
-        keywords: ['AVS Node Sizing', 'VMC i4i Sizing', 'Azure NetApp Files NFS', 'FSx ONTAP'],
-        structured_data_type: 'WebApplication',
-        indexable: true,
-        audit_score: 94,
-        audit_findings: [],
-        updated_at: '2026-10-19T08:00:00Z'
-      },
-      {
-        page_path: '/tools/design-generator',
-        meta_title: 'Self-Service Hybrid Architecture Blueprint Generator - Zaboraa',
-        meta_description: 'Guided 4-step wizard generating comprehensive multi-cloud migration architecture blueprints, network CIDR maps, and 4K vector topologies.',
-        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/tools/design-generator`,
-        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/blueprint_3d_isometric_1791610246387.jpg`,
-        keywords: ['Architecture Blueprint Generator', 'VMware Cloud BOM', '4K Cloud Vector Diagram'],
-        structured_data_type: 'WebApplication',
-        indexable: true,
-        audit_score: 96,
-        audit_findings: [],
-        updated_at: '2026-10-19T08:00:00Z'
-      },
-      {
-        page_path: '/cases',
-        meta_title: 'Enterprise Cloud Migration Case Studies - Zaboraa',
-        meta_description: 'Production track record across Fortune 500 financial institutions, global healthcare networks, and enterprise retail leaders.',
-        canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/cases`,
-        og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/wasim_sayyed_executive_1791473154875.jpg`,
-        keywords: ['Cloud Migration Case Studies', 'Enterprise Architecture Track Record', 'Fortune 500 Case Studies'],
-        structured_data_type: 'CollectionPage',
-        indexable: true,
-        audit_score: 92,
-        audit_findings: [],
-        updated_at: '2026-10-19T08:00:00Z'
-      }
-    ];
+        updated_at: `${route.lastmod}T00:00:00Z`
+      };
+    });
   }
 
   async updateSeoMetadata(
@@ -1194,13 +1153,10 @@ class AdminService {
       .filter((p) => p.indexable)
       .map((p) => {
         const loc = `${baseUrl}${p.page_path === '/' ? '' : p.page_path}`;
-        const lastmod = p.updated_at ? p.updated_at.split('T')[0] : '2026-10-19';
-        const priority = p.page_path === '/' ? '1.0' : p.page_path.startsWith('/tools') ? '0.9' : '0.8';
+        const lastmod = p.updated_at ? p.updated_at.split('T')[0] : '2026-11-03';
         return `  <url>
     <loc>${loc}</loc>
     <lastmod>${lastmod}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>
   </url>`;
       })
       .join('\n');

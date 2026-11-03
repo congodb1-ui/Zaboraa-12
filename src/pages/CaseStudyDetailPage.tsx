@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getCaseStudyBySlug, CASE_STUDIES } from '../data/caseStudies';
+import { getCaseStudyBySlug, CASE_STUDIES, CaseStudy } from '../data/caseStudies';
 import { NotFoundPage } from './NotFoundPage';
 import { CaseDiagram } from '../components/case-studies/CaseDiagram';
 import { useCustomization } from '../context/CustomizationContext';
@@ -19,8 +19,9 @@ import {
 
 export const CaseStudyDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const study = slug ? getCaseStudyBySlug(slug) : undefined;
-  const { setIsBriefingModalOpen } = useCustomization();
+  const { siteConfig, setIsBriefingModalOpen } = useCustomization();
+  const allStudies: CaseStudy[] = ((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES) as CaseStudy[];
+  const study: CaseStudy | undefined = slug ? (allStudies.find(s => s.slug === slug) || getCaseStudyBySlug(slug)) : undefined;
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   if (!study) {

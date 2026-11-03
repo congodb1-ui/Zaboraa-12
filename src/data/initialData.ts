@@ -1,4 +1,5 @@
 import { SiteConfig } from '../types/siteData';
+import { CASE_STUDIES } from './caseStudies';
 
 export const INITIAL_SITE_DATA: SiteConfig = {
   brand: 'Zaboraa',
@@ -2659,5 +2660,5 @@ Set-VDSwitch -VDSwitch $vds \\
       tags: ['VMware Aria Networks', 'vRNI', 'IPFIX', 'VDS NetFlow', 'Flow Discovery', 'PowerCLI']
     }
   ],
-  caseStudies: []
+  caseStudies: CASE_STUDIES
 };

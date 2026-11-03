@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CASE_STUDIES } from '../data/caseStudies';
+import { CASE_STUDIES, CaseStudy } from '../data/caseStudies';
 import { useCustomization } from '../context/CustomizationContext';
 import {
   Shield,
@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 
 export const CaseStudiesPage: React.FC = () => {
-  const { setIsBriefingModalOpen } = useCustomization();
+  const { siteConfig, setIsBriefingModalOpen } = useCustomization();
+  const allStudies: CaseStudy[] = ((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES) as CaseStudy[];
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
 
   const filterChips = [
@@ -27,7 +28,7 @@ export const CaseStudiesPage: React.FC = () => {
     { label: 'Aria', value: 'Aria' }
   ];
 
-  const filteredStudies = CASE_STUDIES.filter((study) => {
+  const filteredStudies = allStudies.filter((study) => {
     if (selectedFilter === 'ALL') return true;
     if (selectedFilter === 'AVS') return study.platforms.some((p) => p.includes('AVS') || p.includes('Azure'));
     if (selectedFilter === 'GCVE') return study.platforms.some((p) => p.includes('GCVE') || p.includes('Google'));

@@ -29,6 +29,7 @@ export interface CaseStudyFacts {
 }
 
 export interface CaseStudy {
+  id?: string;
   slug: string;
   title: string;
   metaTitle: string;
@@ -48,6 +49,19 @@ export interface CaseStudy {
   datePublished: string;
   dateModified: string;
   keywords: string[];
+
+  // Optional legacy compatibility fields
+  subtitle?: string;
+  metrics?: {
+    vms: string;
+    downtime: string;
+    costReduction: string;
+    timeline: string;
+  };
+  architectureSolution?: string[];
+  verifiedBadge?: string;
+  techTags?: string[];
+  dossierUrl?: string;
 }
 
 export const CASE_STUDIES: CaseStudy[] = [

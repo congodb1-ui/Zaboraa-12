@@ -35,7 +35,8 @@ import {
   FileText,
   GripVertical,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  ExternalLink
 } from 'lucide-react';
 
 export const CustomizerDrawer: React.FC = () => {
@@ -1162,19 +1163,24 @@ export const CustomizerDrawer: React.FC = () => {
                 <div className="space-y-2.5">
                   {(siteConfig.caseStudies || []).map((study, idx) => (
                     <div
-                      key={study.id}
+                      key={study.slug || study.id || idx}
                       className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors space-y-3"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/80">
-                              {study.sector}
+                              {study.facts?.sector || study.sector}
                             </span>
                             <span className="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/60 flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                              <span>{study.verifiedBadge || 'VERIFIED'}</span>
+                              <span>{study.verifiedBadge || 'VERIFIED ARCHITECTURE'}</span>
                             </span>
+                            {study.platforms && study.platforms.length > 0 && (
+                              <span className="text-[10px] font-mono text-slate-400 px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                                {study.platforms.join(' · ')}
+                              </span>
+                            )}
                           </div>
                           <h4 className="font-bold text-white text-xs leading-snug">
                             {study.title}
@@ -1186,6 +1192,19 @@ export const CustomizerDrawer: React.FC = () => {
 
                         {/* Card Actions */}
                         <div className="flex items-center gap-1 shrink-0">
+                          {/* Live Link */}
+                          {study.slug && (
+                            <a
+                              href={`/case-studies/${study.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 border border-slate-800 cursor-pointer"
+                              title="View Live Case Study Page"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
                           {/* Reorder Up */}
                           <button
                             type="button"
@@ -1226,7 +1245,7 @@ export const CustomizerDrawer: React.FC = () => {
                             type="button"
                             onClick={() => {
                               if (window.confirm(`Delete track record "${study.title}"?`)) {
-                                deleteCaseStudy(study.id);
+                                deleteCaseStudy(study.slug || study.id || '');
                                 showNotification('Track record deleted.');
                               }
                             }}
@@ -1238,23 +1257,31 @@ export const CustomizerDrawer: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Quantitative Metrics Summary Strip */}
-                      <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-800/70 text-[10px] font-mono text-slate-300">
+                      {/* Quantitative Architectural Facts Strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-800/70 text-[10px] font-mono text-slate-300">
                         <div className="p-1.5 rounded bg-slate-900">
-                          <span className="text-slate-500 block uppercase">Workloads</span>
-                          <span className="font-bold text-white truncate block">{study.metrics.vms}</span>
+                          <span className="text-slate-500 block uppercase">Scale</span>
+                          <span className="font-bold text-white truncate block" title={study.facts?.scale || study.metrics?.vms || 'Estate Scale'}>
+                            {study.facts?.scale || study.metrics?.vms || '50-300 VMs'}
+                          </span>
                         </div>
                         <div className="p-1.5 rounded bg-slate-900">
-                          <span className="text-slate-500 block uppercase">Downtime</span>
-                          <span className="font-bold text-emerald-400 truncate block">{study.metrics.downtime}</span>
+                          <span className="text-slate-500 block uppercase">Platforms</span>
+                          <span className="font-bold text-emerald-400 truncate block" title={study.facts?.platforms || study.platforms?.join(', ') || 'VMware'}>
+                            {study.facts?.platforms || study.platforms?.join(', ') || 'VMware Cloud'}
+                          </span>
                         </div>
                         <div className="p-1.5 rounded bg-slate-900">
-                          <span className="text-slate-500 block uppercase">Cost</span>
-                          <span className="font-bold text-cyan-300 truncate block">{study.metrics.costReduction}</span>
+                          <span className="text-slate-500 block uppercase">Transit</span>
+                          <span className="font-bold text-cyan-300 truncate block" title={study.facts?.connectivity || study.metrics?.timeline || 'Line-Rate'}>
+                            {study.facts?.connectivity || study.metrics?.timeline || 'FastPath / Interconnect'}
+                          </span>
                         </div>
                         <div className="p-1.5 rounded bg-slate-900">
-                          <span className="text-slate-500 block uppercase">Timeline</span>
-                          <span className="font-bold text-white truncate block">{study.metrics.timeline}</span>
+                          <span className="text-slate-500 block uppercase">Role</span>
+                          <span className="font-bold text-white truncate block" title={study.facts?.role || 'Principal Architect'}>
+                            {study.facts?.role || 'Lead Cloud Architect'}
+                          </span>
                         </div>
                       </div>
                     </div>

@@ -531,11 +531,11 @@ export const AdminDashboardModal: React.FC = () => {
                   </div>
 
                   <div className="p-5 rounded-2xl bg-[#131d31] border-2 border-slate-700 shadow-md hover:border-slate-600 transition-all">
-                    <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Target Migration Scale</span>
-                    <div className="text-3xl font-black font-mono text-white mt-2 tabular-nums">
-                      14,250 VMs
+                    <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Verified Case Studies</span>
+                    <div className="text-3xl font-black font-mono text-cyan-300 mt-2 tabular-nums">
+                      7 Blueprints
                     </div>
-                    <span className="text-xs font-semibold text-slate-200 mt-2 block">Across AVS, NC2, & VMC</span>
+                    <span className="text-xs font-semibold text-slate-200 mt-2 block">AVS, GCVE, VMC, SRM, NSX & Aria</span>
                   </div>
 
                   <div className="p-5 rounded-2xl bg-[#131d31] border-2 border-slate-700 shadow-md hover:border-slate-600 transition-all">

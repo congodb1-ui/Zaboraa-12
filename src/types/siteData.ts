@@ -135,23 +135,19 @@ export interface ServicePillar {
   badge: string;
 }
 
-export interface CaseStudy {
-  id: string;
-  sector: string;
-  title: string;
-  subtitle: string;
-  metrics: {
-    vms: string;
-    downtime: string;
-    costReduction: string;
-    timeline: string;
-  };
-  summary: string;
-  architectureSolution: string[];
-  verifiedBadge?: string;
-  techTags?: string[];
-  dossierUrl?: string;
-}
+import type {
+  CaseStudy,
+  CaseStudyFacts,
+  CaseStudySection,
+  CaseStudyFAQ
+} from '../data/caseStudies';
+
+export type {
+  CaseStudy,
+  CaseStudyFacts,
+  CaseStudySection,
+  CaseStudyFAQ
+};
 
 export interface ArchitectureDesignItem {
   id: string;

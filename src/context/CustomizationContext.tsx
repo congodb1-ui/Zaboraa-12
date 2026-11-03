@@ -224,7 +224,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
               : undefined,
             tutorials: parsed.tutorials || INITIAL_SITE_DATA.tutorials,
             knowledgeBase: mergeKnowledgeBaseArticles(parsed.knowledgeBase),
-            caseStudies: parsed.caseStudies || INITIAL_SITE_DATA.caseStudies,
+            caseStudies: Array.isArray(parsed.caseStudies) && parsed.caseStudies.length > 0 ? parsed.caseStudies : INITIAL_SITE_DATA.caseStudies,
             services: parsed.services || INITIAL_SITE_DATA.services,
             enableHotspots: parsed.enableHotspots !== undefined ? parsed.enableHotspots : true
           };
@@ -559,7 +559,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         videos: sanitizeVideosList(Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos),
         tutorials: Array.isArray(siteContent.tutorials) && siteContent.tutorials.length > 0 ? siteContent.tutorials : prev.tutorials,
         knowledgeBase: mergeKnowledgeBaseArticles(Array.isArray(siteContent.knowledgeBase) && siteContent.knowledgeBase.length > 0 ? siteContent.knowledgeBase : prev.knowledgeBase),
-        caseStudies: Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0 ? siteContent.caseStudies : prev.caseStudies,
+        caseStudies: Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0 ? siteContent.caseStudies : (Array.isArray(prev.caseStudies) && prev.caseStudies.length > 0 ? prev.caseStudies : INITIAL_SITE_DATA.caseStudies),
         services: Array.isArray(siteContent.services) && siteContent.services.length > 0 ? siteContent.services : prev.services,
         platformShowcases: (Array.isArray(siteContent.platformShowcases) && siteContent.platformShowcases.length > 0
           ? siteContent.platformShowcases
@@ -1279,11 +1279,11 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const updateCaseStudy = (id: string, updated: Partial<CaseStudy>) => {
+  const updateCaseStudy = (idOrSlug: string, updated: Partial<CaseStudy>) => {
     if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).map(s =>
-        s.id === id ? { ...s, ...updated } : s
+        (s.id === idOrSlug || s.slug === idOrSlug) ? { ...s, ...updated } : s
       );
       if (isAdmin) {
         adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
@@ -1296,10 +1296,10 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const deleteCaseStudy = (id: string) => {
+  const deleteCaseStudy = (idOrSlug: string) => {
     if (!isAdmin) return;
     setSiteConfig(prev => {
-      const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).filter(s => s.id !== id);
+      const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).filter(s => s.id !== idOrSlug && s.slug !== idOrSlug);
       if (isAdmin) {
         adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
           .catch(e => console.warn('Notice persisting case studies:', e));

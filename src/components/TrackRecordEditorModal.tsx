@@ -11,9 +11,21 @@ import {
   Briefcase,
   Layers,
   Sparkles,
-  ArrowUp,
-  ArrowDown
+  Link as LinkIcon,
+  Server,
+  Activity,
+  Cpu
 } from 'lucide-react';
+
+const AVAILABLE_DIAGRAMS = [
+  { id: 'avs-migration-flow-pipeline', label: 'AVS Migration & FastPath Transit Topology' },
+  { id: 'vmc-aws-transit-gateway-dr', label: 'VMC on AWS Multi-AZ Transit Gateway & DR' },
+  { id: 'gcve-storage-datastore-scaling', label: 'GCVE Decoupled NetApp Storage Pools' },
+  { id: 'srm-ansible-replication-runbook', label: 'Cross-Region SRM & Ansible Automated Runbook' },
+  { id: 'nsx-microseg-flow-pipeline', label: 'NSX-T Micro-segmentation & DFW Architecture' },
+  { id: 'aria-ops-networks-architecture', label: 'Aria Operations for Networks Flow Analysis' },
+  { id: 'aria-automation-lifecycle', label: 'Aria Automation Multi-Tier Blueprint Lifecycle' }
+];
 
 export const TrackRecordEditorModal: React.FC = () => {
   const {
@@ -23,111 +35,153 @@ export const TrackRecordEditorModal: React.FC = () => {
     setActiveEditCaseStudy,
     addCaseStudy,
     updateCaseStudy,
-    deleteCaseStudy,
-    siteConfig
+    deleteCaseStudy
   } = useCustomization();
 
   const isEditing = Boolean(activeEditCaseStudy);
 
   const [sector, setSector] = useState('');
   const [title, setTitle] = useState('');
-  const [subtitle, setSubtitle] = useState('');
+  const [h1, setH1] = useState('');
+  const [slug, setSlug] = useState('');
+  const [scale, setScale] = useState('');
+  const [platforms, setPlatforms] = useState('');
+  const [connectivity, setConnectivity] = useState('');
+  const [role, setRole] = useState('');
   const [summary, setSummary] = useState('');
-  const [verifiedBadge, setVerifiedBadge] = useState('VERIFIED');
-  const [vms, setVms] = useState('');
-  const [downtime, setDowntime] = useState('');
-  const [costReduction, setCostReduction] = useState('');
-  const [timeline, setTimeline] = useState('');
-  const [solutions, setSolutions] = useState<string[]>([]);
-  const [newSolutionInput, setNewSolutionInput] = useState('');
+  const [diagram, setDiagram] = useState('avs-migration-flow-pipeline');
+  const [verifiedBadge, setVerifiedBadge] = useState('VERIFIED ARCHITECTURE');
+  const [lessons, setLessons] = useState<string[]>([]);
+  const [newLessonInput, setNewLessonInput] = useState('');
   const [notification, setNotification] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeEditCaseStudy) {
-      setSector(activeEditCaseStudy.sector || 'Banking & Financial Services');
+      setSector(activeEditCaseStudy.facts?.sector || activeEditCaseStudy.sector || 'Middle East Government Entities');
       setTitle(activeEditCaseStudy.title || '');
-      setSubtitle(activeEditCaseStudy.subtitle || '');
+      setH1(activeEditCaseStudy.h1 || activeEditCaseStudy.title || '');
+      setSlug(activeEditCaseStudy.slug || activeEditCaseStudy.id || '');
+      setScale(activeEditCaseStudy.facts?.scale || activeEditCaseStudy.metrics?.vms || '50-100 VMs average, up to 300 VMs');
+      setPlatforms(
+        activeEditCaseStudy.facts?.platforms ||
+        (Array.isArray(activeEditCaseStudy.platforms) ? activeEditCaseStudy.platforms.join(', ') : 'Azure VMware Solution, VMware HCX')
+      );
+      setConnectivity(activeEditCaseStudy.facts?.connectivity || 'ExpressRoute FastPath and VPN');
+      setRole(activeEditCaseStudy.facts?.role || 'Principal VMware Architect');
       setSummary(activeEditCaseStudy.summary || '');
-      setVerifiedBadge(activeEditCaseStudy.verifiedBadge || 'VERIFIED');
-      setVms(activeEditCaseStudy.metrics?.vms || '1,200+ VMs');
-      setDowntime(activeEditCaseStudy.metrics?.downtime || '0 Unplanned Downtime');
-      setCostReduction(activeEditCaseStudy.metrics?.costReduction || '-30% TCO Savings');
-      setTimeline(activeEditCaseStudy.metrics?.timeline || '90 Days');
-      setSolutions(activeEditCaseStudy.architectureSolution || []);
+      setDiagram(activeEditCaseStudy.diagram || 'avs-migration-flow-pipeline');
+      setVerifiedBadge(activeEditCaseStudy.verifiedBadge || 'VERIFIED ARCHITECTURE');
+      setLessons(
+        activeEditCaseStudy.lessonsLearned && activeEditCaseStudy.lessonsLearned.length > 0
+          ? activeEditCaseStudy.lessonsLearned
+          : activeEditCaseStudy.architectureSolution || []
+      );
     } else {
-      // New case study template
-      setSector('Global Enterprise Services');
-      setTitle('Multi-Cloud SDDC Modernization & Zero-Downtime Migration');
-      setSubtitle('Hybrid Hyperscaler Architecture');
-      setSummary('Complete enterprise cloud migration delivering zero unplanned application downtime, regulatory data residency, and decoupled external storage economics.');
-      setVerifiedBadge('VERIFIED');
-      setVms('1,500+ VMs / 2.8 PB');
-      setDowntime('0 Unplanned Downtime');
-      setCostReduction('-35% Annual TCO');
-      setTimeline('120 Days');
-      setSolutions([
-        'ExpressRoute FastPath and BGP route convergence across dual carrier meet-me rooms',
-        'Decoupled external NFS datastores to reduce core host licensing requirements',
-        'HCX Replication-Assisted vMotion (RAV) waves scheduled within maintenance windows',
-        'Automated SRM disaster recovery runbooks with cross-region replication'
+      // New case study defaults adhering to Approved Fact Sheet
+      setSector('Middle East Government Entities');
+      setTitle('Standardised VMware Migration and Sovereign DR Framework');
+      setH1('Standardised VMware to Hyperscaler Migration Framework for Public Sector');
+      setSlug(`gov-vmware-migration-${Date.now().toString().slice(-4)}`);
+      setScale('50-100 VMs average, up to 300 VMs');
+      setPlatforms('Azure VMware Solution, VMware HCX');
+      setConnectivity('ExpressRoute FastPath with VPN secondary failover');
+      setRole('Principal VMware Architect');
+      setSummary('Standardised multi-cluster VMware cloud migration ensuring data residency, minimal maintenance window downtime, and decoupled external storage pools.');
+      setDiagram('avs-migration-flow-pipeline');
+      setVerifiedBadge('VERIFIED ARCHITECTURE');
+      setLessons([
+        'Pre-audit MTU settings across all IPSec and ExpressRoute endpoints before scheduling replication waves.',
+        'Validate external NFS datastore performance with synthetic workloads prior to final cutover.',
+        'Enforce non-overlapping CIDR allocations across on-premises and target cloud subnets to eliminate re-IP delays.'
       ]);
     }
   }, [activeEditCaseStudy, isTrackRecordModalOpen]);
 
   if (!isTrackRecordModalOpen) return null;
 
-  const handleAddSolution = () => {
-    if (!newSolutionInput.trim()) return;
-    setSolutions(prev => [...prev, newSolutionInput.trim()]);
-    setNewSolutionInput('');
+  const handleAddLesson = () => {
+    if (!newLessonInput.trim()) return;
+    setLessons(prev => [...prev, newLessonInput.trim()]);
+    setNewLessonInput('');
   };
 
-  const handleRemoveSolution = (index: number) => {
-    setSolutions(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveLesson = (index: number) => {
+    setLessons(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert('Please provide a title for the track record.');
+      alert('Please provide a title for the case study.');
       return;
     }
 
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-') || `cs-${Date.now()}`;
+    const parsedPlatforms = platforms.split(',').map(p => p.trim()).filter(Boolean);
+
     const payload: CaseStudy = {
-      id: activeEditCaseStudy ? activeEditCaseStudy.id : `cs-${Date.now()}`,
-      sector: sector.trim() || 'Enterprise Cloud Infrastructure',
+      ...(activeEditCaseStudy || {}),
+      id: cleanSlug,
+      slug: cleanSlug,
       title: title.trim(),
-      subtitle: subtitle.trim() || 'Verified Cloud Architecture',
-      summary: summary.trim(),
-      verifiedBadge: verifiedBadge.trim() || 'VERIFIED',
-      metrics: {
-        vms: vms.trim() || '1,000+ VMs',
-        downtime: downtime.trim() || '0 Downtime',
-        costReduction: costReduction.trim() || '-30% TCO',
-        timeline: timeline.trim() || '90 Days'
+      h1: h1.trim() || title.trim(),
+      metaTitle: activeEditCaseStudy?.metaTitle || `${title.trim()} - Zaboraa`,
+      metaDescription: activeEditCaseStudy?.metaDescription || summary.trim().slice(0, 155),
+      sector: sector.trim(),
+      platforms: parsedPlatforms.length > 0 ? parsedPlatforms : ['Azure VMware Solution', 'VMware HCX'],
+      facts: {
+        sector: sector.trim(),
+        scale: scale.trim(),
+        platforms: platforms.trim(),
+        connectivity: connectivity.trim(),
+        role: role.trim()
       },
-      architectureSolution: solutions.length > 0 ? solutions : ['Enterprise-grade architecture design and validated cutover.']
+      summary: summary.trim(),
+      diagram,
+      lessonsLearned: lessons.length > 0 ? lessons : ['Validated architectural cutover and governance runbooks.'],
+      sections: activeEditCaseStudy?.sections || [
+        {
+          heading: 'Executive Architecture Overview',
+          body: [summary.trim()]
+        }
+      ],
+      faq: activeEditCaseStudy?.faq || [],
+      relatedTools: activeEditCaseStudy?.relatedTools || [],
+      relatedDisciplines: activeEditCaseStudy?.relatedDisciplines || [],
+      relatedSlugs: activeEditCaseStudy?.relatedSlugs || [],
+      keywords: activeEditCaseStudy?.keywords || ['VMware Migration', 'Disaster Recovery', 'Sovereign Cloud'],
+      verifiedBadge: verifiedBadge.trim() || 'VERIFIED ARCHITECTURE',
+      // Legacy compatibility fields
+      metrics: {
+        vms: scale.trim(),
+        downtime: 'Maintenance window cutover',
+        costReduction: 'Optimized node sizing',
+        timeline: connectivity.trim()
+      },
+      architectureSolution: lessons,
+      datePublished: activeEditCaseStudy?.datePublished || '2026-11-03',
+      dateModified: '2026-11-03'
     };
 
     if (isEditing && activeEditCaseStudy) {
-      updateCaseStudy(activeEditCaseStudy.id, payload);
+      updateCaseStudy(activeEditCaseStudy.slug || activeEditCaseStudy.id || cleanSlug, payload);
       setNotification(`Updated "${payload.title}" successfully!`);
     } else {
       addCaseStudy(payload);
-      setNotification(`Added new track record "${payload.title}"!`);
+      setNotification(`Added new case study "${payload.title}"!`);
     }
 
     setTimeout(() => {
       setNotification(null);
       setIsTrackRecordModalOpen(false);
       setActiveEditCaseStudy(null);
-    }, 1200);
+    }, 1000);
   };
 
   const handleDelete = () => {
     if (!activeEditCaseStudy) return;
     if (window.confirm(`Are you sure you want to delete "${activeEditCaseStudy.title}"?`)) {
-      deleteCaseStudy(activeEditCaseStudy.id);
+      deleteCaseStudy(activeEditCaseStudy.slug || activeEditCaseStudy.id || '');
       setIsTrackRecordModalOpen(false);
       setActiveEditCaseStudy(null);
     }
@@ -149,14 +203,14 @@ export const TrackRecordEditorModal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">
-                  {isEditing ? 'Edit Enterprise Track Record' : 'Add New Enterprise Track Record'}
+                  {isEditing ? 'Edit Enterprise Case Study' : 'Author New Case Study'}
                 </h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 uppercase">
-                  ADMIN ONLY
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 uppercase">
+                  VERIFIED ARCHITECTURE
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Author and publish verified production case studies to the home page track record section.
+                Configure case study facts, architectural diagram, and lessons learned with full persistence.
               </p>
             </div>
           </div>
@@ -181,18 +235,18 @@ export const TrackRecordEditorModal: React.FC = () => {
         )}
 
         <form onSubmit={handleSave} className="space-y-5">
-          {/* Section 1: Overview & Sector */}
+          {/* Section 1: Overview & Classification */}
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">
-                  Client Sector / Industry Taxonomy
+                  Client Sector / Domain
                 </label>
                 <input
                   type="text"
                   value={sector}
                   onChange={(e) => setSector(e.target.value)}
-                  placeholder="e.g. Banking & Financial Services"
+                  placeholder="e.g. Middle East Government Entities"
                   className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
                   required
                 />
@@ -200,27 +254,28 @@ export const TrackRecordEditorModal: React.FC = () => {
 
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">
-                  Verification Badge Text
+                  URL Route Slug (/case-studies/...)
                 </label>
                 <input
                   type="text"
-                  value={verifiedBadge}
-                  onChange={(e) => setVerifiedBadge(e.target.value)}
-                  placeholder="e.g. VERIFIED PRODUCTION"
-                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="e.g. middle-east-gov-avs-framework"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-cyan-300 font-mono text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  required
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-slate-300 font-semibold mb-1">
-                Case Study Headline / Title
+                Display Title (Navigation & Card Heading)
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Global Tier-1 Banking SDDC Evacuation to Azure AVS"
+                placeholder="e.g. Middle East Government AVS Migration Framework"
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 text-sm font-bold"
                 required
               />
@@ -228,36 +283,49 @@ export const TrackRecordEditorModal: React.FC = () => {
 
             <div>
               <label className="block text-slate-300 font-semibold mb-1">
-                Executive Summary
+                Page H1 (Detail Article Headline)
+              </label>
+              <input
+                type="text"
+                value={h1}
+                onChange={(e) => setH1(e.target.value)}
+                placeholder="e.g. Standardised VMware to Azure VMware Solution Migration for Middle East Government Entities"
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1">
+                Executive Architecture Summary
               </label>
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={3}
-                placeholder="Brief description of the enterprise business requirements, migration challenges, and architectural achievement."
+                placeholder="Brief description of the migration architecture, replication engine, and storage decoupling."
                 className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 leading-relaxed"
                 required
               />
             </div>
           </div>
 
-          {/* Section 2: Concrete Quantitative Metrics */}
+          {/* Section 2: Concrete Architectural Facts */}
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
             <div className="text-slate-300 font-semibold flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Verified Quantitative Proof Metrics</span>
+              <span>Verified Architectural Facts Sheet</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">
-                  Workload Scale
+                  Estate Scale (Workloads)
                 </label>
                 <input
                   type="text"
-                  value={vms}
-                  onChange={(e) => setVms(e.target.value)}
-                  placeholder="1,850+ VMs / 4.2 PB"
+                  value={scale}
+                  onChange={(e) => setScale(e.target.value)}
+                  placeholder="e.g. 50-100 VMs average, up to 300 VMs"
                   className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
                   required
                 />
@@ -265,41 +333,41 @@ export const TrackRecordEditorModal: React.FC = () => {
 
               <div>
                 <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">
-                  Cutover Downtime
+                  Cloud Platforms & Tools (comma-separated)
                 </label>
                 <input
                   type="text"
-                  value={downtime}
-                  onChange={(e) => setDowntime(e.target.value)}
-                  placeholder="0.0 ms Unplanned"
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-emerald-400 font-mono text-xs font-bold focus:outline-none focus:border-cyan-400"
+                  value={platforms}
+                  onChange={(e) => setPlatforms(e.target.value)}
+                  placeholder="e.g. Azure VMware Solution, VMware HCX"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-emerald-400 font-mono text-xs focus:outline-none focus:border-cyan-400"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">
-                  Cost / TCO Impact
+                  Network Connectivity & Transit
                 </label>
                 <input
                   type="text"
-                  value={costReduction}
-                  onChange={(e) => setCostReduction(e.target.value)}
-                  placeholder="-34% Licensing TCO"
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-cyan-300 font-mono text-xs font-bold focus:outline-none focus:border-cyan-400"
+                  value={connectivity}
+                  onChange={(e) => setConnectivity(e.target.value)}
+                  placeholder="e.g. ExpressRoute FastPath, VPN"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-400"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">
-                  Delivery Window
+                  Architecture Role
                 </label>
                 <input
                   type="text"
-                  value={timeline}
-                  onChange={(e) => setTimeline(e.target.value)}
-                  placeholder="4.5 Months"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  placeholder="e.g. Principal VMware Architect"
                   className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-400"
                   required
                 />
@@ -307,18 +375,37 @@ export const TrackRecordEditorModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 3: Engineering Solutions (Dynamic List) */}
+          {/* Section 3: Interactive Architecture Vector Diagram */}
+          <div className="space-y-2">
+            <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+              <Server className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Architecture Vector Diagram Association</span>
+            </label>
+            <select
+              value={diagram}
+              onChange={(e) => setDiagram(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+            >
+              {AVAILABLE_DIAGRAMS.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label} ({d.id})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section 4: Engineering Lessons Learned */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-slate-300 font-semibold flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Key Engineering Solutions ({solutions.length})</span>
+                <span>Lessons Learned & Architectural Insights ({lessons.length})</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">Bullet-Point Takeaways</span>
+              <span className="text-[10px] text-slate-400 font-mono">Bullet-Point Findings</span>
             </div>
 
             <div className="space-y-2">
-              {solutions.map((sol, idx) => (
+              {lessons.map((sol, idx) => (
                 <div
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 group"
@@ -328,17 +415,17 @@ export const TrackRecordEditorModal: React.FC = () => {
                     type="text"
                     value={sol}
                     onChange={(e) => {
-                      const updated = [...solutions];
+                      const updated = [...lessons];
                       updated[idx] = e.target.value;
-                      setSolutions(updated);
+                      setLessons(updated);
                     }}
                     className="flex-1 bg-transparent border-none text-slate-200 focus:outline-none focus:text-white"
                   />
                   <button
                     type="button"
-                    onClick={() => handleRemoveSolution(idx)}
-                    className="p-1 text-slate-500 hover:text-rose-400 opacity-60 group-hover:opacity-100 transition-opacity"
-                    title="Remove solution"
+                    onClick={() => handleRemoveLesson(idx)}
+                    className="p-1 text-slate-500 hover:text-rose-400 opacity-60 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    title="Remove item"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -346,24 +433,24 @@ export const TrackRecordEditorModal: React.FC = () => {
               ))}
             </div>
 
-            {/* Add Solution Input */}
+            {/* Add Lesson Input */}
             <div className="flex items-center gap-2 pt-1">
               <input
                 type="text"
-                value={newSolutionInput}
-                onChange={(e) => setNewSolutionInput(e.target.value)}
+                value={newLessonInput}
+                onChange={(e) => setNewLessonInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleAddSolution();
+                    handleAddLesson();
                   }
                 }}
-                placeholder="Add architectural solution point (press Enter)..."
+                placeholder="Add architectural lesson or takeaway (press Enter)..."
                 className="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
               />
               <button
                 type="button"
-                onClick={handleAddSolution}
+                onClick={handleAddLesson}
                 className="px-3 py-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-600/60 text-cyan-200 font-semibold flex items-center gap-1 cursor-pointer transition-colors shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -381,7 +468,7 @@ export const TrackRecordEditorModal: React.FC = () => {
                 className="px-3.5 py-2 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-600/50 text-rose-200 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                <span>Delete Track Record</span>
+                <span>Delete Case Study</span>
               </button>
             ) : <div />}
 
@@ -401,7 +488,7 @@ export const TrackRecordEditorModal: React.FC = () => {
                 className="px-5 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>{isEditing ? 'Save Changes' : 'Publish Track Record'}</span>
+                <span>{isEditing ? 'Save Changes' : 'Publish Case Study'}</span>
               </button>
             </div>
           </div>

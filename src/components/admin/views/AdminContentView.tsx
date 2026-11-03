@@ -10,10 +10,18 @@ import {
   Layers,
   Globe,
   Settings,
-  RefreshCw
+  RefreshCw,
+  Shield,
+  ExternalLink,
+  ChevronUp,
+  ChevronDown,
+  Plus,
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { useCustomization } from '../../../context/CustomizationContext';
 import { adminService } from '../../../services/adminService';
+import { CASE_STUDIES } from '../../../data/caseStudies';
 
 interface AdminContentViewProps {
   currentUserEmail: string;
@@ -22,7 +30,17 @@ interface AdminContentViewProps {
 export const AdminContentView: React.FC<AdminContentViewProps> = ({
   currentUserEmail
 }) => {
-  const { siteConfig, updateAdminSettings, updateGeneralInfo, updateHeroContent, syncAllContentToCloud } = useCustomization();
+  const {
+    siteConfig,
+    updateAdminSettings,
+    updateGeneralInfo,
+    updateHeroContent,
+    syncAllContentToCloud,
+    setActiveEditCaseStudy,
+    setIsTrackRecordModalOpen,
+    reorderCaseStudies,
+    deleteCaseStudy
+  } = useCustomization();
 
   // Announcement Banner
   const [announcementText, setAnnouncementText] = useState(
@@ -347,6 +365,130 @@ export const AdminContentView: React.FC<AdminContentViewProps> = ({
                 className="w-full max-w-md px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Module 4: Verified Case Studies & Enterprise Track Records */}
+        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-3">
+            <div className="flex items-center gap-2.5">
+              <Shield className="w-4 h-4 text-cyan-400" />
+              <div>
+                <h2 className="text-sm font-bold text-white">
+                  Verified Case Studies & Track Records ({((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES).length})
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Manage published enterprise migration frameworks, architecture diagrams, and lessons learned.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveEditCaseStudy(null);
+                setIsTrackRecordModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Author New Case Study</span>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES).map((study, idx) => (
+              <div
+                key={study.slug || study.id || idx}
+                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1.5 max-w-2xl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/80">
+                      {study.facts?.sector || study.sector}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/60">
+                      {study.facts?.scale || study.metrics?.vms || '50-300 VMs'}
+                    </span>
+                    {study.platforms && study.platforms.length > 0 && (
+                      <span className="text-[10px] font-mono text-slate-400 px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                        {study.platforms.join(' · ')}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-white text-xs leading-snug">
+                    {study.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 line-clamp-2">
+                    {study.summary}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 self-end md:self-auto">
+                  {study.slug && (
+                    <a
+                      href={`/case-studies/${study.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 border border-slate-800 cursor-pointer transition"
+                      title="View Live Page"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={idx === 0}
+                    onClick={() => reorderCaseStudies(idx, idx - 1)}
+                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition"
+                    title="Move Up"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={idx === ((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES).length - 1}
+                    onClick={() => reorderCaseStudies(idx, idx + 1)}
+                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition"
+                    title="Move Down"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveEditCaseStudy(study);
+                      setIsTrackRecordModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-semibold text-xs flex items-center gap-1 cursor-pointer transition"
+                    title="Edit Case Study"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Delete case study "${study.title}"?`)) {
+                        deleteCaseStudy(study.slug || study.id || '');
+                        setStatusMsg({
+                          type: 'success',
+                          text: `Case study "${study.title}" removed from active manifest.`
+                        });
+                      }
+                    }}
+                    className="p-2 rounded-lg bg-rose-950/50 hover:bg-rose-900 border border-rose-800/60 text-rose-300 hover:text-white cursor-pointer transition"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </form>

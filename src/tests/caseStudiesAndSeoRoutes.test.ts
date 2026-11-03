@@ -5,9 +5,15 @@ import { ROUTE_MANIFEST, getRouteSeo } from '../seo/routes';
 
 describe('Case Studies & SEO Route Manifest Test Suite', () => {
   describe('1. Case Study Data Integrity & Guardrails', () => {
-    it('has exactly 1 active case study for Prompt 1', () => {
-      expect(CASE_STUDIES).toHaveLength(1);
-      expect(CASE_STUDIES[0].slug).toBe('middle-east-gov-avs-framework');
+    it('has exactly 4 active case studies for Prompt 2 (CS1 to CS4)', () => {
+      expect(CASE_STUDIES).toHaveLength(4);
+      const slugs = CASE_STUDIES.map(cs => cs.slug);
+      expect(slugs).toEqual([
+        'middle-east-gov-avs-framework',
+        'avs-to-avs-cross-region',
+        'gov-dr-failover-drills',
+        'private-gcve-vmc-migration'
+      ]);
     });
 
     it('contains all required fields and strict structure for Case Study 1', () => {
@@ -29,6 +35,25 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(cs.faq.length).toBeGreaterThanOrEqual(3);
     });
 
+    it('contains all required fields and strict structure for Case Studies 2, 3, 4', () => {
+      for (const slug of ['avs-to-avs-cross-region', 'gov-dr-failover-drills', 'private-gcve-vmc-migration']) {
+        const cs = getCaseStudyBySlug(slug);
+        expect(cs).toBeDefined();
+        if (!cs) continue;
+
+        expect(cs.h1.trim().length).toBeGreaterThan(0);
+        expect(cs.metaTitle.trim().length).toBeGreaterThan(0);
+        expect(cs.metaDescription.trim().length).toBeGreaterThan(0);
+        expect(cs.facts.sector.trim().length).toBeGreaterThan(0);
+        expect(cs.sections.length).toBeGreaterThanOrEqual(6);
+        expect(cs.lessonsLearned.length).toBeGreaterThanOrEqual(3);
+        expect(cs.relatedTools.length).toBeGreaterThanOrEqual(1);
+        expect(cs.relatedDisciplines.length).toBeGreaterThanOrEqual(2);
+        expect(cs.faq.length).toBeGreaterThanOrEqual(3);
+        expect(cs.relatedSlugs.length).toBeGreaterThanOrEqual(1);
+      }
+    });
+
     it('returns undefined for unknown case study slugs', () => {
       expect(getCaseStudyBySlug('unknown-slug')).toBeUndefined();
       expect(getCaseStudyBySlug('')).toBeUndefined();
@@ -48,14 +73,17 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(serialized).not.toContain('Principal Cloud Architect');
       expect(serialized).not.toContain('40+ migrations');
       expect(serialized).not.toContain('100% zero-downtime');
+      expect(serialized).not.toContain('100% Zero-downtime');
+      expect(serialized).not.toContain('audit passed');
+      expect(serialized).not.toContain('Audit passed');
       expect(serialized).not.toContain('1,240');
       expect(serialized).not.toContain('4,500');
     });
   });
 
   describe('2. SEO Route Manifest & Canonical Hygiene', () => {
-    it('manifest defines exactly 25 routes', () => {
-      expect(ROUTE_MANIFEST).toHaveLength(25);
+    it('manifest defines exactly 28 routes for Prompt 2', () => {
+      expect(ROUTE_MANIFEST).toHaveLength(28);
     });
 
     it('all routes have unique lowercase paths starting with slash', () => {

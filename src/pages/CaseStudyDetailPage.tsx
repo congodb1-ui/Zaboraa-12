@@ -101,7 +101,9 @@ export const CaseStudyDetailPage: React.FC = () => {
     }))
   };
 
-  const relatedStudies = CASE_STUDIES.filter((cs) => cs.slug !== study.slug).slice(0, 2);
+  const relatedStudies = study.relatedSlugs && study.relatedSlugs.length > 0
+    ? study.relatedSlugs.map((s) => CASE_STUDIES.find((cs) => cs.slug === s)).filter((cs): cs is typeof CASE_STUDIES[0] => Boolean(cs)).slice(0, 2)
+    : CASE_STUDIES.filter((cs) => cs.slug !== study.slug).slice(0, 2);
 
   return (
     <>

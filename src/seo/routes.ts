@@ -464,6 +464,225 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
         'url': 'https://zaboraa.com/case-studies/middle-east-gov-avs-framework',
         'datePublished': '2026-11-03',
         'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'Middle East Gov AVS Framework', 'item': 'https://zaboraa.com/case-studies/middle-east-gov-avs-framework' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'Why use both RAV and Bulk migration instead of RAV for all VMs?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'RAV provides true zero downtime live vMotion for mission-critical databases like Oracle RAC, SQL AlwaysOn, and Postgres clusters while preserving IP addresses. Bulk migration is selected for general application workloads where a scheduled reboot window is acceptable, moving tens of VMs in parallel with minimal downtime.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'How do you handle Oracle clusters without breaking licensing or quorum?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Oracle RAC clusters cannot utilize multi-writer shared VMDKs across standard live vMotion without careful preparation. We converted multi-writer configurations to single-node instances prior to cutover, migrated via RAV, and re-established clustering in AVS, or utilized Oracle Data Guard replication.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'What causes latency spikes during network extension cutovers?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Asymmetric routing (hairpinning) occurs when a migrated VM in AVS communicates with default gateway infrastructure still located on-premises. Enabling HCX Mobility Optimized Networking (MON) ensures default gateway routing happens locally within NSX-T Tier-1 routers.'
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  // 26. Case Study 2: AVS to AVS Cross-Region
+  {
+    path: '/case-studies/avs-to-avs-cross-region',
+    title: 'AVS to AVS Cross-Region Migration with HCX: Government Case Study',
+    description: 'AVS-to-AVS migration between Azure regions for a government entity: HCX RAV and Bulk execution, 5-15 min RPO, and dual-DR continuity during cutover.',
+    h1: 'Azure VMware Solution Cross-Region Migration for a Middle East Government Entity',
+    summary: 'An inter-region Azure VMware Solution evacuation framework for a sovereign entity relocating an active AVS private cloud across national data boundaries with continuous DR replication.',
+    lastmod: '2026-11-03',
+    jsonld: [
+      BASE_ORGANIZATION_JSONLD,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': 'Azure VMware Solution Cross-Region Migration for a Middle East Government Entity',
+        'url': 'https://zaboraa.com/case-studies/avs-to-avs-cross-region',
+        'datePublished': '2026-11-03',
+        'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'AVS to AVS Cross-Region', 'item': 'https://zaboraa.com/case-studies/avs-to-avs-cross-region' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'Why would you move an AVS private cloud to another region?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Primary drivers include sovereign data residency mandates designating a newly certified national region, latency optimization by placing compute adjacent to government users, and commercial consolidation.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'Is AVS to AVS the same as on-prem to AVS?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'No. In AVS-to-AVS, both sides run identical cloud SDDCs managed by Microsoft, requiring careful HCX lifecycle parity, inter-region ExpressRoute Global Reach routing, and non-overlapping management address pools.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'How do you keep DR running while migrating?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'We maintain dual replication paths. Workloads on Region A replicate to the DR site until migrated; once cut over to Region B, replication is re-pointed to the DR site without coverage gaps.'
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  // 27. Case Study 3: Government DR, Failover and 6-Monthly Drills
+  {
+    path: '/case-studies/gov-dr-failover-drills',
+    title: 'AVS Disaster Recovery: RPO 5-15 Min, RTO 1-2 Hr, 6-Month DR Drills',
+    description: 'Disaster recovery on Azure VMware Solution: achieving 5-15 min RPO, 1-2 hr RTO, with SRM, vSphere Replication, JetStream, and 6-monthly drills.',
+    h1: 'Disaster Recovery Validation on Azure VMware Solution: Failover, Failback and 6-Monthly Drills',
+    summary: 'A rigorous disaster recovery validation framework deployed across Middle East government entities on Azure VMware Solution, demonstrating 5-15 minute RPO, 1-2 hour RTO, and mandatory semi-annual failover/failback drills.',
+    lastmod: '2026-11-03',
+    jsonld: [
+      BASE_ORGANIZATION_JSONLD,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': 'Disaster Recovery Validation on Azure VMware Solution: Failover, Failback and 6-Monthly Drills',
+        'url': 'https://zaboraa.com/case-studies/gov-dr-failover-drills',
+        'datePublished': '2026-11-03',
+        'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'Government DR & Failover Drills', 'item': 'https://zaboraa.com/case-studies/gov-dr-failover-drills' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'What RPO is realistic with SRM on AVS?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'With vSphere Replication on AVS, standard supported RPO reaches 5 minutes for high-priority tiers over dedicated ExpressRoute bandwidth, and 15 minutes for bulk tiers.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'What is the difference between a test failover and a real failover?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Test failover powers on replicated VMs in an isolated non-routable bubble network without interrupting production or stopping ongoing replication. Real failover halts replication, breaks mirrors, updates production routing/DNS, and brings services live.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'Why is failback harder than failover?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Failback requires reversing the replication direction (reprotect), synchronizing changed delta blocks back to primary storage, handling workloads with reIP changes, and scheduling a second cutover window.'
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  // 28. Case Study 4: Private Sector GCVE & VMC Migration
+  {
+    path: '/case-studies/private-gcve-vmc-migration',
+    title: 'VMware to GCVE vs VMC on AWS: Networking Differences vs AVS',
+    description: 'VMware migrations to GCVE and VMC for private enterprises: Private Services Access, Connected VPC, and external storage comparisons against AVS.',
+    h1: 'VMware to Google Cloud VMware Engine and VMware Cloud on AWS for Private Enterprises',
+    summary: 'Enterprise migration architectures for private sector organizations moving on-premises VMware estates to Google Cloud VMware Engine and VMware Cloud on AWS, highlighting fundamental networking and storage contrasts with AVS.',
+    lastmod: '2026-11-03',
+    jsonld: [
+      BASE_ORGANIZATION_JSONLD,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': 'VMware to Google Cloud VMware Engine and VMware Cloud on AWS for Private Enterprises',
+        'url': 'https://zaboraa.com/case-studies/private-gcve-vmc-migration',
+        'datePublished': '2026-11-03',
+        'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'GCVE vs VMC Migration', 'item': 'https://zaboraa.com/case-studies/private-gcve-vmc-migration' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'How does GCVE networking differ from AVS?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'GCVE integrates directly with customer VPCs via Google Cloud Private Services Access (PSA) using VPC peering, rather than Azure ExpressRoute gateway connections, enabling native access to BigQuery and Vertex AI without hair-pinning.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'What is Connected VPC in VMC?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Connected VPC connects ESXi hosts directly to an AWS customer-owned VPC across high-speed Elastic Network Interfaces (ENIs) at zero cross-AZ data egress fees within the same availability zone.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'Which external storage fits each platform?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'AVS pairs with Azure NetApp Files (ANF); GCVE pairs with Google Cloud NetApp Volumes or Filestore; and VMC on AWS pairs with Amazon FSx for NetApp ONTAP.'
+            }
+          }
+        ]
       }
     ]
   }

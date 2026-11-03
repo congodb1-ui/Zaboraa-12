@@ -21,7 +21,26 @@ export const CaseStudyDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { siteConfig, setIsBriefingModalOpen } = useCustomization();
   const allStudies: CaseStudy[] = ((siteConfig.caseStudies && siteConfig.caseStudies.length > 0) ? siteConfig.caseStudies : CASE_STUDIES) as CaseStudy[];
-  const study: CaseStudy | undefined = slug ? (allStudies.find(s => s.slug === slug) || getCaseStudyBySlug(slug)) : undefined;
+  const rawStudy = slug ? (allStudies.find(s => s.slug === slug || s.id === slug) || getCaseStudyBySlug(slug)) : undefined;
+  const fallback = rawStudy ? getCaseStudyBySlug(rawStudy.slug) : undefined;
+  const study = rawStudy ? {
+    ...rawStudy,
+    h1: rawStudy.h1 || rawStudy.title || fallback?.h1 || 'Case Study',
+    platforms: Array.isArray(rawStudy.platforms) && rawStudy.platforms.length > 0 ? rawStudy.platforms : (fallback?.platforms || ['VMware Cloud']),
+    keywords: Array.isArray(rawStudy.keywords) && rawStudy.keywords.length > 0 ? rawStudy.keywords : (fallback?.keywords || ['VMware', 'Cloud Migration']),
+    sections: Array.isArray(rawStudy.sections) && rawStudy.sections.length > 0 ? rawStudy.sections : (fallback?.sections || []),
+    lessonsLearned: Array.isArray(rawStudy.lessonsLearned) && rawStudy.lessonsLearned.length > 0 ? rawStudy.lessonsLearned : (fallback?.lessonsLearned || []),
+    faq: Array.isArray(rawStudy.faq) && rawStudy.faq.length > 0 ? rawStudy.faq : (fallback?.faq || []),
+    relatedTools: Array.isArray(rawStudy.relatedTools) && rawStudy.relatedTools.length > 0 ? rawStudy.relatedTools : (fallback?.relatedTools || []),
+    relatedDisciplines: Array.isArray(rawStudy.relatedDisciplines) && rawStudy.relatedDisciplines.length > 0 ? rawStudy.relatedDisciplines : (fallback?.relatedDisciplines || []),
+    facts: {
+      sector: rawStudy.facts?.sector || rawStudy.sector || fallback?.facts?.sector || 'Middle East Government Entities',
+      scale: rawStudy.facts?.scale || rawStudy.metrics?.vms || fallback?.facts?.scale || '50-100 VMs average, up to 300 VMs',
+      platforms: rawStudy.facts?.platforms || (rawStudy.platforms ? rawStudy.platforms.join(', ') : fallback?.facts?.platforms) || 'VMware to AVS via Microsoft Partner',
+      connectivity: rawStudy.facts?.connectivity || rawStudy.metrics?.timeline || fallback?.facts?.connectivity || 'Mostly VPN, some ExpressRoute',
+      role: rawStudy.facts?.role || fallback?.facts?.role || 'Migration architecture and delivery'
+    }
+  } : undefined;
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   if (!study) {
@@ -162,23 +181,23 @@ export const CaseStudyDetailPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
             <div className="space-y-1 p-3 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80">
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase">Sector</span>
-              <div className="font-semibold text-slate-900 dark:text-white">{study.facts.sector}</div>
+              <div className="font-semibold text-slate-900 dark:text-white">{study.facts?.sector || study.sector || 'Middle East Government Entities'}</div>
             </div>
             <div className="space-y-1 p-3 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80">
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase">Estate Scale</span>
-              <div className="font-semibold text-slate-900 dark:text-white">{study.facts.scale}</div>
+              <div className="font-semibold text-slate-900 dark:text-white">{study.facts?.scale || study.metrics?.vms || '50-100 VMs average, up to 300 VMs'}</div>
             </div>
             <div className="space-y-1 p-3 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80">
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase">Platforms</span>
-              <div className="font-semibold text-slate-900 dark:text-white">{study.facts.platforms}</div>
+              <div className="font-semibold text-slate-900 dark:text-white">{study.facts?.platforms || (study.platforms ? study.platforms.join(', ') : 'VMware Cloud')}</div>
             </div>
             <div className="space-y-1 p-3 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80">
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase">Connectivity</span>
-              <div className="font-semibold text-slate-900 dark:text-white">{study.facts.connectivity}</div>
+              <div className="font-semibold text-slate-900 dark:text-white">{study.facts?.connectivity || study.metrics?.timeline || 'Mostly VPN, some ExpressRoute'}</div>
             </div>
             <div className="space-y-1 p-3 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 sm:col-span-2">
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 uppercase">Architectural Role</span>
-              <div className="font-semibold text-slate-900 dark:text-white">{study.facts.role}</div>
+              <div className="font-semibold text-slate-900 dark:text-white">{study.facts?.role || 'Migration architecture and delivery'}</div>
             </div>
           </div>
         </section>

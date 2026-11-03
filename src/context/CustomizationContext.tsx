@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig, KnowledgeBaseArticle } from '../types/siteData';
+import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, CaseStudyFacts, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig, KnowledgeBaseArticle } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { useAuth } from './AuthContext';
 import { adminService } from '../services/adminService';
@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { externalizeImages } from '../services/siteAssets';
 import { isDummyVideoUrl } from '../utils/videoUtils';
 
-const STORAGE_KEY = 'zaboraa_site_config_v9';
+const STORAGE_KEY = 'zaboraa_site_config_v10';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
 
 function cleanOldStorageKeys() {
@@ -16,7 +16,7 @@ function cleanOldStorageKeys() {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (key.startsWith('zaboraa_site_config_') || key.startsWith('zaboraa_config_'))) {
-        if (key !== STORAGE_KEY && key !== 'zaboraa_site_config_v8') {
+        if (key !== STORAGE_KEY && key !== 'zaboraa_site_config_v9') {
           keysToRemove.push(key);
         }
       }
@@ -71,13 +71,66 @@ function mergeKnowledgeBaseArticles(
   return [...merged, ...customOnly];
 }
 
+function normalizeCaseStudy(cs: any, defaultStudy?: CaseStudy): CaseStudy {
+  const fallbackFacts: CaseStudyFacts = defaultStudy?.facts || {
+    sector: cs?.sector || 'Middle East Government Entities',
+    scale: cs?.metrics?.vms || '50-100 VMs average, up to 300 VMs',
+    platforms: Array.isArray(cs?.platforms) ? cs.platforms.join(', ') : (cs?.platforms || 'VMware to AVS via Microsoft Partner'),
+    connectivity: cs?.metrics?.timeline || 'Mostly VPN, some ExpressRoute',
+    role: 'Migration architecture and delivery'
+  };
+
+  const facts: CaseStudyFacts = {
+    sector: (cs?.facts && typeof cs.facts === 'object' && cs.facts.sector) ? cs.facts.sector : fallbackFacts.sector,
+    scale: (cs?.facts && typeof cs.facts === 'object' && cs.facts.scale) ? cs.facts.scale : fallbackFacts.scale,
+    platforms: (cs?.facts && typeof cs.facts === 'object' && cs.facts.platforms) ? cs.facts.platforms : fallbackFacts.platforms,
+    connectivity: (cs?.facts && typeof cs.facts === 'object' && cs.facts.connectivity) ? cs.facts.connectivity : fallbackFacts.connectivity,
+    role: (cs?.facts && typeof cs.facts === 'object' && cs.facts.role) ? cs.facts.role : fallbackFacts.role
+  };
+
+  const hasValidSections = Array.isArray(cs?.sections) && cs.sections.length > 0;
+  const hasValidLessons = Array.isArray(cs?.lessonsLearned) && cs.lessonsLearned.length > 0;
+  const hasValidFaq = Array.isArray(cs?.faq) && cs.faq.length > 0;
+  const hasValidTools = Array.isArray(cs?.relatedTools) && cs.relatedTools.length > 0;
+  const hasValidDisciplines = Array.isArray(cs?.relatedDisciplines) && cs.relatedDisciplines.length > 0;
+  const hasValidPlatforms = Array.isArray(cs?.platforms) && cs.platforms.length > 0;
+  const hasValidKeywords = Array.isArray(cs?.keywords) && cs.keywords.length > 0;
+
+  return {
+    ...(defaultStudy || {}),
+    ...cs,
+    id: cs?.id || defaultStudy?.id || cs?.slug || 'cs-' + Math.random().toString(36).substring(2, 9),
+    slug: cs?.slug || defaultStudy?.slug || cs?.id || 'case-study',
+    title: cs?.title || defaultStudy?.title || 'Case Study',
+    h1: cs?.h1 || defaultStudy?.h1 || cs?.title || defaultStudy?.title || 'Case Study',
+    metaTitle: cs?.metaTitle || defaultStudy?.metaTitle || cs?.title || 'Case Study',
+    metaDescription: cs?.metaDescription || defaultStudy?.metaDescription || cs?.summary || '',
+    summary: cs?.summary || defaultStudy?.summary || '',
+    sector: cs?.sector || defaultStudy?.sector || facts.sector,
+    platforms: hasValidPlatforms ? cs.platforms : (defaultStudy?.platforms || ['VMware Cloud']),
+    facts,
+    sections: hasValidSections ? cs.sections : (defaultStudy?.sections || []),
+    lessonsLearned: hasValidLessons ? cs.lessonsLearned : (defaultStudy?.lessonsLearned || []),
+    faq: hasValidFaq ? cs.faq : (defaultStudy?.faq || []),
+    relatedTools: hasValidTools ? cs.relatedTools : (defaultStudy?.relatedTools || []),
+    relatedDisciplines: hasValidDisciplines ? cs.relatedDisciplines : (defaultStudy?.relatedDisciplines || []),
+    diagram: cs?.diagram || defaultStudy?.diagram || 'avs-gov-network-flow',
+    datePublished: cs?.datePublished || defaultStudy?.datePublished || '2025-01-15',
+    dateModified: cs?.dateModified || defaultStudy?.dateModified || '2026-03-30',
+    keywords: hasValidKeywords ? cs.keywords : (defaultStudy?.keywords || ['VMware', 'Cloud Migration'])
+  };
+}
+
 function mergeCaseStudies(
   stored: any[] | undefined,
   defaults: CaseStudy[] = INITIAL_SITE_DATA.caseStudies || []
 ): CaseStudy[] {
-  if (!stored || !Array.isArray(stored) || stored.length === 0) return defaults;
+  if (!stored || !Array.isArray(stored) || stored.length === 0) {
+    return defaults.map(d => normalizeCaseStudy(d));
+  }
   const storedMap = new Map<string, any>();
   stored.forEach(cs => {
+    if (!cs) return;
     const key = cs.slug || cs.id;
     if (key) storedMap.set(key, cs);
   });
@@ -85,33 +138,18 @@ function mergeCaseStudies(
   const merged = defaults.map(def => {
     const key = def.slug || def.id;
     const existing = key ? storedMap.get(key) : undefined;
-    if (!existing) return def;
-
-    const hasValidSections = Array.isArray(existing.sections) && existing.sections.length > 0;
-    const hasValidFacts = existing.facts && typeof existing.facts === 'object' && existing.facts.scale;
-
-    return {
-      ...def,
-      ...existing,
-      h1: existing.h1 || def.h1,
-      facts: hasValidFacts ? { ...def.facts, ...existing.facts } : def.facts,
-      sections: hasValidSections ? existing.sections : def.sections,
-      lessonsLearned: (Array.isArray(existing.lessonsLearned) && existing.lessonsLearned.length > 0)
-        ? existing.lessonsLearned
-        : def.lessonsLearned,
-      faq: (Array.isArray(existing.faq) && existing.faq.length > 0) ? existing.faq : def.faq,
-      relatedTools: (Array.isArray(existing.relatedTools) && existing.relatedTools.length > 0) ? existing.relatedTools : def.relatedTools,
-      relatedDisciplines: (Array.isArray(existing.relatedDisciplines) && existing.relatedDisciplines.length > 0) ? existing.relatedDisciplines : def.relatedDisciplines,
-      platforms: (Array.isArray(existing.platforms) && existing.platforms.length > 0) ? existing.platforms : def.platforms,
-      diagram: existing.diagram || def.diagram
-    };
+    if (!existing) return normalizeCaseStudy(def);
+    return normalizeCaseStudy(existing, def);
   });
 
   const defaultKeys = new Set(defaults.map(d => d.slug || d.id).filter(Boolean));
-  const customOnly = stored.filter(cs => {
-    const key = cs.slug || cs.id;
-    return key && !defaultKeys.has(key);
-  });
+  const customOnly = stored
+    .filter(cs => {
+      if (!cs) return false;
+      const key = cs.slug || cs.id;
+      return key && !defaultKeys.has(key);
+    })
+    .map(cs => normalizeCaseStudy(cs));
 
   return [...merged, ...customOnly];
 }
@@ -1327,8 +1365,9 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   // Case Study & Track Record CRUD
   const addCaseStudy = (study: CaseStudy) => {
     if (!isAdmin) return;
+    const normalized = normalizeCaseStudy(study);
     setSiteConfig(prev => {
-      const updatedList = [study, ...(prev.caseStudies || INITIAL_SITE_DATA.caseStudies)];
+      const updatedList = [normalized, ...(prev.caseStudies || INITIAL_SITE_DATA.caseStudies)];
       if (isAdmin) {
         adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
           .catch(e => console.warn('Notice persisting case studies:', e));
@@ -1344,7 +1383,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).map(s =>
-        (s.id === idOrSlug || s.slug === idOrSlug) ? { ...s, ...updated } : s
+        (s.id === idOrSlug || s.slug === idOrSlug) ? normalizeCaseStudy({ ...s, ...updated }, s) : s
       );
       if (isAdmin) {
         adminService.saveSiteContent('caseStudies', updatedList, 'Case Studies & Track Records', user?.email || 'admin@zaboraa.com')
@@ -1646,7 +1685,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           diagrams: payload.diagrams,
           videos: payload.videos,
           tutorials: payload.tutorials,
-          caseStudies: payload.caseStudies,
+          caseStudies: payload.caseStudies ? mergeCaseStudies(payload.caseStudies) : prev.caseStudies,
           services: payload.services,
           knowledgeBase: payload.knowledgeBase,
           featuredVideoId: payload.misc?.featuredVideoId,

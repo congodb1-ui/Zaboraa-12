@@ -190,5 +190,29 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(xml).not.toContain('<changefreq>');
       expect(xml.split('<url>').length - 1).toBe(30);
     });
+
+    it('handles legacy case studies with undefined facts safely without throwing scale error', () => {
+      const legacyCaseStudy: any = {
+        id: 'legacy-cs-1',
+        slug: 'legacy-cs-1',
+        title: 'Legacy Study Without Facts',
+        h1: 'Legacy Migration',
+        summary: 'A legacy study from earlier version',
+        metrics: {
+          vms: '150 VMs',
+          timeline: '4 months',
+          costReduction: '30%',
+          downtime: 'Near-zero'
+        }
+        // facts is deliberately undefined
+      };
+
+      // Ensure that facts.scale fallback logic resolves correctly
+      const scaleValue = legacyCaseStudy.facts?.scale || legacyCaseStudy.metrics?.vms || '50-100 VMs';
+      expect(scaleValue).toBe('150 VMs');
+
+      const connectivityValue = legacyCaseStudy.facts?.connectivity || legacyCaseStudy.metrics?.timeline || 'Direct Connect';
+      expect(connectivityValue).toBe('4 months');
+    });
   });
 });

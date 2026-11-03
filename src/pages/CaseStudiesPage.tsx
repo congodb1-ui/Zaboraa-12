@@ -29,13 +29,15 @@ export const CaseStudiesPage: React.FC = () => {
   ];
 
   const filteredStudies = allStudies.filter((study) => {
+    if (!study) return false;
     if (selectedFilter === 'ALL') return true;
-    if (selectedFilter === 'AVS') return study.platforms.some((p) => p.includes('AVS') || p.includes('Azure'));
-    if (selectedFilter === 'GCVE') return study.platforms.some((p) => p.includes('GCVE') || p.includes('Google'));
-    if (selectedFilter === 'VMC') return study.platforms.some((p) => p.includes('VMC') || p.includes('AWS'));
-    if (selectedFilter === 'DR') return study.platforms.some((p) => p.includes('DR') || p.includes('Disaster'));
-    if (selectedFilter === 'NSX') return study.platforms.some((p) => p.includes('NSX'));
-    if (selectedFilter === 'Aria') return study.platforms.some((p) => p.includes('Aria') || p.includes('vRNI'));
+    const platforms = Array.isArray(study.platforms) ? study.platforms : [];
+    if (selectedFilter === 'AVS') return platforms.some((p) => p && (p.includes('AVS') || p.includes('Azure')));
+    if (selectedFilter === 'GCVE') return platforms.some((p) => p && (p.includes('GCVE') || p.includes('Google')));
+    if (selectedFilter === 'VMC') return platforms.some((p) => p && (p.includes('VMC') || p.includes('AWS')));
+    if (selectedFilter === 'DR') return platforms.some((p) => p && (p.includes('DR') || p.includes('Disaster')));
+    if (selectedFilter === 'NSX') return platforms.some((p) => p && p.includes('NSX'));
+    if (selectedFilter === 'Aria') return platforms.some((p) => p && (p.includes('Aria') || p.includes('vRNI')));
     return true;
   });
 
@@ -180,12 +182,14 @@ export const CaseStudiesPage: React.FC = () => {
                 {/* Key Facts Pill */}
                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-1 text-xs font-mono">
                   <div className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Scale & Connectivity:</div>
-                  <div className="text-slate-800 dark:text-slate-200">{study.facts.scale} · {study.facts.connectivity}</div>
+                  <div className="text-slate-800 dark:text-slate-200">
+                    {study.facts?.scale || study.metrics?.vms || '50-100 VMs average, up to 300 VMs'} · {study.facts?.connectivity || study.metrics?.timeline || 'Dedicated Cloud Interconnect'}
+                  </div>
                 </div>
 
                 {/* Platforms Tags */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {study.platforms.map((p, idx) => (
+                  {(study.platforms || []).map((p, idx) => (
                     <span
                       key={idx}
                       className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"

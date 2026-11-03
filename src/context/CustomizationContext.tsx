@@ -423,7 +423,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         ...(prev.watermark || {
           enabled: true,
           type: 'text',
-          text: 'ZABORAA TECHNOLOGIES · HYBRID CLOUD BLUEPRINT',
+          text: 'ZABORAA · HYBRID CLOUD BLUEPRINT',
           position: 'bottom-right',
           opacity: 0.35
         }),

@@ -62,10 +62,6 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
     return () => window.removeEventListener('zaboraa:admin-params-changed', handler);
   }, []);
 
-  const toggleAccordion = (section: 'external' | 'internal' | 'dfw' | 'publishing' | 'loadbalancer' | 'waf' | 'traffic') => {
-    setExpandedSection(prev => prev === section ? null : section);
-  };
-
   // Safe fallback getters for security state
   const externalFw = wizardState.externalFirewall || {
     status: 'enabled',

@@ -246,11 +246,94 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   const setIsAdmin = (_val: boolean) => {
     // Only real Supabase authentication modifies admin status
   };
-  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
-  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [isReconciliationOpen, setIsReconciliationOpen] = useState(false);
-  const [isOfflineEmergencyOpen, setIsOfflineEmergencyOpen] = useState(false);
-  const [isWatermarkModalOpen, setIsWatermarkModalOpen] = useState(false);
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpenState] = useState(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpenState] = useState(false);
+  const [isReconciliationOpen, setIsReconciliationOpenState] = useState(false);
+  const [isOfflineEmergencyOpen, setIsOfflineEmergencyOpenState] = useState(false);
+  const [isWatermarkModalOpen, setIsWatermarkModalOpenState] = useState(false);
+
+  const [isCustomizerOpen, setIsCustomizerOpenState] = useState(false);
+  const [isPhotoEditorOpen, setIsPhotoEditorOpenState] = useState(false);
+  const [activeEditPlatformId, setActiveEditPlatformIdState] = useState<string | null>(null);
+  const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedTutorial, setSelectedTutorial] = useState<TutorialArticle | null>(null);
+  const [selectedDiagram, setSelectedDiagram] = useState<ArchitectureDiagram | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
+
+  // Track Record & Homepage Fields modal states
+  const [isTrackRecordModalOpen, setIsTrackRecordModalOpenState] = useState(false);
+  const [activeEditCaseStudy, setActiveEditCaseStudyState] = useState<CaseStudy | null>(null);
+  const [isFounderModalOpen, setIsFounderModalOpenState] = useState(false);
+  const [isHeroStatsModalOpen, setIsHeroStatsModalOpenState] = useState(false);
+
+  // Strict admin-guarded modal openers (no-op if !isAdmin)
+  const setIsCustomizerOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsCustomizerOpenState(open);
+  };
+  const setIsPhotoEditorOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsPhotoEditorOpenState(open);
+  };
+  const setActiveEditPlatformId = (id: string | null) => {
+    if (id !== null && !isAdmin) return;
+    setActiveEditPlatformIdState(id);
+  };
+  const setIsAdminDashboardOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsAdminDashboardOpenState(open);
+  };
+  const setIsWatermarkModalOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsWatermarkModalOpenState(open);
+  };
+  const setIsTrackRecordModalOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsTrackRecordModalOpenState(open);
+  };
+  const setActiveEditCaseStudy = (study: CaseStudy | null) => {
+    if (study !== null && !isAdmin) return;
+    setActiveEditCaseStudyState(study);
+  };
+  const setIsFounderModalOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsFounderModalOpenState(open);
+  };
+  const setIsHeroStatsModalOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsHeroStatsModalOpenState(open);
+  };
+  const setIsAdminLoginModalOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsAdminLoginModalOpenState(open);
+  };
+  const setIsReconciliationOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsReconciliationOpenState(open);
+  };
+  const setIsOfflineEmergencyOpen = (open: boolean) => {
+    if (open && !isAdmin) return;
+    setIsOfflineEmergencyOpenState(open);
+  };
+
+  // Force-close all editor modals and reset editing targets when isAdmin becomes false
+  useEffect(() => {
+    if (!isAdmin) {
+      setIsCustomizerOpenState(false);
+      setIsPhotoEditorOpenState(false);
+      setActiveEditPlatformIdState(null);
+      setIsAdminDashboardOpenState(false);
+      setIsWatermarkModalOpenState(false);
+      setIsTrackRecordModalOpenState(false);
+      setActiveEditCaseStudyState(null);
+      setIsFounderModalOpenState(false);
+      setIsHeroStatsModalOpenState(false);
+      setIsAdminLoginModalOpenState(false);
+      setIsReconciliationOpenState(false);
+      setIsOfflineEmergencyOpenState(false);
+    }
+  }, [isAdmin]);
 
   const verifyAdminPasscode = (_passcode: string): boolean => {
     // Passcode bypass disabled: Authentication must be conducted through Supabase Auth
@@ -272,6 +355,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateFeatureControls = (controls: Partial<FeatureControlsConfig>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const current = prev.adminSettings?.featureControls || {
         exportDossier: true,
@@ -301,6 +385,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateWatermarkConfig = (cfg: Partial<WatermarkConfig>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => ({
       ...prev,
       watermark: {
@@ -317,6 +402,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateEnableHotspots = (enabled: boolean) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => ({
       ...prev,
       enableHotspots: enabled
@@ -324,6 +410,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateAdminSettings = (cfg: Partial<AdminSettings>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedAdminSettings: AdminSettings = {
         ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
@@ -360,21 +447,6 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     });
   };
-
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  const [isPhotoEditorOpen, setIsPhotoEditorOpen] = useState(false);
-  const [activeEditPlatformId, setActiveEditPlatformId] = useState<string | null>(null);
-  const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [selectedTutorial, setSelectedTutorial] = useState<TutorialArticle | null>(null);
-  const [selectedDiagram, setSelectedDiagram] = useState<ArchitectureDiagram | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
-
-  // Track Record & Homepage Fields modal states
-  const [isTrackRecordModalOpen, setIsTrackRecordModalOpen] = useState(false);
-  const [activeEditCaseStudy, setActiveEditCaseStudy] = useState<CaseStudy | null>(null);
-  const [isFounderModalOpen, setIsFounderModalOpen] = useState(false);
-  const [isHeroStatsModalOpen, setIsHeroStatsModalOpen] = useState(false);
 
   // Sync theme to root class and localStorage
   const setTheme = (newTheme: 'dark' | 'light') => {
@@ -545,6 +617,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   const brandLogoUrl = siteConfig.brandLogoUrl || siteConfig.adminSettings?.brandLogoUrl;
 
   const updateBranding = (data: { brandName: string; brandLogoUrl?: string; brandTagline?: string }) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedBrand = data.brandName;
       const updatedTagline = data.brandTagline !== undefined ? data.brandTagline : prev.brandTagline;
@@ -705,6 +778,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [selectedTutorial, selectedDiagram, selectedVideo]);
 
   const updateGeneralInfo = (info: { brand: string; brandTagline: string; brandLogoUrl?: string; founder: SiteConfig['founder'] }) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updated: SiteConfig = {
         ...prev,
@@ -745,6 +819,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateFounderPhoto = (portraitImage: string, photoStyle?: PhotoStyle) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedFounder = {
         ...prev.founder,
@@ -769,6 +844,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const setFeaturedVideoId = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => ({
       ...prev,
       featuredVideoId: id
@@ -776,6 +852,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updatePlatformShowcase = (id: string, updated: Partial<PlatformShowcase>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
         item.id === id ? { ...item, ...updated } : item
@@ -792,6 +869,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addPlatformShowcase = (platform: PlatformShowcase) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases), platform];
       if (isAdmin) {
@@ -806,6 +884,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deletePlatformShowcase = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).filter(item => item.id !== id);
       if (isAdmin) {
@@ -820,6 +899,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const togglePlatformEnabled = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item =>
         item.id === id ? { ...item, enabled: item.enabled === false ? true : false } : item
@@ -836,6 +916,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const reorderPlatformShowcases = (startIndex: number, endIndex: number) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const list = [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases)];
       if (startIndex < 0 || startIndex >= list.length || endIndex < 0 || endIndex >= list.length) {
@@ -855,6 +936,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const movePlatformShowcase = (id: string, direction: 'up' | 'down') => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const list = [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases)];
       const index = list.findIndex(p => p.id === id);
@@ -875,6 +957,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const pinPlatformShowcaseToTop = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const list = [...(prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases)];
       const index = list.findIndex(p => p.id === id);
@@ -893,6 +976,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addPlatformDesign = (platformId: string, design: ArchitectureDesignItem) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId) {
@@ -916,6 +1000,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updatePlatformDesign = (platformId: string, designId: string, updated: Partial<ArchitectureDesignItem>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId && item.designs) {
@@ -938,6 +1023,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deletePlatformDesign = (platformId: string, designId: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId && item.designs) {
@@ -960,6 +1046,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const toggleDesignEnabled = (platformId: string, designId: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.platformShowcases || INITIAL_SITE_DATA.platformShowcases).map(item => {
         if (item.id === platformId && item.designs) {
@@ -984,6 +1071,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateHero = (hero: SiteConfig['hero']) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updated = {
         ...prev,
@@ -1004,6 +1092,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addDiagram = (diagram: ArchitectureDiagram) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = [diagram, ...prev.diagrams];
       if (isAdmin) {
@@ -1018,6 +1107,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateDiagram = (id: string, updated: Partial<ArchitectureDiagram>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = prev.diagrams.map(d => (d.id === id ? { ...d, ...updated } : d));
       if (isAdmin) {
@@ -1032,6 +1122,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deleteDiagram = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = prev.diagrams.filter(d => d.id !== id);
       if (isAdmin) {
@@ -1047,6 +1138,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addVideo = (video: VideoItem) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = [video, ...prev.videos];
       if (isAdmin) {
@@ -1061,6 +1153,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateVideo = (id: string, updated: Partial<VideoItem>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = prev.videos.map(v => (v.id === id ? { ...v, ...updated } : v));
       if (isAdmin) {
@@ -1075,6 +1168,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deleteVideo = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = prev.videos.filter(v => v.id !== id);
       if (isAdmin) {
@@ -1090,6 +1184,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const addTutorial = (tutorial: TutorialArticle) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = [tutorial, ...prev.tutorials];
       if (isAdmin) {
@@ -1104,6 +1199,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateTutorial = (id: string, updated: Partial<TutorialArticle>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = prev.tutorials.map(t => (t.id === id ? { ...t, ...updated } : t));
       if (isAdmin) {
@@ -1118,6 +1214,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deleteTutorial = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = prev.tutorials.filter(t => t.id !== id);
       if (isAdmin) {
@@ -1134,6 +1231,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Case Study & Track Record CRUD
   const addCaseStudy = (study: CaseStudy) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = [study, ...(prev.caseStudies || INITIAL_SITE_DATA.caseStudies)];
       if (isAdmin) {
@@ -1148,6 +1246,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateCaseStudy = (id: string, updated: Partial<CaseStudy>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).map(s =>
         s.id === id ? { ...s, ...updated } : s
@@ -1164,6 +1263,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const deleteCaseStudy = (id: string) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedList = (prev.caseStudies || INITIAL_SITE_DATA.caseStudies).filter(s => s.id !== id);
       if (isAdmin) {
@@ -1178,6 +1278,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const reorderCaseStudies = (startIndex: number, endIndex: number) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const list = [...(prev.caseStudies || INITIAL_SITE_DATA.caseStudies)];
       if (startIndex < 0 || startIndex >= list.length || endIndex < 0 || endIndex >= list.length) {
@@ -1197,6 +1298,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateFounderCredentials = (founder: Partial<SiteConfig['founder']>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedFounder = {
         ...prev.founder,
@@ -1220,6 +1322,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateHeroStats = (stats: SiteConfig['hero']['stats']) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedHero = {
         ...prev.hero,
@@ -1243,6 +1346,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateHeroContent = (hero: Partial<SiteConfig['hero']>) => {
+    if (!isAdmin) return;
     setSiteConfig(prev => {
       const updatedHero = {
         ...prev.hero,
@@ -1266,6 +1370,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const resetToDefaults = () => {
+    if (!isAdmin) return;
     setSiteConfig(INITIAL_SITE_DATA);
     cleanOldStorageKeys();
     try {
@@ -1280,6 +1385,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const importConfigJson = (jsonString: string): boolean => {
+    if (!isAdmin) return false;
     try {
       const parsed = JSON.parse(jsonString);
       if (parsed.brand && parsed.founder && Array.isArray(parsed.diagrams)) {
@@ -1297,6 +1403,9 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     updates: Partial<AdminSettings>,
     brandingUpdates?: { brandName?: string; brandTagline?: string; brandLogoUrl?: string }
   ): Promise<{ success: boolean; message: string }> => {
+    if (!isAdmin) {
+      return { success: false, message: 'Unauthorized: Administrator session required.' };
+    }
     try {
       const currentAdmin = siteConfig.adminSettings || INITIAL_SITE_DATA.adminSettings!;
       const updatedAdminSettings: AdminSettings = {
@@ -1392,6 +1501,9 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const syncAllContentToCloud = async (): Promise<{ success: boolean; message: string; persistedToCloud: boolean }> => {
+    if (!isAdmin) {
+      return { success: false, message: 'Unauthorized: Administrator session required.', persistedToCloud: false };
+    }
     try {
       const rawPayload: Record<string, any> = {
         hero: siteConfig.hero,
@@ -1512,7 +1624,6 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!result.persistedToCloud) {
         lastSyncedRef.current = ''; // retry on the next change
         console.error('Auto-save to Supabase failed:', result.message);
-        alert('Your last change could NOT be saved to Supabase: ' + result.message);
       }
     }, 1500);
 

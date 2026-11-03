@@ -59,7 +59,7 @@ const ScrollToTop: React.FC = () => {
  * Public Layout:
  * Strictly contains the public header/navbar, main site routes, public footer, and public floating widgets.
  */
-const PublicLayout: React.FC = () => {
+export const PublicLayout: React.FC = () => {
   const {
     siteConfig,
     theme,
@@ -145,18 +145,24 @@ const PublicLayout: React.FC = () => {
         </button>
       </div>
 
-      {/* Global Public Modals & Drawers */}
-      <CustomizerDrawer />
-      <PhotoEditorModal />
-      <PlatformEditorModal />
+      {/* Admin Modals strictly gated by isAdmin */}
+      {isAdmin && (
+        <>
+          <CustomizerDrawer />
+          <PhotoEditorModal />
+          <PlatformEditorModal />
+          <AdminDashboardModal />
+          <WatermarkSettingsModal />
+          <TrackRecordEditorModal />
+          <FounderCredentialsModal />
+          <HeroStatsModal />
+        </>
+      )}
+
+      {/* Public Modals strictly preserved for all visitors */}
       <ScheduleBriefingModal />
       <SearchCommandModal />
-      <AdminDashboardModal />
       <PWAInstallPrompt />
-      <WatermarkSettingsModal />
-      <TrackRecordEditorModal />
-      <FounderCredentialsModal />
-      <HeroStatsModal />
       <UserWorkspaceDrawer />
       <AuthErrorBoundary fallbackTitle="Commercialization & Authentication Portal">
         <CommercializeModal />

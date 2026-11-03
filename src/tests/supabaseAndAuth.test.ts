@@ -195,10 +195,10 @@ describe('Authentication Bug Prevention & Session Truth', () => {
     expect(isUserAdminEmail(fakeEmail)).toBe(false);
   });
 
-  it('strictly validates authorized admin emails', () => {
-    expect(isUserAdminEmail('admin@zaboraa.com')).toBe(true);
-    expect(isUserAdminEmail('wasim.sayyed@zaboraa-cloud.com')).toBe(true);
-    expect(isUserAdminEmail('admin@corp.zaboraa.com')).toBe(true);
+  it('strictly prohibits hardcoded email bypass (defused so admin rights come only from database)', () => {
+    expect(isUserAdminEmail('admin@zaboraa.com')).toBe(false);
+    expect(isUserAdminEmail('wasim.sayyed@zaboraa-cloud.com')).toBe(false);
+    expect(isUserAdminEmail('admin@corp.zaboraa.com')).toBe(false);
     expect(isUserAdminEmail('attacker@evil.com')).toBe(false);
     expect(isUserAdminEmail('guest@external.io')).toBe(false);
     expect(isUserAdminEmail(null)).toBe(false);
@@ -270,11 +270,11 @@ describe('Default Dark Mode Application Theme', () => {
 });
 
 describe('Admin Persistence, Hydration & Public Isolation Suite', () => {
-  it('identifies authoritative admin emails correctly while denying arbitrary emails', () => {
-    expect(isUserAdminEmail('admin@zaboraa.com')).toBe(true);
-    expect(isUserAdminEmail('wasim.sayyed@zaboraa-cloud.com')).toBe(true);
-    expect(isUserAdminEmail('congodb4@gmail.com')).toBe(true);
-    expect(isUserAdminEmail('architect@zaboraa.com')).toBe(true);
+  it('identifies authoritative admin emails correctly while denying arbitrary emails (client check defused)', () => {
+    expect(isUserAdminEmail('admin@zaboraa.com')).toBe(false);
+    expect(isUserAdminEmail('wasim.sayyed@zaboraa-cloud.com')).toBe(false);
+    expect(isUserAdminEmail('congodb4@gmail.com')).toBe(false);
+    expect(isUserAdminEmail('architect@zaboraa.com')).toBe(false);
     expect(isUserAdminEmail('intruder@random.io')).toBe(false);
     expect(isUserAdminEmail('')).toBe(false);
     expect(isUserAdminEmail(null)).toBe(false);

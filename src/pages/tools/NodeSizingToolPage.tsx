@@ -1,23 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Cpu,
-  HardDrive,
   ArrowRight,
-  ShieldCheck,
-  Zap,
   Info,
-  Sliders,
-  CheckCircle2,
   RotateCcw,
-  Server,
   Layers,
   AlertTriangle,
   GitCompare,
   BarChart3,
   FileSpreadsheet,
-  Download,
-  Sparkles
+  HardDrive,
+  Cpu,
+  Plus,
+  X,
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import {
   StoragePolicyId,
@@ -510,773 +507,1194 @@ export const NodeSizingToolPage: React.FC = () => {
     navigate('/tools/design-generator');
   };
 
+  // ---- UI-only derived values (display helpers; no sizing or pricing logic lives here) ----
+  const monthlyA = monthlyCost(preset, calculations.nodesWithDecoupled);
+  const monthlyB = monthlyCost(presetB, cloudBCalculations.nodesWithDecoupled);
+  const bothPriced = preset.monthlyPriceEst != null && presetB.monthlyPriceEst != null;
+  const cheaper: 'A' | 'B' | 'tie' | null = !bothPriced ? null : monthlyA < monthlyB ? 'A' : monthlyB < monthlyA ? 'B' : 'tie';
+  const fewerHosts: 'A' | 'B' | 'tie' =
+    calculations.nodesWithDecoupled < cloudBCalculations.nodesWithDecoupled
+      ? 'A'
+      : calculations.nodesWithDecoupled > cloudBCalculations.nodesWithDecoupled
+      ? 'B'
+      : 'tie';
+  const limitKey = calculations.limitingResource.startsWith('Compute')
+    ? 'compute'
+    : calculations.limitingResource.startsWith('Memory')
+    ? 'memory'
+    : calculations.limitingResource.startsWith('Storage')
+    ? 'storage'
+    : 'minimum';
+  const maxDimension = Math.max(
+    1,
+    calculations.computeNodesNeeded,
+    calculations.memoryNodesNeeded,
+    calculations.vsanNodesNeededPure,
+    calculations.vsanNodesNeededDecoupled
+  );
+  const dimensionRows = [
+    { key: 'compute', label: 'Compute Bound (vCPU Cores)', value: calculations.computeNodesNeeded, bar: 'bg-cyan-400' },
+    { key: 'memory', label: 'Memory Bound (RAM Buffered)', value: calculations.memoryNodesNeeded, bar: 'bg-indigo-400' },
+    { key: 'pure', label: 'Pure vSAN Storage (No NFS)', value: calculations.vsanNodesNeededPure, bar: 'bg-rose-400' },
+    { key: 'storage', label: 'Decoupled vSAN Storage (Remaining)', value: calculations.vsanNodesNeededDecoupled, bar: 'bg-emerald-400' }
+  ];
+  const resetInputs = () => {
+    setVmCount(300);
+    setAvgVcpu(4);
+    setAvgRamGB(16);
+    setTotalStorageTB(180);
+    setVCpuOvercommit(2.0);
+    setRamBufferPercent(15);
+    setStoragePolicyId('raid5_ftt1');
+    setSlackFactorPercent(25);
+    setIncludeNPlus1(true);
+    setEnableDecoupledStorage(true);
+    setVsanPercentage(35);
+  };
+
   return (
-    <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10">
-      {/* Breadcrumb & Header */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+    <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 pb-16">
+      {/* ───────────── Header ───────────── */}
+      <header className="space-y-3">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <Link to="/tools" className="hover:text-cyan-400 transition-colors">Engineering Workbench</Link>
-          <span>/</span>
+          <span aria-hidden="true">/</span>
           <span className="text-cyan-300">Node Sizing & Decoupled Storage Estimator</span>
+        </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+            Zero-Cost Technical Architecture
+          </span>
+          <span className="text-xs text-slate-400">Enterprise Hyperscaler Sizing Engine</span>
         </div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                Zero-Cost Technical Architecture
-              </span>
-              <span className="text-xs text-slate-400">Enterprise Hyperscaler Sizing Engine</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Multi-Cloud Node & Usable Storage Policy Estimator
-            </h1>
-            <p className="text-sm text-slate-300 mt-1 max-w-3xl">
-              Compute true bare-metal host density across AVS, AWS VMC, and GCVE. Size net usable capacity with enterprise RAID/FTT policies, 25% slack factor, and decoupled external NFS datastores.
-            </p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          Multi-Cloud Node & Usable Storage Policy Estimator
+        </h1>
+        <p className="text-sm text-slate-300 max-w-3xl">
+          Compute true bare-metal host density across AVS, AWS VMC, and GCVE. Size net usable capacity with enterprise RAID/FTT policies, 25% slack factor, and decoupled external NFS datastores.
+        </p>
+      </header>
+
+      {/* ───────────── Mobile live summary (desktop uses the sticky result panel) ───────────── */}
+      <div
+        className="lg:hidden sticky top-16 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2.5 bg-slate-950/90 backdrop-blur border-y border-slate-800 flex items-center justify-between gap-3"
+        aria-live="polite"
+      >
+        <div className="min-w-0">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 truncate">
+            Cloud A · {shortModel(preset)}
           </div>
-          <button
-            onClick={handleExportToGenerator}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-bold transition-all shadow-md shrink-0 cursor-pointer"
-          >
-            <span>Send to Blueprint Generator</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="text-sm text-white">
+            <span className="font-mono text-xl font-black text-cyan-300">{calculations.nodesWithDecoupled}</span>{' '}
+            <span className="text-slate-300">hosts</span>
+          </div>
         </div>
+        <div className="text-right">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Est. monthly</div>
+          <div className="text-sm font-mono font-bold text-white">
+            {preset.monthlyPriceEst == null ? 'Price not set' : `$${monthlyA.toLocaleString()}`}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportToGenerator}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-cyan-400 text-slate-950 text-xs font-bold cursor-pointer"
+        >
+          <span>Blueprint</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {/* Cloud & SKU Selector Bar (4 Clouds including Nutanix NC2) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Nutanix NC2 */}
-        <div className="p-3.5 rounded-xl bg-slate-900 border border-emerald-500/30 space-y-2">
-          <div className="text-xs font-mono font-bold text-emerald-400 uppercase flex items-center justify-between">
-            <span>Nutanix NC2 on Azure</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Bare-Metal</span>
-          </div>
-          <div className="space-y-1.5">
-            {(['nc2-an36', 'nc2-an36p', 'nc2-an64'] as const).map(k => (
-              <button
-                key={k}
-                onClick={() => setSelectedCloudKey(k)}
-                className={`w-full p-2 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
-                  selectedCloudKey === k
-                    ? 'bg-emerald-950 border-emerald-400 text-white font-bold shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TB capacity tier</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* AVS */}
-        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="text-xs font-mono font-bold text-cyan-400 uppercase">Azure VMware Solution (AVS)</div>
-          <div className="grid grid-cols-2 gap-1.5">
-            {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av52', 'avs-av64'] as const).map(k => (
-              <button
-                key={k}
-                onClick={() => setSelectedCloudKey(k)}
-                className={`p-2 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
-                  selectedCloudKey === k
-                    ? 'bg-cyan-950 border-cyan-400 text-white font-bold shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div>{k.replace('avs-', '').toUpperCase()}</div>
-                <div className="text-[9px] text-slate-500">{CLOUD_PRESETS[k].nodeCores}c · {CLOUD_PRESETS[k].nodeRamGB}G</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* GCVE */}
-        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="text-xs font-mono font-bold text-blue-400 uppercase">Google Cloud VMware (GCVE)</div>
-          <div className="space-y-1.5">
-            {(['gcve-ve1', 'gcve-ve2'] as const).map(k => (
-              <button
-                key={k}
-                onClick={() => setSelectedCloudKey(k)}
-                className={`w-full p-2.5 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
-                  selectedCloudKey === k
-                    ? 'bg-blue-950 border-blue-400 text-white font-bold shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].hasLocalStorage ? `${CLOUD_PRESETS[k].rawStoragePerNodeTB} TB capacity tier` : 'no local storage'}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* VMC */}
-        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="text-xs font-mono font-bold text-amber-400 uppercase">VMware Cloud on AWS (VMC)</div>
-          <div className="space-y-1.5">
-            {(['vmc-i4i', 'vmc-i3en', 'vmc-m7i'] as const).map(k => (
-              <button
-                key={k}
-                onClick={() => setSelectedCloudKey(k)}
-                className={`w-full p-2 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
-                  selectedCloudKey === k
-                    ? 'bg-amber-950 border-amber-400 text-white font-bold shadow-sm'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].hasLocalStorage ? `${CLOUD_PRESETS[k].rawStoragePerNodeTB} TB capacity tier` : 'no local storage'}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Side-by-Side Dual-Cloud Comparator Mode Bar */}
-      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-cyan-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
-            <GitCompare className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <span>Dual-Cloud Side-by-Side Cost & Architecture Comparator</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40">
-                Visual Chart & TCO
-              </span>
-            </h3>
-            <p className="text-xs text-slate-400">
-              Benchmark Nutanix NC2 vs Azure AVS / AWS VMC with side-by-side host-count and indicative-cost charts and color-coded Excel export. {PRICING_META.notice}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowCompareMode(!showCompareMode)}
-            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
-              showCompareMode
-                ? 'bg-cyan-500 text-slate-950'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>{showCompareMode ? 'Hide Comparison Chart' : 'Show Side-by-Side Comparison'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportComparisonExcel}
-            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-            title="Download Color-Coded XML/HTML Excel Comparison Sheet"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Export Styled Excel</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Side-by-Side Comparison Tray (Rendered if showCompareMode is true) */}
-      {showCompareMode && (
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-            <div className="space-y-1">
-              <span className="text-xs font-mono text-cyan-400 uppercase font-bold tracking-wider">
-                Side-by-Side Benchmark & TCO Analysis
-              </span>
-              <h3 className="text-lg font-bold text-white">
-                Comparing Cloud A ({CLOUD_PRESETS[selectedCloudKey].name} - {CLOUD_PRESETS[selectedCloudKey].nodeModel}) vs Cloud B ({CLOUD_PRESETS[compareCloudKey].name} - {CLOUD_PRESETS[compareCloudKey].nodeModel})
-              </h3>
-            </div>
-
-            {/* Cloud B Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Select Cloud B:</span>
-              <select
-                value={compareCloudKey}
-                onChange={e => setCompareCloudKey(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-white outline-none cursor-pointer"
-              >
-                {Object.entries(CLOUD_PRESETS).map(([key, item]) => (
-                  <option key={key} value={key}>
-                    {item.name} - {item.nodeModel} ({item.monthlyPriceEst != null ? `$${item.monthlyPriceEst.toLocaleString()}/mo` : 'price not set'})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Side-by-Side Visual Comparison Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Cloud A Card */}
-            <div className="p-5 rounded-xl bg-slate-950/80 border border-cyan-500/40 space-y-4">
-              <div className="flex items-start justify-between border-b border-slate-800 pb-3">
-                <div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold uppercase">
-                    Primary Baseline (Cloud A)
-                  </span>
-                  <h4 className="text-base font-bold text-white mt-1.5">{CLOUD_PRESETS[selectedCloudKey].name}</h4>
-                  <p className="text-xs text-cyan-400 font-mono">{CLOUD_PRESETS[selectedCloudKey].nodeModel}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-cyan-300 font-mono">
-                    ${(monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)).toLocaleString()}
-                  </div>
-                  <div className="text-[10px] text-slate-500">Est. Monthly Opex</div>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs font-mono">
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Hosts Required:</span>
-                  <span className="text-white font-bold">{calculations.nodesWithDecoupled} Nodes</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Total Cores:</span>
-                  <span className="text-white">{calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].nodeCores} Cores</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Total RAM:</span>
-                  <span className="text-white">{calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].nodeRamGB} GiB</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Storage Tier:</span>
-                  <span className="text-cyan-300 truncate max-w-[200px]">{CLOUD_PRESETS[selectedCloudKey].externalStorageName}</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1">
-                  <span>36-Month Indicative Cost (hosts only):</span>
-                  <span className="text-emerald-400 font-bold">
-                    ${(monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled) * 36).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cloud B Card */}
-            <div className="p-5 rounded-xl bg-slate-950/80 border border-indigo-500/40 space-y-4">
-              <div className="flex items-start justify-between border-b border-slate-800 pb-3">
-                <div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-bold uppercase">
-                    Comparator Target (Cloud B)
-                  </span>
-                  <h4 className="text-base font-bold text-white mt-1.5">{CLOUD_PRESETS[compareCloudKey].name}</h4>
-                  <p className="text-xs text-indigo-400 font-mono">{CLOUD_PRESETS[compareCloudKey].nodeModel}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-indigo-300 font-mono">
-                    ${(monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)).toLocaleString()}
-                  </div>
-                  <div className="text-[10px] text-slate-500">Est. Monthly Opex</div>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs font-mono">
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Hosts Required:</span>
-                  <span className="text-white font-bold">{cloudBCalculations.nodesWithDecoupled} Nodes</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Total Cores:</span>
-                  <span className="text-white">{cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].nodeCores} Cores</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Total RAM:</span>
-                  <span className="text-white">{cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].nodeRamGB} GiB</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
-                  <span>Storage Tier:</span>
-                  <span className="text-indigo-300 truncate max-w-[200px]">{CLOUD_PRESETS[compareCloudKey].externalStorageName}</span>
-                </div>
-                <div className="flex justify-between text-slate-300 py-1">
-                  <span>36-Month Indicative Cost (hosts only):</span>
-                  <span className="text-emerald-400 font-bold">
-                    ${(monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled) * 36).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive SVG Comparison Chart (Monthly Opex & 3-Year TCO) */}
-          <div className="p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-cyan-400" />
-                <span>Visual TCO Cost Difference Spectrum</span>
-              </span>
-              <span className="text-xs font-mono text-emerald-400 font-bold">
-                {savingsComparisonText}
-              </span>
-            </div>
-
-            {/* SVG Bar Chart */}
-            <div className="space-y-4 pt-2">
-              {/* Monthly Opex Comparison Bar */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-slate-300">Monthly Opex ({CLOUD_PRESETS[selectedCloudKey].nodeModel} vs {CLOUD_PRESETS[compareCloudKey].nodeModel})</span>
-                  <span className="text-cyan-400">
-                    ${(monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)).toLocaleString()} vs ${(monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)).toLocaleString()}
-                  </span>
-                </div>
-                <div className="w-full h-5 rounded-lg bg-slate-900 flex overflow-hidden border border-slate-800">
-                  <div
-                    className="bg-cyan-500 h-full flex items-center justify-center text-[10px] font-bold text-slate-950 font-mono transition-all duration-500"
-                    style={{
-                      width: `${Math.round(
-                        ((monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)) /
-                          Math.max(1, (monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)) + (monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)))) * 100
-                      )}%`
-                    }}
-                  >
-                    Cloud A
-                  </div>
-                  <div
-                    className="bg-indigo-500 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
-                    style={{
-                      width: `${Math.round(
-                        ((monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)) /
-                          Math.max(1, (monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)) + (monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)))) * 100
-                      )}%`
-                    }}
-                  >
-                    Cloud B
-                  </div>
-                </div>
-              </div>
-
-              {/* Node Density Comparison Bar */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-slate-300">Cluster Host Count ({calculations.nodesWithDecoupled} Hosts vs {cloudBCalculations.nodesWithDecoupled} Hosts)</span>
-                  <span className="text-indigo-400 font-semibold">
-                    {calculations.nodesWithDecoupled < cloudBCalculations.nodesWithDecoupled
-                      ? `Cloud A requires ${cloudBCalculations.nodesWithDecoupled - calculations.nodesWithDecoupled} fewer hosts`
-                      : calculations.nodesWithDecoupled > cloudBCalculations.nodesWithDecoupled
-                      ? `Cloud B requires ${calculations.nodesWithDecoupled - cloudBCalculations.nodesWithDecoupled} fewer hosts`
-                      : 'Identical host count'}
-                  </span>
-                </div>
-                <div className="w-full h-5 rounded-lg bg-slate-900 flex overflow-hidden border border-slate-800">
-                  <div
-                    className="bg-cyan-600 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
-                    style={{
-                      width: `${Math.round(
-                        (calculations.nodesWithDecoupled / Math.max(1, calculations.nodesWithDecoupled + cloudBCalculations.nodesWithDecoupled)) * 100
-                      )}%`
-                    }}
-                  >
-                    {calculations.nodesWithDecoupled} hosts
-                  </div>
-                  <div
-                    className="bg-indigo-600 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
-                    style={{
-                      width: `${Math.round(
-                        (cloudBCalculations.nodesWithDecoupled / Math.max(1, calculations.nodesWithDecoupled + cloudBCalculations.nodesWithDecoupled)) * 100
-                      )}%`
-                    }}
-                  >
-                    {cloudBCalculations.nodesWithDecoupled} hosts
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Sizing Workbench Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Inputs (7 Cols) */}
+      {/* ───────────── Workbench: inputs (left) + live result (right) ───────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        {/* ===== Inputs ===== */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="p-6 rounded-xl bg-slate-900/70 border border-slate-800 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-cyan-400" />
-                <span>Workload Parameters & SLA Assumptions</span>
-              </h2>
+          {/* Step 1: platform */}
+          <StepCard
+            step={1}
+            title="Choose platform & host type"
+            description="Pick your baseline (Cloud A). Add a second platform to compare cost and host count side by side."
+          >
+            <PlatformStep
+              cloudAKey={selectedCloudKey}
+              cloudBKey={compareCloudKey}
+              compareOn={showCompareMode}
+              onChangeA={setSelectedCloudKey}
+              onChangeB={setCompareCloudKey}
+              onCompareChange={setShowCompareMode}
+            />
+          </StepCard>
+
+          {/* Step 2: workload */}
+          <StepCard
+            step={2}
+            title="Describe the workload"
+            description="Type an exact value or drag the slider. The result updates as you change anything."
+            action={
               <button
-                onClick={() => {
-                  setVmCount(300);
-                  setAvgVcpu(4);
-                  setAvgRamGB(16);
-                  setTotalStorageTB(180);
-                  setVCpuOvercommit(2.0);
-                  setRamBufferPercent(15);
-                  setStoragePolicyId('raid5_ftt1');
-                  setSlackFactorPercent(25);
-                  setIncludeNPlus1(true);
-                  setEnableDecoupledStorage(true);
-                  setVsanPercentage(35);
-                }}
-                className="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1 cursor-pointer"
+                type="button"
+                onClick={resetInputs}
+                className="shrink-0 text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1 cursor-pointer rounded px-1.5 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Reset</span>
+                <span>Reset inputs</span>
               </button>
-            </div>
-
-            {/* Slider 1: VM Count */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="font-semibold text-slate-300">Total Workload VMs</span>
-                <span className="font-mono text-cyan-300 font-bold">{vmCount} VMs</span>
-              </div>
-              <input
-                type="range"
-                min="20"
-                max="2000"
-                step="10"
-                value={vmCount}
-                onChange={e => setVmCount(Number(e.target.value))}
-                className="w-full accent-cyan-400 bg-slate-800 h-2 rounded cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>20 VMs</span>
-                <span>500 VMs</span>
-                <span>1000 VMs</span>
-                <span>2000 VMs</span>
-              </div>
-            </div>
-
-            {/* Grid 2: vCPU & RAM per VM */}
+            }
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-300">Avg vCPU per VM</span>
-                  <span className="font-mono text-cyan-300 font-bold">{avgVcpu} vCPUs</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="16"
-                  step="1"
-                  value={avgVcpu}
-                  onChange={e => setAvgVcpu(Number(e.target.value))}
-                  className="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded cursor-pointer"
-                />
-              </div>
-
-              <div className="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-300">Avg RAM per VM</span>
-                  <span className="font-mono text-cyan-300 font-bold">{avgRamGB} GB</span>
-                </div>
-                <input
-                  type="range"
-                  min="4"
-                  max="64"
-                  step="2"
-                  value={avgRamGB}
-                  onChange={e => setAvgRamGB(Number(e.target.value))}
-                  className="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded cursor-pointer"
-                />
-              </div>
-            </div>
-
-            {/* Slider 3: Total Storage Footprint */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="font-semibold text-slate-300">Aggregate Workload Data Footprint</span>
-                <span className="font-mono text-cyan-300 font-bold">{totalStorageTB} TB</span>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="800"
-                step="5"
+              <SliderField
+                label="Total Workload VMs"
+                unit="VMs"
+                value={vmCount}
+                min={20}
+                max={2000}
+                step={10}
+                onChange={setVmCount}
+                ticks={['20', '500', '1000', '2000']}
+              />
+              <SliderField
+                label="Aggregate Workload Data Footprint"
+                unit="TB"
                 value={totalStorageTB}
-                onChange={e => setTotalStorageTB(Number(e.target.value))}
-                className="w-full accent-cyan-400 bg-slate-800 h-2 rounded cursor-pointer"
+                min={10}
+                max={800}
+                step={5}
+                onChange={setTotalStorageTB}
+                ticks={['10', '200', '400', '800']}
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>10 TB</span>
-                <span>200 TB</span>
-                <span>400 TB</span>
-                <span>800 TB</span>
-              </div>
-            </div>
-
-            {/* vCPU Overcommit & RAM Buffer Dropdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                  <span>vCPU Overcommit Ratio</span>
-                  <span className="text-cyan-400 font-mono font-bold">{vCpuOvercommit}:1</span>
-                </label>
-                <select
-                  value={vCpuOvercommit}
-                  onChange={e => setVCpuOvercommit(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs font-mono text-slate-200 cursor-pointer"
-                >
-                  <option value={1.0}>1:1 Ratio (Dedicated 1:1 Cores - Tier 0 DBs)</option>
-                  <option value={2.0}>2:1 Ratio (Balanced Enterprise Production)</option>
-                  <option value={3.0}>3:1 Ratio (Standard Production & Middleware)</option>
-                  <option value={4.0}>4:1 Ratio (Aggressive Non-Prod & Dev Density)</option>
-                </select>
-                <span className="text-[10px] text-slate-500 block">
-                  {calculations.totalRequiredVcpu} vCPUs requires {calculations.effectiveCoresNeeded} physical cores
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                  <span>RAM Overhead Buffer</span>
-                  <span className="text-indigo-400 font-mono font-bold">+{ramBufferPercent}%</span>
-                </label>
-                <select
-                  value={ramBufferPercent}
-                  onChange={e => setRamBufferPercent(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs font-mono text-slate-200 cursor-pointer"
-                >
-                  <option value={10}>10% Buffer (Hypervisor Baseline)</option>
-                  <option value={15}>15% Buffer (hypervisor, management & growth)</option>
-                  <option value={20}>20% Buffer (extra growth headroom)</option>
-                </select>
-                <span className="text-[10px] text-slate-500 block">
-                  {calculations.totalRamGB} GiB allocated expands to {calculations.totalRamWithBuffer} GiB
-                </span>
-              </div>
-            </div>
-
-            <label className="flex items-start gap-2 p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeNPlus1}
-                onChange={e => setIncludeNPlus1(e.target.checked)}
-                className="mt-0.5 accent-cyan-400"
+              <SliderField
+                label="Avg vCPU per VM"
+                unit="vCPUs"
+                value={avgVcpu}
+                min={1}
+                max={16}
+                step={1}
+                onChange={setAvgVcpu}
+                ticks={['1', '8', '16']}
               />
-              <span>
-                <span className="font-bold text-white">Reserve one spare host (N+1 HA)</span>
-                {' '}Microsoft configures every AVS cluster for n+1 availability, so one host of compute and memory is held back for failover. Applied to the compute and memory sizing.
-              </span>
-            </label>
+              <SliderField
+                label="Avg RAM per VM"
+                unit="GB"
+                value={avgRamGB}
+                min={4}
+                max={64}
+                step={2}
+                onChange={setAvgRamGB}
+                ticks={['4', '32', '64']}
+              />
+            </div>
+          </StepCard>
 
-            {/* Storage Policy Dropdown & Slack Factor Selector */}
-            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-cyan-400" />
-                  <span>Enterprise Storage Policy & Parity Multiplier</span>
+          {/* Step 3: assumptions & storage */}
+          <StepCard
+            step={3}
+            title="Sizing assumptions & storage"
+            description="Defaults follow common enterprise guidance. Change them only if your design differs."
+          >
+            <div className="space-y-6">
+              {/* Compute & memory */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                  <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Compute & memory</span>
                 </div>
-                <span className="text-[10px] font-mono text-cyan-400">
-                  Overhead Factor: {selectedPolicy.id === 'nutanix_rf2_ecx' ? '1.25x to 1.50x (by node count)' : `${selectedPolicy.overheadMultiplier.toFixed(2)}x`}
-                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between text-xs">
+                      <span className="font-semibold text-slate-200">vCPU Overcommit Ratio</span>
+                      <span className="font-mono font-bold text-cyan-300">{vCpuOvercommit}:1</span>
+                    </div>
+                    <Segmented
+                      label="vCPU overcommit ratio"
+                      value={vCpuOvercommit}
+                      onChange={setVCpuOvercommit}
+                      options={[
+                        { value: 1.0, label: '1:1', desc: '1:1 Ratio (Dedicated 1:1 Cores - Tier 0 DBs)' },
+                        { value: 2.0, label: '2:1', desc: '2:1 Ratio (Balanced Enterprise Production)' },
+                        { value: 3.0, label: '3:1', desc: '3:1 Ratio (Standard Production & Middleware)' },
+                        { value: 4.0, label: '4:1', desc: '4:1 Ratio (Aggressive Non-Prod & Dev Density)' }
+                      ]}
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      {calculations.totalRequiredVcpu} vCPUs requires {calculations.effectiveCoresNeeded} physical cores
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between text-xs">
+                      <span className="font-semibold text-slate-200">RAM Overhead Buffer</span>
+                      <span className="font-mono font-bold text-indigo-300">+{ramBufferPercent}%</span>
+                    </div>
+                    <Segmented
+                      label="RAM overhead buffer"
+                      value={ramBufferPercent}
+                      onChange={setRamBufferPercent}
+                      options={[
+                        { value: 10, label: '10%', desc: '10% Buffer (Hypervisor Baseline)' },
+                        { value: 15, label: '15%', desc: '15% Buffer (hypervisor, management & growth)' },
+                        { value: 20, label: '20%', desc: '20% Buffer (extra growth headroom)' }
+                      ]}
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      {calculations.totalRamGB} GiB allocated expands to {calculations.totalRamWithBuffer} GiB
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start justify-between gap-4 p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+                  <div className="text-xs text-slate-300 leading-relaxed">
+                    <div className="font-bold text-white">Reserve one spare host (N+1 HA)</div>
+                    Microsoft configures every AVS cluster for n+1 availability, so one host of compute and memory is held back for failover. Applied to the compute and memory sizing.
+                  </div>
+                  <Switch checked={includeNPlus1} onChange={setIncludeNPlus1} label="Reserve one spare host (N+1 HA)" />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Storage Policy Selector */}
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-300">Storage Policy (RAID/FTT)</label>
-                  <select
-                    value={policyIdA}
-                    onChange={e => setStoragePolicyId(e.target.value as StoragePolicyId)}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-xs font-mono text-white cursor-pointer"
-                  >
-                    {policiesForFamily(policyFamilyA).map(id => (
-                      <option key={id} value={id}>{ENTERPRISE_STORAGE_POLICIES[id].shortLabel}</option>
-                    ))}
-                  </select>
-                  <span className="text-[10px] text-slate-400 block">
-                    {selectedPolicy.description} (Min {selectedPolicy.minHosts} hosts).
+              {/* Storage */}
+              <div className="space-y-4 pt-5 border-t border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Enterprise storage policy & parity multiplier</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-cyan-400">
+                    Overhead Factor: {selectedPolicy.id === 'nutanix_rf2_ecx' ? '1.25x to 1.50x (by node count)' : `${selectedPolicy.overheadMultiplier.toFixed(2)}x`}
                   </span>
                 </div>
 
-                {/* Slack Factor */}
-                <div className="space-y-1.5">
-                  <label className="text-xs text-slate-300">vSAN Operational Slack Factor</label>
-                  <select
-                    value={slackFactorPercent}
-                    onChange={e => setSlackFactorPercent(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-xs font-mono text-white cursor-pointer"
-                  >
-                    <option value={20}>20% Slack (below Microsoft AVS 25% guidance)</option>
-                    <option value={25}>25% Slack (matches AVS 75% capacity limit)</option>
-                    <option value={30}>30% Slack (High Snapshot / Resync Headroom)</option>
-                  </select>
-                  <span className="text-[10px] text-slate-400 block">
-                    Reserves {slackFactorPercent}% raw headroom for maintenance mode evacuations and snapshot merges.
-                  </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label htmlFor="storage-policy" className="text-xs font-semibold text-slate-200 block">
+                      Storage Policy (RAID/FTT)
+                    </label>
+                    <select
+                      id="storage-policy"
+                      value={policyIdA}
+                      onChange={e => setStoragePolicyId(e.target.value as StoragePolicyId)}
+                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-lg text-xs font-mono text-white cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                    >
+                      {policiesForFamily(policyFamilyA).map(id => (
+                        <option key={id} value={id}>{ENTERPRISE_STORAGE_POLICIES[id].shortLabel}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      {selectedPolicy.description} (Min {selectedPolicy.minHosts} hosts).
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between text-xs">
+                      <span className="font-semibold text-slate-200">vSAN Operational Slack Factor</span>
+                      <span className="font-mono font-bold text-cyan-300">{slackFactorPercent}%</span>
+                    </div>
+                    <Segmented
+                      label="vSAN operational slack factor"
+                      value={slackFactorPercent}
+                      onChange={setSlackFactorPercent}
+                      options={[
+                        { value: 20, label: '20%', desc: '20% Slack (below Microsoft AVS 25% guidance)' },
+                        { value: 25, label: '25%', desc: '25% Slack (matches AVS 75% capacity limit)' },
+                        { value: 30, label: '30%', desc: '30% Slack (High Snapshot / Resync Headroom)' }
+                      ]}
+                    />
+                    <p className="text-[11px] text-slate-400 leading-snug">
+                      Reserves {slackFactorPercent}% raw headroom for maintenance mode evacuations and snapshot merges.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Storage tier split */}
+                <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <HardDrive className="w-4 h-4 text-cyan-400" />
+                        <span>Storage Tier Allocation Split</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        {preset.hasLocalStorage ? (
+                          <>Distribute total used storage between high-performance local vSAN and External NFS ({preset.externalStorageName}).</>
+                        ) : (
+                          <>This host has no local storage, so 100% of workload data is placed on external storage ({preset.externalStorageName}).</>
+                        )}
+                      </p>
+                    </div>
+                    {preset.hasLocalStorage && (
+                      <Switch
+                        checked={enableDecoupledStorage}
+                        onChange={setEnableDecoupledStorage}
+                        label="Decouple storage to external NFS"
+                      />
+                    )}
+                  </div>
+
+                  {preset.hasLocalStorage && enableDecoupledStorage ? (
+                    <div className="space-y-3 pt-3 border-t border-cyan-500/20">
+                      <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs font-mono">
+                        <span className="text-cyan-300 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                          Local vSAN: {effectiveVsanPercent}% ({storageAnalysis.vsanUsedDataTB} TB)
+                        </span>
+                        <span className="text-emerald-300 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                          External SAN: {100 - effectiveVsanPercent}% ({storageAnalysis.externalUsedStorageTB} TB)
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-slate-800" aria-hidden="true">
+                        <div className="bg-cyan-400 h-full transition-all duration-300" style={{ width: `${effectiveVsanPercent}%` }} />
+                        <div className="bg-emerald-400 h-full transition-all duration-300" style={{ width: `${100 - effectiveVsanPercent}%` }} />
+                      </div>
+                      <RangeInput
+                        ariaLabel="Share of data kept on local vSAN"
+                        value={vsanPercentage}
+                        min={10}
+                        max={90}
+                        step={5}
+                        onChange={setVsanPercentage}
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                        <span>10% vSAN (Maximum NFS Offload)</span>
+                        <span>50% Balanced</span>
+                        <span>90% vSAN Heavy</span>
+                      </div>
+                    </div>
+                  ) : preset.hasLocalStorage ? (
+                    <div className="text-xs text-slate-400 pt-3 border-t border-slate-800">
+                      Decoupled storage disabled. 100% of workload data ({totalStorageTB} TB) is mapped to local cluster vSAN.
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
-
-            {/* Storage Allocation Split (vSAN % vs External SAN %) */}
-            <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-white flex items-center gap-2">
-                    <HardDrive className="w-4 h-4 text-cyan-400" />
-                    <span>Storage Tier Allocation Split</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    {preset.hasLocalStorage ? <>Distribute total used storage between high-performance local vSAN and External NFS ({preset.externalStorageName}).</> : <>This host has no local storage, so 100% of workload data is placed on external storage ({preset.externalStorageName}).</>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEnableDecoupledStorage(!enableDecoupledStorage)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
-                    enableDecoupledStorage ? 'bg-cyan-500' : 'bg-slate-800'
-                  }`}
-                >
-                  <div
-                    className={`bg-slate-950 w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      enableDecoupledStorage ? 'translate-x-6' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {enableDecoupledStorage ? (
-                <div className="space-y-3 pt-2 border-t border-cyan-500/20">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-cyan-300">Local vSAN: {effectiveVsanPercent}% ({storageAnalysis.vsanUsedDataTB} TB)</span>
-                    <span className="text-emerald-300">External SAN: {100 - effectiveVsanPercent}% ({storageAnalysis.externalUsedStorageTB} TB)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="90"
-                    step="5"
-                    value={vsanPercentage}
-                    onChange={e => setVsanPercentage(Number(e.target.value))}
-                    className="w-full accent-cyan-400 bg-slate-800 h-2 rounded cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                    <span>10% vSAN (Maximum NFS Offload)</span>
-                    <span>50% Balanced</span>
-                    <span>90% vSAN Heavy</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-slate-400 pt-2 border-t border-slate-800">
-                  Decoupled storage disabled. 100% of workload data ({totalStorageTB} TB) is mapped to local cluster vSAN.
-                </div>
-              )}
-            </div>
-          </div>
+          </StepCard>
         </div>
 
-        {/* Right Sizing Results & Technical Metrics (5 Cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* Node Reduction Outcome Card */}
-          <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
-            <div className="space-y-1">
-              <div className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-semibold">
-                Sizing Outcome & Host Footprint
-              </div>
-              <h3 className="text-xl font-bold text-white flex items-center justify-between">
-                <span>Cluster Hosts Required</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-mono">
-                  N+1 HA Resilient
-                </span>
-              </h3>
-            </div>
-
-            {/* Comparison Columns */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 text-center space-y-1">
-                <div className="text-[11px] text-slate-400 font-mono">Traditional Pure vSAN</div>
-                <div className="text-3xl font-black text-rose-400 font-mono">
-                  {calculations.nodesWithoutDecoupled}
+        {/* ===== Live result (sticky on desktop) ===== */}
+        <aside id="result" aria-label="Live sizing result" className="lg:col-span-5 lg:sticky lg:top-24">
+          <div className="rounded-2xl bg-slate-900 border border-slate-800 shadow-xl lg:max-h-[calc(100vh-7rem)] overflow-y-auto">
+            {/* Headline */}
+            <div className="p-5 sm:p-6 space-y-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider font-semibold">
+                    Sizing Outcome & Host Footprint
+                  </div>
+                  <div className="text-sm text-slate-300 mt-1 truncate">
+                    {preset.name} · <span className="font-mono text-slate-200">{shortModel(preset)}</span>
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500">Nodes (Storage Bound)</div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-cyan-950/40 border border-cyan-500/40 text-center space-y-1">
-                <div className="text-[11px] text-cyan-300 font-mono">With Decoupled Storage</div>
-                <div className="text-3xl font-black text-cyan-300 font-mono">
-                  {calculations.nodesWithDecoupled}
-                </div>
-                <div className="text-[10px] text-cyan-400 font-semibold">
-                  {calculations.nodeReduction > 0 ? `-${calculations.nodeReduction} Nodes (-${calculations.percentReduction}%)` : 'Optimized'}
-                </div>
-              </div>
-            </div>
-
-            {/* Limiting Resource Badge */}
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-400">Limiting Constraint:</span>
-              <span className="font-bold text-amber-300 font-mono">{calculations.limitingResource}</span>
-            </div>
-
-            {calculations.exceedsClusterLimit && (
-              <div className="p-3 rounded-lg bg-amber-950/40 border border-amber-500/40 text-[11px] text-amber-200 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>
-                  {calculations.nodesWithDecoupled} hosts exceeds the {preset.maxNodesCluster}-host cluster limit for {preset.name}. Split the design across multiple clusters; per-cluster management and HA overhead then applies to each one.
+                <span
+                  className={`shrink-0 text-[11px] px-2.5 py-0.5 rounded-full border font-mono ${
+                    includeNPlus1
+                      ? 'bg-emerald-950 text-emerald-300 border-emerald-700/60'
+                      : 'bg-slate-950 text-slate-400 border-slate-700'
+                  }`}
+                >
+                  {includeNPlus1 ? 'N+1 HA Resilient' : 'No HA spare'}
                 </span>
               </div>
-            )}
-            {preset.specNote && (
-              <div className="text-[10px] text-slate-500">
-                Spec note ({preset.nodeModel.split(' (')[0]}): {preset.specNote} Specs checked against vendor documentation on {preset.specVerifiedOn}.
-              </div>
-            )}
 
-            {/* Constraints Breakdown */}
-            <div className="space-y-2 text-xs font-mono pt-2 border-t border-slate-800">
-              <div className="text-slate-400 font-sans font-semibold">Host Requirements by Dimension:</div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Compute Bound (vCPU Cores):</span>
-                <span>{calculations.computeNodesNeeded} hosts</span>
+              <div className="grid grid-cols-2 gap-3" aria-live="polite">
+                <div className="rounded-xl bg-cyan-950/40 border border-cyan-500/40 p-4">
+                  <div className="text-[11px] font-mono text-cyan-300">Cluster hosts required</div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-5xl font-black text-cyan-300 font-mono leading-none">{calculations.nodesWithDecoupled}</span>
+                    <span className="text-xs text-slate-400">hosts</span>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-slate-800 overflow-hidden" aria-hidden="true">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${calculations.exceedsClusterLimit ? 'bg-amber-400' : 'bg-cyan-400'}`}
+                      style={{ width: `${Math.min(100, (calculations.nodesWithDecoupled / preset.maxNodesCluster) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-500 font-mono">max {preset.maxNodesCluster} per cluster</div>
+                </div>
+                <div className="rounded-xl bg-slate-950 border border-slate-800 p-4">
+                  <div className="text-[11px] font-mono text-slate-400">Est. monthly (hosts)</div>
+                  {preset.monthlyPriceEst == null ? (
+                    <div className="mt-2 text-sm font-semibold text-amber-300 leading-snug">Price not set for this SKU</div>
+                  ) : (
+                    <div className="mt-1 text-2xl font-black text-white font-mono leading-tight">${monthlyA.toLocaleString()}</div>
+                  )}
+                  <div className="mt-2 text-[10px] text-slate-500 leading-snug">Indicative, hosts only. See pricing basis below.</div>
+                </div>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Memory Bound (RAM Buffered):</span>
-                <span>{calculations.memoryNodesNeeded} hosts</span>
+
+              {/* Pure vs decoupled */}
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-xs">
+                <div className="text-center">
+                  <div className="text-[10px] font-mono text-slate-400">Traditional Pure vSAN</div>
+                  <div className="text-xl font-black font-mono text-rose-400">{calculations.nodesWithoutDecoupled}</div>
+                  <div className="text-[10px] text-slate-500">Nodes (Storage Bound)</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-600 shrink-0" aria-hidden="true" />
+                <div className="text-center">
+                  <div className="text-[10px] font-mono text-cyan-300">With Decoupled Storage</div>
+                  <div className="text-xl font-black font-mono text-cyan-300">{calculations.nodesWithDecoupled}</div>
+                  <div className="text-[10px] text-cyan-400 font-semibold">
+                    {calculations.nodeReduction > 0 ? `-${calculations.nodeReduction} Nodes (-${calculations.percentReduction}%)` : 'Optimized'}
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Pure vSAN Storage (No NFS):</span>
-                <span className="text-rose-400 font-bold">{calculations.vsanNodesNeededPure} hosts</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Decoupled vSAN Storage (Remaining):</span>
-                <span className="text-cyan-300 font-bold">{calculations.vsanNodesNeededDecoupled} hosts</span>
+
+              {calculations.exceedsClusterLimit && (
+                <div role="alert" className="p-3 rounded-lg bg-amber-950/40 border border-amber-500/40 text-[11px] text-amber-200 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    {calculations.nodesWithDecoupled} hosts exceeds the {preset.maxNodesCluster}-host cluster limit for {preset.name}. Split the design across multiple clusters; per-cluster management and HA overhead then applies to each one.
+                  </span>
+                </div>
+              )}
+
+              {/* What drives the host count */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-300">Host Requirements by Dimension</span>
+                  <span className="text-[11px]">
+                    <span className="text-slate-400">Limiting: </span>
+                    <span className="font-bold text-amber-300 font-mono">{calculations.limitingResource}</span>
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {dimensionRows.map(row => {
+                    const isLimit = row.key === limitKey;
+                    return (
+                      <li key={row.key} className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-mono">
+                          <span className={isLimit ? 'text-amber-200 font-bold' : 'text-slate-300'}>
+                            {row.label}
+                            {isLimit && <span className="ml-1.5 text-[9px] uppercase text-amber-300">limiting</span>}
+                          </span>
+                          <span className={isLimit ? 'text-amber-200 font-bold' : 'text-slate-200'}>{row.value} hosts</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden" aria-hidden="true">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${row.bar} ${isLimit ? '' : 'opacity-60'}`}
+                            style={{ width: `${Math.max(3, (row.value / maxDimension) * 100)}%` }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {calculations.haSpare > 0 && (
+                  <p className="text-[10px] text-slate-500 leading-snug">
+                    Compute and memory rows exclude the N+1 spare; one extra host is added to each when the final count is taken.
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Usable Storage & Parity Breakdown Panel */}
-            <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 space-y-2.5 text-xs font-mono">
-              <div className="text-slate-300 font-semibold font-sans flex items-center justify-between">
+            {/* Storage breakdown */}
+            <details open className="group border-t border-slate-800">
+              <summary className="flex items-center justify-between gap-3 px-5 sm:px-6 py-3.5 cursor-pointer list-none text-xs font-semibold text-slate-200 hover:text-white">
                 <span>Net Usable Capacity & Parity Breakdown</span>
-                <span className="text-[10px] text-cyan-400">{selectedPolicy.shortLabel}</span>
+                <span className="text-[10px] font-mono text-cyan-400">{selectedPolicy.shortLabel}</span>
+              </summary>
+              <div className="px-5 sm:px-6 pb-5 space-y-2 text-xs font-mono">
+                <div className="flex justify-between text-slate-400">
+                  <span>Local vSAN Usable Data:</span>
+                  <span className="text-white font-bold">{storageAnalysis.vsanUsedDataTB} TB</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>vSAN RAID Parity Overhead:</span>
+                  <span className="text-amber-400 font-bold">+{storageAnalysis.vsanPolicyOverheadTB} TB</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>vSAN Operational Slack ({slackFactorPercent}%):</span>
+                  <span className="text-indigo-400 font-bold">+{storageAnalysis.vsanSlackTB} TB</span>
+                </div>
+                <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-2">
+                  <span>Raw vSAN Capacity Required:</span>
+                  <span className="text-cyan-300 font-bold">{storageAnalysis.vsanRawRequiredTB} TB</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>External SAN Capacity Provisioned:</span>
+                  <span className="text-emerald-300 font-bold">{storageAnalysis.externalProvisionedTB} TB</span>
+                </div>
               </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Local vSAN Usable Data:</span>
-                <span className="text-white font-bold">{storageAnalysis.vsanUsedDataTB} TB</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>vSAN RAID Parity Overhead:</span>
-                <span className="text-amber-400 font-bold">+{storageAnalysis.vsanPolicyOverheadTB} TB</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>vSAN Operational Slack ({slackFactorPercent}%):</span>
-                <span className="text-indigo-400 font-bold">+{storageAnalysis.vsanSlackTB} TB</span>
-              </div>
-              <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-1.5">
-                <span>Raw vSAN Capacity Required:</span>
-                <span className="text-cyan-300 font-bold">{storageAnalysis.vsanRawRequiredTB} TB</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>External SAN Capacity Provisioned:</span>
-                <span className="text-emerald-300 font-bold">{storageAnalysis.externalProvisionedTB} TB</span>
+            </details>
+
+            {/* Spec note + CTAs */}
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-1 space-y-4 border-t border-slate-800">
+              {preset.specNote && (
+                <p className="pt-4 text-[11px] text-slate-500 leading-snug">
+                  Spec note ({preset.nodeModel.split(' (')[0]}): {preset.specNote} Specs checked against vendor documentation on {preset.specVerifiedOn}.
+                </p>
+              )}
+              <a
+                href={preset.specSource}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300"
+              >
+                <span>Vendor spec source</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportToGenerator}
+                  className="w-full py-3 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
+                >
+                  <span>Apply Sizing to Hybrid Blueprint Generator</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <a
+                  href="#compare"
+                  className="w-full py-2.5 rounded-lg border border-slate-700 hover:border-cyan-500/50 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <GitCompare className="w-4 h-4 text-cyan-400" />
+                  <span>{showCompareMode ? 'Jump to cloud comparison' : 'Compare with another platform'}</span>
+                </a>
               </div>
             </div>
+          </div>
+        </aside>
+      </div>
 
-            {/* CTA action */}
+      {/* ───────────── Side-by-side comparison ───────────── */}
+      <section
+        id="compare"
+        aria-labelledby="compare-title"
+        className="scroll-mt-24 rounded-2xl bg-slate-900/70 border border-slate-800 p-5 sm:p-6 space-y-6"
+      >
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+              <GitCompare className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
+                Side-by-Side Benchmark & TCO Analysis
+              </div>
+              <h2 id="compare-title" className="text-lg font-bold text-white leading-snug">
+                {showCompareMode ? (
+                  <>
+                    <span className="text-cyan-300">{preset.name} {shortModel(preset)}</span>
+                    <span className="text-slate-500 font-normal"> vs </span>
+                    <span className="text-indigo-300">{presetB.name} {shortModel(presetB)}</span>
+                  </>
+                ) : (
+                  'Compare two platforms on the same workload'
+                )}
+              </h2>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {showCompareMode ? (
+              <button
+                type="button"
+                onClick={() => setShowCompareMode(false)}
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                <span>Hide comparison</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowCompareMode(true)}
+                className="px-3 py-2 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 flex items-center gap-1.5 cursor-pointer"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Show Side-by-Side Comparison</span>
+              </button>
+            )}
             <button
-              onClick={handleExportToGenerator}
-              className="w-full py-3 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg"
+              type="button"
+              onClick={handleExportComparisonExcel}
+              className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Download Color-Coded XML/HTML Excel Comparison Sheet"
             >
-              <span>Apply Sizing to Hybrid Blueprint Generator</span>
-              <ArrowRight className="w-4 h-4" />
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export Styled Excel</span>
             </button>
           </div>
         </div>
+
+        {showCompareMode && (
+          <>
+            {/* Verdict */}
+            <div className="rounded-xl bg-emerald-950/30 border border-emerald-500/30 px-4 py-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+              <span className="text-sm font-bold text-emerald-300">{savingsComparisonText}</span>
+              <span className="text-xs font-mono text-slate-300">
+                {fewerHosts === 'A'
+                  ? `Cloud A requires ${cloudBCalculations.nodesWithDecoupled - calculations.nodesWithDecoupled} fewer hosts`
+                  : fewerHosts === 'B'
+                  ? `Cloud B requires ${calculations.nodesWithDecoupled - cloudBCalculations.nodesWithDecoupled} fewer hosts`
+                  : 'Identical host count'}
+              </span>
+            </div>
+
+            {/* Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <CloudCompareCard
+                slot="A"
+                badge="Primary Baseline (Cloud A)"
+                preset={preset}
+                nodes={calculations.nodesWithDecoupled}
+                monthly={monthlyA}
+                exceeds={calculations.exceedsClusterLimit}
+                isBest={cheaper === 'A'}
+                accent="cyan"
+              />
+              <CloudCompareCard
+                slot="B"
+                badge="Comparator Target (Cloud B)"
+                preset={presetB}
+                nodes={cloudBCalculations.nodesWithDecoupled}
+                monthly={monthlyB}
+                exceeds={cloudBCalculations.exceedsClusterLimit}
+                isBest={cheaper === 'B'}
+                accent="indigo"
+              />
+            </div>
+
+            {/* Visual spectrum */}
+            <div className="p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-5">
+              <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-cyan-400" />
+                <span>Visual TCO Cost Difference Spectrum</span>
+              </div>
+
+              <CompareBars
+                title="Monthly Opex"
+                unavailable={!bothPriced}
+                unavailableText="Add a price for both SKUs to chart monthly cost"
+                a={{ value: monthlyA, label: `$${monthlyA.toLocaleString()}` }}
+                b={{ value: monthlyB, label: `$${monthlyB.toLocaleString()}` }}
+              />
+              <CompareBars
+                title="Cluster Host Count"
+                a={{ value: calculations.nodesWithDecoupled, label: `${calculations.nodesWithDecoupled} hosts` }}
+                b={{ value: cloudBCalculations.nodesWithDecoupled, label: `${cloudBCalculations.nodesWithDecoupled} hosts` }}
+              />
+            </div>
+          </>
+        )}
+
+        <p className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-2">
+          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{PRICING_META.notice}</span>
+        </p>
+      </section>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Presentation-only building blocks. Nothing below performs sizing, storage
+ * or pricing maths: every number is passed in already calculated.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+type Tone = 'cyan' | 'emerald' | 'blue' | 'amber';
+
+interface ProviderGroup {
+  id: string;
+  label: string;
+  short: string;
+  tone: Tone;
+  keys: string[];
+}
+
+const PROVIDER_GROUPS: ProviderGroup[] = [
+  { id: 'avs', label: 'Azure VMware Solution (AVS)', short: 'AVS', tone: 'cyan', keys: ['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av52', 'avs-av64'] },
+  { id: 'nc2', label: 'Nutanix NC2 on Azure (bare-metal)', short: 'NC2', tone: 'emerald', keys: ['nc2-an36', 'nc2-an36p', 'nc2-an64'] },
+  { id: 'gcve', label: 'Google Cloud VMware Engine (GCVE)', short: 'GCVE', tone: 'blue', keys: ['gcve-ve1', 'gcve-ve2'] },
+  { id: 'vmc', label: 'VMware Cloud on AWS (VMC)', short: 'VMC', tone: 'amber', keys: ['vmc-i4i', 'vmc-i3en', 'vmc-m7i'] }
+];
+
+const TONE: Record<Tone, { dot: string; tabActive: string; cardActive: string; check: string }> = {
+  cyan: { dot: 'bg-cyan-400', tabActive: 'border-cyan-400/60 bg-cyan-500/10 text-cyan-200', cardActive: 'border-cyan-400 bg-cyan-500/10', check: 'text-cyan-300' },
+  emerald: { dot: 'bg-emerald-400', tabActive: 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200', cardActive: 'border-emerald-400 bg-emerald-500/10', check: 'text-emerald-300' },
+  blue: { dot: 'bg-blue-400', tabActive: 'border-blue-400/60 bg-blue-500/10 text-blue-200', cardActive: 'border-blue-400 bg-blue-500/10', check: 'text-blue-300' },
+  amber: { dot: 'bg-amber-400', tabActive: 'border-amber-400/60 bg-amber-500/10 text-amber-200', cardActive: 'border-amber-400 bg-amber-500/10', check: 'text-amber-300' }
+};
+
+const groupOfKey = (key: string): ProviderGroup =>
+  PROVIDER_GROUPS.find(g => g.keys.includes(key)) ?? PROVIDER_GROUPS[0];
+const shortModel = (p: CloudPreset): string => p.nodeModel.split(' (')[0];
+const modelDetail = (p: CloudPreset): string => {
+  const i = p.nodeModel.indexOf(' (');
+  return i === -1 ? '' : p.nodeModel.slice(i + 2).replace(/\)$/, '');
+};
+const specLine = (p: CloudPreset): string =>
+  `${p.nodeCores} cores · ${p.nodeRamGB} GiB · ${p.hasLocalStorage ? `${p.rawStoragePerNodeTB} TB` : 'no local storage'}`;
+const priceLine = (p: CloudPreset): string =>
+  p.monthlyPriceEst != null ? `$${p.monthlyPriceEst.toLocaleString()}/host/mo` : 'No price set';
+
+/* ───────── Step container ───────── */
+const StepCard: React.FC<{
+  step: number;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ step, title, description, action, children }) => (
+  <section className="rounded-2xl bg-slate-900/70 border border-slate-800 p-5 sm:p-6 space-y-5">
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 border border-cyan-500/40 text-xs font-mono font-bold text-cyan-300">
+          {step}
+        </span>
+        <div>
+          <h2 className="text-base font-bold text-white leading-tight flex items-center gap-2">
+            <span>{title}</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+        </div>
       </div>
+      {action}
+    </div>
+    {children}
+  </section>
+);
+
+/* ───────── Step 1: pick Cloud A / Cloud B ───────── */
+const PlatformStep: React.FC<{
+  cloudAKey: string;
+  cloudBKey: string;
+  compareOn: boolean;
+  onChangeA: (key: string) => void;
+  onChangeB: (key: string) => void;
+  onCompareChange: (on: boolean) => void;
+}> = ({ cloudAKey, cloudBKey, compareOn, onChangeA, onChangeB, onCompareChange }) => {
+  const [slot, setSlot] = useState<'A' | 'B'>('A');
+  const [groupA, setGroupA] = useState<string>(groupOfKey(cloudAKey).id);
+  const [groupB, setGroupB] = useState<string>(groupOfKey(cloudBKey).id);
+
+  const activeSlot: 'A' | 'B' = compareOn ? slot : 'A';
+  const presetA = CLOUD_PRESETS[cloudAKey];
+  const presetB = CLOUD_PRESETS[cloudBKey];
+
+  const tileBase = 'relative rounded-xl border p-3 transition-colors';
+  const tileA = activeSlot === 'A' ? 'border-cyan-400 bg-cyan-500/10' : 'border-slate-800 bg-slate-950/50 hover:border-slate-700';
+  const tileB = activeSlot === 'B' ? 'border-indigo-400 bg-indigo-500/10' : 'border-slate-800 bg-slate-950/50 hover:border-slate-700';
+
+  return (
+    <div className="space-y-4">
+      <div role="tablist" aria-label="Platform slot" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`${tileBase} ${tileA}`}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSlot === 'A'}
+            onClick={() => setSlot('A')}
+            className="w-full text-left cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300"
+          >
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-300">Cloud A · Baseline</div>
+            <div className="mt-1 text-sm font-bold text-white">{presetA.name}</div>
+            <div className="font-mono text-xs text-cyan-200">{shortModel(presetA)}</div>
+            <div className="mt-1 text-[11px] text-slate-400">{specLine(presetA)}</div>
+          </button>
+        </div>
+
+        {compareOn ? (
+          <div className={`${tileBase} ${tileB}`}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeSlot === 'B'}
+              onClick={() => setSlot('B')}
+              className="w-full text-left cursor-pointer rounded pr-7 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300"
+            >
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300">Cloud B · Comparator</div>
+              <div className="mt-1 text-sm font-bold text-white">{presetB.name}</div>
+              <div className="font-mono text-xs text-indigo-200">{shortModel(presetB)}</div>
+              <div className="mt-1 text-[11px] text-slate-400">{specLine(presetB)}</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onCompareChange(false);
+                setSlot('A');
+              }}
+              aria-label="Remove Cloud B comparison"
+              title="Remove comparison"
+              className="absolute top-2 right-2 p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onCompareChange(true);
+              setSlot('B');
+            }}
+            className="rounded-xl border border-dashed border-slate-700 hover:border-indigo-400/70 hover:bg-indigo-500/5 p-3 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-indigo-200 transition-colors cursor-pointer min-h-[92px]"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="text-xs font-semibold">Compare with another platform</span>
+            <span className="text-[11px] text-slate-500">Add Cloud B for cost and host-count benchmarking</span>
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-xl bg-slate-950/50 border border-slate-800 p-4 space-y-3">
+        <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+          {activeSlot === 'A' ? 'Select Cloud A host type' : 'Select Cloud B host type'}
+        </div>
+        {activeSlot === 'A' ? (
+          <SkuPicker value={cloudAKey} groupId={groupA} onGroupChange={setGroupA} onChange={onChangeA} />
+        ) : (
+          <SkuPicker value={cloudBKey} groupId={groupB} onGroupChange={setGroupB} onChange={onChangeB} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const SkuPicker: React.FC<{
+  value: string;
+  groupId: string;
+  onGroupChange: (id: string) => void;
+  onChange: (key: string) => void;
+}> = ({ value, groupId, onGroupChange, onChange }) => {
+  const group = PROVIDER_GROUPS.find(g => g.id === groupId) ?? PROVIDER_GROUPS[0];
+  return (
+    <div className="space-y-3">
+      <div role="tablist" aria-label="Cloud platform" className="flex flex-wrap gap-1.5">
+        {PROVIDER_GROUPS.map(g => {
+          const active = g.id === group.id;
+          const t = TONE[g.tone];
+          return (
+            <button
+              key={g.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onGroupChange(g.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 ${
+                active ? t.tabActive : 'border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${t.dot}`} aria-hidden="true" />
+              <span>{g.short}</span>
+              {g.keys.includes(value) && <Check className="w-3 h-3" aria-label="selected platform" />}
+            </button>
+          );
+        })}
+      </div>
+      <div className="text-xs text-slate-400">{group.label}</div>
+      <div role="radiogroup" aria-label={`${group.label} host types`} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {group.keys.map(k => {
+          const p = CLOUD_PRESETS[k];
+          const selected = k === value;
+          const t = TONE[group.tone];
+          return (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(k)}
+              className={`text-left rounded-lg border p-3 transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 ${
+                selected ? t.cardActive : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className={`font-mono text-xs font-bold ${selected ? 'text-white' : 'text-slate-200'}`}>{shortModel(p)}</span>
+                {selected && <Check className={`w-4 h-4 shrink-0 ${t.check}`} aria-hidden="true" />}
+              </div>
+              {modelDetail(p) && <div className="text-[11px] text-slate-400 mt-0.5 leading-snug">{modelDetail(p)}</div>}
+              <div className="text-[11px] text-slate-400 mt-1.5 font-mono">{specLine(p)}</div>
+              <div className={`text-[11px] mt-0.5 font-mono ${p.monthlyPriceEst != null ? 'text-emerald-300' : 'text-amber-300'}`}>
+                {priceLine(p)}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+/* ───────── Inputs ───────── */
+const railStyle = (value: number, min: number, max: number): React.CSSProperties => {
+  const pct = ((value - min) / (max - min)) * 100;
+  return {
+    background: `linear-gradient(to right, rgb(34 211 238) ${pct}%, rgb(30 41 59) ${pct}%)`,
+    backgroundSize: '100% 6px',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat'
+  };
+};
+
+const RANGE_CLASS =
+  'w-full h-5 appearance-none bg-transparent cursor-pointer focus-visible:outline-none ' +
+  '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-300 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-950 [&::-webkit-slider-thumb]:shadow-md ' +
+  '[&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-cyan-300 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-950 ' +
+  'focus-visible:[&::-webkit-slider-thumb]:ring-2 focus-visible:[&::-webkit-slider-thumb]:ring-cyan-200';
+
+const RangeInput: React.FC<{
+  ariaLabel: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}> = ({ ariaLabel, value, min, max, step, onChange }) => (
+  <input
+    type="range"
+    aria-label={ariaLabel}
+    min={min}
+    max={max}
+    step={step}
+    value={value}
+    onChange={e => onChange(Number(e.target.value))}
+    className={RANGE_CLASS}
+    style={railStyle(value, min, max)}
+  />
+);
+
+/** Slider with a typed-value box. Out-of-range or half-typed text is never sent to the calculator. */
+const SliderField: React.FC<{
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+  ticks: string[];
+}> = ({ label, unit, value, min, max, step, onChange, ticks }) => {
+  const [draft, setDraft] = useState<string | null>(null);
+  const id = React.useId();
+
+  const snap = (n: number) => Math.round((Math.min(max, Math.max(min, n)) - min) / step) * step + min;
+
+  return (
+    <div className="space-y-2.5 p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={id} className="text-xs font-semibold text-slate-200">{label}</label>
+        <div className="flex items-center gap-1.5">
+          <input
+            id={id}
+            type="number"
+            inputMode="numeric"
+            min={min}
+            max={max}
+            step={step}
+            value={draft ?? String(value)}
+            onChange={e => {
+              setDraft(e.target.value);
+              const n = Number(e.target.value);
+              if (e.target.value.trim() !== '' && Number.isFinite(n) && n >= min && n <= max) onChange(n);
+            }}
+            onBlur={e => {
+              const n = Number(e.target.value);
+              if (e.target.value.trim() !== '' && Number.isFinite(n)) onChange(snap(n));
+              setDraft(null);
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            className="w-20 px-2 py-1 rounded-md bg-slate-900 border border-slate-700 hover:border-slate-600 text-right text-sm font-mono font-bold text-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+          />
+          <span className="text-xs text-slate-400 font-mono w-10">{unit}</span>
+        </div>
+      </div>
+      <input
+        type="range"
+        aria-label={`${label} slider`}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={e => {
+          setDraft(null);
+          onChange(Number(e.target.value));
+        }}
+        className={RANGE_CLASS}
+        style={railStyle(value, min, max)}
+      />
+      <div className="flex justify-between text-[10px] text-slate-500 font-mono" aria-hidden="true">
+        {ticks.map(t => (
+          <span key={t}>{t}</span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+function Segmented<T extends number | string>({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string; desc: string }[];
+  onChange: (v: T) => void;
+}) {
+  const current = options.find(o => o.value === value);
+  return (
+    <div className="space-y-2">
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="grid gap-1 p-1 rounded-lg bg-slate-950 border border-slate-800"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
+        {options.map(o => {
+          const active = o.value === value;
+          return (
+            <button
+              key={String(o.value)}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              className={`py-1.5 rounded-md text-xs font-mono font-bold transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 ${
+                active ? 'bg-cyan-400 text-slate-950 shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {current && <p className="text-[11px] text-slate-400 leading-snug">{current.desc}</p>}
+    </div>
+  );
+}
+
+const Switch: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label: string }> = ({ checked, onChange, label }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    onClick={() => onChange(!checked)}
+    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 ${
+      checked ? 'bg-cyan-500' : 'bg-slate-700'
+    }`}
+  >
+    <span
+      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
+    />
+  </button>
+);
+
+/* ───────── Comparison ───────── */
+const ACCENT = {
+  cyan: { border: 'border-cyan-500/40', badge: 'bg-cyan-950 text-cyan-300 border-cyan-800', model: 'text-cyan-400', big: 'text-cyan-300' },
+  indigo: { border: 'border-indigo-500/40', badge: 'bg-indigo-950 text-indigo-300 border-indigo-800', model: 'text-indigo-400', big: 'text-indigo-300' }
+} as const;
+
+const CloudCompareCard: React.FC<{
+  slot: 'A' | 'B';
+  badge: string;
+  preset: CloudPreset;
+  nodes: number;
+  monthly: number;
+  exceeds: boolean;
+  isBest: boolean;
+  accent: keyof typeof ACCENT;
+}> = ({ slot, badge, preset, nodes, monthly, exceeds, isBest, accent }) => {
+  const a = ACCENT[accent];
+  const priced = preset.monthlyPriceEst != null;
+  return (
+    <div className={`relative p-5 rounded-xl bg-slate-950/80 border ${a.border} space-y-4`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-bold uppercase ${a.badge}`}>{badge}</span>
+          <h3 className="text-base font-bold text-white mt-2">{preset.name}</h3>
+          <p className={`text-xs font-mono ${a.model}`}>{preset.nodeModel}</p>
+        </div>
+        {isBest && (
+          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase px-2 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/60">
+            <Check className="w-3 h-3" />
+            Lower cost
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-slate-900 border border-slate-800 p-3">
+          <div className="text-[10px] font-mono text-slate-400">Hosts Required</div>
+          <div className={`text-3xl font-black font-mono leading-tight ${a.big}`}>
+            {nodes} <span className="text-xs font-normal text-slate-400">Nodes</span>
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-900 border border-slate-800 p-3">
+          <div className="text-[10px] font-mono text-slate-400">Est. Monthly Opex</div>
+          {priced ? (
+            <div className={`text-2xl font-black font-mono leading-tight ${a.big}`}>${monthly.toLocaleString()}</div>
+          ) : (
+            <div className="text-sm font-semibold text-amber-300 mt-1">Price not set</div>
+          )}
+        </div>
+      </div>
+
+      <dl className="space-y-0 text-xs font-mono">
+        <div className="flex justify-between gap-4 text-slate-300 py-1.5 border-b border-slate-900">
+          <dt>Total Cores:</dt>
+          <dd className="text-white">{nodes * preset.nodeCores} Cores</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-slate-300 py-1.5 border-b border-slate-900">
+          <dt>Total RAM:</dt>
+          <dd className="text-white">{nodes * preset.nodeRamGB} GiB</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-slate-300 py-1.5 border-b border-slate-900">
+          <dt className="shrink-0">Storage Tier:</dt>
+          <dd className={`text-right ${a.model}`}>{preset.externalStorageName}</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-slate-300 py-1.5">
+          <dt>36-Month Indicative Cost (hosts only):</dt>
+          <dd className="text-emerald-400 font-bold shrink-0">{priced ? `$${(monthly * 36).toLocaleString()}` : 'Price not set'}</dd>
+        </div>
+      </dl>
+
+      {exceeds && (
+        <div role="alert" className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-[11px] text-amber-200 flex items-start gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>
+            {nodes} hosts exceeds the {preset.maxNodesCluster}-host cluster limit for Cloud {slot}. Split across multiple clusters.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** Two horizontal bars scaled to the larger value, so length differences read at a glance. */
+const CompareBars: React.FC<{
+  title: string;
+  a: { value: number; label: string };
+  b: { value: number; label: string };
+  unavailable?: boolean;
+  unavailableText?: string;
+}> = ({ title, a, b, unavailable, unavailableText }) => {
+  const max = Math.max(1, a.value, b.value);
+  const row = (name: string, bar: string, text: string, item: { value: number; label: string }) => (
+    <div className="flex items-center gap-3">
+      <span className="w-14 shrink-0 text-[10px] font-mono font-bold uppercase text-slate-400">{name}</span>
+      <div className="flex-1 h-6 rounded-md bg-slate-900 border border-slate-800 overflow-hidden">
+        <div
+          className={`h-full flex items-center px-2 text-[11px] font-bold font-mono whitespace-nowrap transition-all duration-500 ${bar} ${text}`}
+          style={{ width: `${Math.max(item.value > 0 ? 14 : 0, (item.value / max) * 100)}%` }}
+        >
+          {item.label}
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-mono text-slate-300">{title}</div>
+      {unavailable ? (
+        <div className="text-[11px] text-amber-300">{unavailableText}</div>
+      ) : (
+        <div className="space-y-1.5">
+          {row('Cloud A', 'bg-cyan-500', 'text-slate-950', a)}
+          {row('Cloud B', 'bg-indigo-500', 'text-white', b)}
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,8 @@
 /**
  * Enterprise VMware Storage Policy & Usable Capacity Sizing Engine
  * Supports vSAN RAID/FTT policies, slack factors, and external SAN (NFS) capacity tiers.
- * ZERO COSTING: Exclusively technical capacity, parity, and node density calculations.
+ * This module is technical-only (capacity, parity, node density). Indicative pricing, where shown,
+ * lives in the Node Sizing page presets and is labelled and dated there.
  */
 
 export type StoragePolicyId =
@@ -84,13 +85,13 @@ export const ENTERPRISE_STORAGE_POLICIES: Record<StoragePolicyId, StoragePolicyD
   nutanix_rf2_ecx: {
     id: 'nutanix_rf2_ecx',
     name: 'Nutanix DSF RF2 with EC-X Erasure Coding',
-    shortLabel: 'Nutanix RF2 + EC-X (~1.25x Overhead)',
-    overheadMultiplier: 1.25,
+    shortLabel: 'Nutanix RF2 + EC-X (1.5x / 1.33x / 1.25x by cluster size)',
+    overheadMultiplier: 1.25, // best case, only reached at 6+ nodes; see getOverheadForClusterSize()
     parityEfficiencyPercent: 80,
     minHosts: 4,
     faultTolerance: '1 Node or Disk Failure',
-    description: 'Inline RF2 with background EC-X stripe (4+1) for cold/write-cold data blocks.',
-    technicalTradeoff: 'Delivers up to 80% storage efficiency; requires minimum 4 nodes in cluster.'
+    description: 'RF2 with post-process EC-X striping on write-cold data. Strip is 2/1 at 4 nodes, 3/1 at 5 nodes, 4/1 at 6+ nodes.',
+    technicalTradeoff: 'Efficiency depends on cluster size: 1.5x overhead at 3-4 nodes, 1.33x at 5 nodes, 1.25x (80%) only at 6+ nodes. Recommended minimum 4 nodes.'
   },
   nutanix_rf3_ecx: {
     id: 'nutanix_rf3_ecx',
@@ -104,6 +105,41 @@ export const ENTERPRISE_STORAGE_POLICIES: Record<StoragePolicyId, StoragePolicyD
     technicalTradeoff: 'Tolerates 2 concurrent host crashes while saving 50% capacity over raw RF3; requires 6 nodes.'
   }
 };
+
+export type PolicyFamily = 'vmware' | 'nutanix';
+
+/** Overhead multiplier for a policy at a given cluster size. Only RF2 + EC-X varies with node count. */
+export function getOverheadForClusterSize(policy: StoragePolicyDefinition, nodeCount: number): number {
+  if (policy.id === 'nutanix_rf2_ecx') {
+    if (nodeCount >= 6) return 1.25; // 4/1 strip
+    if (nodeCount === 5) return 1.33333333; // 3/1 strip
+    return 1.5; // 2/1 strip (3-4 nodes)
+  }
+  return policy.overheadMultiplier;
+}
+
+export function policiesForFamily(family: PolicyFamily): StoragePolicyId[] {
+  return family === 'nutanix'
+    ? ['nutanix_rf2', 'nutanix_rf2_ecx', 'nutanix_rf3', 'nutanix_rf3_ecx']
+    : ['raid1_ftt1', 'raid5_ftt1', 'raid6_ftt2'];
+}
+
+/** Closest equivalent policy when comparing a VMware (vSAN) platform with Nutanix, and vice versa. */
+export function equivalentPolicyId(id: StoragePolicyId, family: PolicyFamily): StoragePolicyId {
+  if (policiesForFamily(family).includes(id)) return id;
+  const toNutanix: Record<string, StoragePolicyId> = {
+    raid1_ftt1: 'nutanix_rf2',
+    raid5_ftt1: 'nutanix_rf2_ecx',
+    raid6_ftt2: 'nutanix_rf3_ecx'
+  };
+  const toVmware: Record<string, StoragePolicyId> = {
+    nutanix_rf2: 'raid1_ftt1',
+    nutanix_rf2_ecx: 'raid5_ftt1',
+    nutanix_rf3: 'raid1_ftt1',
+    nutanix_rf3_ecx: 'raid6_ftt2'
+  };
+  return (family === 'nutanix' ? toNutanix[id] : toVmware[id]) ?? policiesForFamily(family)[0];
+}
 
 export interface StorageSizingInput {
   totalUsedStorageTB: number;
@@ -154,13 +190,26 @@ export function calculateStorageCapacity(input: StorageSizingInput): StorageSizi
   const vsanUsedDataTB = Math.round(input.totalUsedStorageTB * (clampedVsanPercent / 100) * 100) / 100;
   const externalUsedStorageTB = Math.round(input.totalUsedStorageTB * (externalPercent / 100) * 100) / 100;
 
-  // vSAN Math:
-  // Parity raw data = UsedData * policy.overheadMultiplier
-  const vsanNetDataAndParityTB = Math.round(vsanUsedDataTB * policy.overheadMultiplier * 100) / 100;
-  const vsanPolicyOverheadTB = Math.round((vsanNetDataAndParityTB - vsanUsedDataTB) * 100) / 100;
+  // vSAN Math (iterates cluster size so size-dependent overhead, e.g. RF2 + EC-X, is applied correctly):
+  //   Net data + parity = UsedData * overhead(nodeCount)
+  //   Raw required      = NetDataAndParity / (1 - slack)
+  const rawPerNode = input.nodeRawStorageTB > 0 ? input.nodeRawStorageTB : 0;
+  let vsanStorageNodesRequired = 0;
+  let appliedOverhead = policy.overheadMultiplier;
+  if (clampedVsanPercent > 0 && rawPerNode > 0) {
+    for (let n = policy.minHosts; n <= 512; n++) {
+      const ovh = getOverheadForClusterSize(policy, n);
+      const raw = (vsanUsedDataTB * ovh) / (1 - slackPercent / 100);
+      vsanStorageNodesRequired = n;
+      appliedOverhead = ovh;
+      if (Math.ceil(raw / rawPerNode) <= n) break;
+    }
+  } else if (clampedVsanPercent > 0) {
+    appliedOverhead = policy.overheadMultiplier;
+  }
 
-  // vSAN Slack Factor calculation:
-  // Raw Required = NetDataAndParity / (1 - slackPercent / 100)
+  const vsanNetDataAndParityTB = Math.round(vsanUsedDataTB * appliedOverhead * 100) / 100;
+  const vsanPolicyOverheadTB = Math.round((vsanNetDataAndParityTB - vsanUsedDataTB) * 100) / 100;
   const vsanRawRequiredTB =
     clampedVsanPercent > 0
       ? Math.round((vsanNetDataAndParityTB / (1 - slackPercent / 100)) * 100) / 100
@@ -168,14 +217,9 @@ export function calculateStorageCapacity(input: StorageSizingInput): StorageSizi
   const vsanSlackTB = Math.round((vsanRawRequiredTB - vsanNetDataAndParityTB) * 100) / 100;
 
   // Usable capacity delivered per node under this policy and slack factor:
-  const rawPerNode = Math.max(1, input.nodeRawStorageTB);
   const vsanUsablePerNodeTB =
-    Math.round(((rawPerNode * (1 - slackPercent / 100)) / policy.overheadMultiplier) * 10) / 10;
-
-  // Minimum nodes strictly driven by vSAN raw storage requirement:
-  const vsanStorageNodesRequired =
-    clampedVsanPercent > 0
-      ? Math.max(policy.minHosts, Math.ceil(vsanRawRequiredTB / rawPerNode))
+    rawPerNode > 0
+      ? Math.round(((rawPerNode * (1 - slackPercent / 100)) / appliedOverhead) * 10) / 10
       : 0;
 
   // External SAN (NFS Datastores) Sizing:

@@ -15,11 +15,14 @@ export interface KBSolutionStep {
 export interface KnowledgeBaseArticle {
   id: string; // e.g. 'KB-AVS-8921'
   title: string;
-  component: 'Azure VMware Solution' | 'Google Cloud VMware Engine' | 'VMware Cloud on AWS' | 'VMware NSX-T' | 'VMware HCX' | 'VMware Site Recovery Manager' | 'VMware Aria Operations for Networks' | 'VMware Cloud Foundation';
+  component: 'Azure VMware Solution' | 'Google Cloud VMware Engine' | 'VMware Cloud on AWS' | 'VMware NSX-T' | 'VMware HCX' | 'VMware Site Recovery Manager' | 'VMware Aria Operations for Networks' | 'VMware Cloud Foundation' | 'Nutanix NC2 on Azure' | 'Nutanix AHV & Move' | 'Nutanix Flow Virtual Networking' | 'Nutanix Disaster Recovery';
   serviceCategory: 'Network & Routing' | 'Storage Decoupling' | 'Microsegmentation' | 'Workload Mobility' | 'Disaster Recovery' | 'Flow & Discovery' | 'SDDC Lifecycle';
   severity: 'Critical' | 'High' | 'Operational' | 'Advisory';
   lastUpdated: string;
   verifiedInProduction: boolean;
+  status?: 'published' | 'draft';
+  articleType?: 'troubleshooting' | 'guide';
+  architectNote?: string;
   symptoms: string[];
   rootCause: string;
   impactScope: string;

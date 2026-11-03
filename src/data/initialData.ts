@@ -107,6 +107,78 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       ]
     },
     {
+      id: 'nutanix-nc2-azure',
+      platform: 'VMware SDDC to Nutanix NC2 on Azure',
+      title: 'VMware SDDC to Nutanix NC2 on Azure Architecture & Migration',
+      badge: 'Nutanix NC2 on Azure',
+      description: 'Enterprise architecture discipline and migration methodology for transitioning VMware vSphere SDDC workloads to Nutanix Cloud Clusters (NC2) on Microsoft Azure bare-metal infrastructure. Combines Nutanix AHV hypervisor, Distributed Storage Fabric (DSF), Flow Virtual Networking, and Nutanix Move cross-hypervisor migration.',
+      mediaType: 'image',
+      imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+      keyDeliverables: [
+        'Dedicated Azure bare-metal node architecture (AN36, AN36P, AN64, AN100) running native Nutanix AHV and CVM storage fabric',
+        'Direct Azure Virtual Network (VNet) flow integration without overlay encapsulation or nested virtualization penalties',
+        'Nutanix Move automated cross-hypervisor replication with automated VirtIO injection and near-zero cutover downtime',
+        'Distributed Storage Fabric (DSF) with RF2/RF3 resilience, inline deduplication/compression, and Leap multi-region DR'
+      ],
+      techTags: ['Nutanix NC2 on Azure', 'Nutanix AHV Hypervisor', 'Nutanix Move Engine', 'Flow Virtual Networking', 'Distributed Storage Fabric (DSF)', 'Azure Bare-Metal AN36/AN64'],
+      designs: [
+        {
+          id: 'nc2-design-1',
+          title: 'Azure Bare-Metal Node Architecture & Flow Virtual Networking',
+          badge: 'Bare-Metal & Flow VNet',
+          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          description: 'Deploying Nutanix AOS and AHV directly on Azure bare-metal nodes with native Azure Virtual Network (VNet) fabric integration, eliminating nested virtualization performance penalties while preserving sub-millisecond inter-VM latency.',
+          detailedSpecs: [
+            'Azure Bare-Metal Node SKUs: AN36 (36c/72t, 768GB RAM), AN36P (1.5TB RAM), AN64 (64c/128t, 1.5TB RAM), AN100 (104c/208t, 2TB RAM)',
+            'Native Azure Virtual Network (VNet) flow integration assigning native Azure NICs and IPs directly to Nutanix AHV user VMs',
+            'Flow Virtual Networking (VPC, overlay subnets, floating IPs, and inter-cluster routing) for multi-tenant isolation',
+            'Azure ExpressRoute & FastPath direct hybrid interconnectivity linking on-premises VMware data centers to NC2 cluster'
+          ],
+          components: [
+            { name: 'Azure Bare-Metal Host', role: 'Compute Node', details: 'Dual-socket Intel Xeon physical host partitioned with hardware-assisted virtualization and NVMe flash.' },
+            { name: 'Nutanix CVM (Controller VM)', role: 'Storage & Control Plane', details: 'Directly manages local NVMe SSDs and clusters into global Distributed Storage Fabric across all nodes.' },
+            { name: 'Flow Virtual Networking', role: 'SDN & Overlay Fabric', details: 'Provides microsegmentation, VPC peering, and seamless layer 2 broadcast domain management.' }
+          ]
+        },
+        {
+          id: 'nc2-design-2',
+          title: 'Nutanix Move Automated Cross-Hypervisor Migration Pipeline (vSphere to AHV)',
+          badge: 'Nutanix Move ESXi to AHV',
+          imageUrl: '/assets/images/nutanix_move_migration_1791690428522.jpg',
+          description: 'End-to-end automated cross-hypervisor migration engine capturing block-level changed data tracking from VMware ESXi / vCenter and streaming non-disruptive deltas into Nutanix AHV on Azure, injecting VirtIO drivers and converting disk controllers automatically.',
+          detailedSpecs: [
+            'Agentless changed block tracking (CBT) synchronization replicating terabytes of VMDK storage in the background',
+            'Automatic VirtIO driver injection and disk controller translation (PVSCSI/LSI to VirtIO-SCSI) during staging phase',
+            'Near-zero cutover window: Target VM is prepared in seconds; source VM is cleanly quiesced and network cutover executed',
+            'Flow Layer 2 Subnet Extension preserving source IP addresses during multi-wave application migrations without re-IPing'
+          ],
+          components: [
+            { name: 'Nutanix Move Appliance', role: 'Migration Orchestrator', details: 'Linux virtual appliance coordinating vCenter snapshots, data streaming, driver injection, and cutover.' },
+            { name: 'VirtIO Driver Injection Engine', role: 'OS Compatibility Tool', details: 'Prepares Windows and Linux guest operating systems for native AHV hardware acceleration.' },
+            { name: 'Flow L2 Gateway Agent', role: 'Subnet Stretch', details: 'Extends on-premises broadcast VLANs into Azure VNet without requiring manual default gateway changes.' }
+          ]
+        },
+        {
+          id: 'nc2-design-3',
+          title: 'Distributed Storage Fabric (DSF), Resiliency & Multi-Region BCDR',
+          badge: 'DSF RF2/RF3 & Leap DR',
+          imageUrl: '/assets/images/nutanix_dsf_storage_bcdr_1791690439733.jpg',
+          description: 'Enterprise hyperconverged storage architecture with Replication Factor 2 (RF2) and Replication Factor 3 (RF3), inline deduplication, compression, erasure coding (EC-X), and automated disaster recovery orchestration with Nutanix Leap.',
+          detailedSpecs: [
+            'Distributed Storage Fabric (DSF) pooling all local Azure bare-metal NVMe SSDs into a single resilient datastore namespace',
+            'Configurable RF2 (tolerates 1 node failure) and RF3 (tolerates 2 simultaneous node failures) with automated data re-protection',
+            'Storage tiering and snapshot archival to Azure Blob Storage and Azure NetApp Files for cold data archiving',
+            'Nutanix Leap DR orchestration executing non-disruptive disaster recovery testing and automated cross-region failover'
+          ],
+          components: [
+            { name: 'DSF Storage Pool', role: 'Global Enterprise Storage', details: 'Distributes VM data blocks across all cluster nodes with metadata localized for low-latency IOPS.' },
+            { name: 'Nutanix Leap Engine', role: 'Disaster Recovery Orchestrator', details: 'Policy-based runbooks managing protection policies, recovery plans, and test bubble validation.' },
+            { name: 'Azure Blob Tiering Connector', role: 'Cold Data Archive', details: 'Automated policy engine moving stale snapshots to cost-efficient Azure Object Storage.' }
+          ]
+        }
+      ]
+    },
+    {
       id: 'gcve',
       platform: 'GCVE',
       title: 'Google Cloud VMware Engine (GCVE) Architecture & Migration',
@@ -518,78 +590,6 @@ export const INITIAL_SITE_DATA: SiteConfig = {
             { name: 'Rule Recommendation Engine', role: 'Policy Generator', details: 'Translates raw socket logs into optimal least-privilege Distributed Firewall rules.' },
             { name: 'Migration Wave Planner', role: 'Cutover Scheduler', details: 'Ranks application groups by network coupling to schedule optimal HCX migration batches.' },
             { name: 'NSX Policy Manager API', role: 'Enforcement Target', details: 'Receives and applies microsegmentation rules directly to VM vNIC distributed firewalls.' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'nutanix-nc2-azure',
-      platform: 'VMware SDDC to Nutanix NC2 on Azure',
-      title: 'VMware SDDC to Nutanix NC2 on Azure Architecture & Migration',
-      badge: 'Nutanix NC2 on Azure',
-      description: 'Enterprise architecture discipline and migration methodology for transitioning VMware vSphere SDDC workloads to Nutanix Cloud Clusters (NC2) on Microsoft Azure bare-metal infrastructure. Combines Nutanix AHV hypervisor, Distributed Storage Fabric (DSF), Flow Virtual Networking, and Nutanix Move cross-hypervisor migration.',
-      mediaType: 'image',
-      imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
-      keyDeliverables: [
-        'Dedicated Azure bare-metal node architecture (AN36, AN36P, AN64, AN100) running native Nutanix AHV and CVM storage fabric',
-        'Direct Azure Virtual Network (VNet) flow integration without overlay encapsulation or nested virtualization penalties',
-        'Nutanix Move automated cross-hypervisor replication with automated VirtIO injection and near-zero cutover downtime',
-        'Distributed Storage Fabric (DSF) with RF2/RF3 resilience, inline deduplication/compression, and Leap multi-region DR'
-      ],
-      techTags: ['Nutanix NC2 on Azure', 'Nutanix AHV Hypervisor', 'Nutanix Move Engine', 'Flow Virtual Networking', 'Distributed Storage Fabric (DSF)', 'Azure Bare-Metal AN36/AN64'],
-      designs: [
-        {
-          id: 'nc2-design-1',
-          title: 'Azure Bare-Metal Node Architecture & Flow Virtual Networking',
-          badge: 'Bare-Metal & Flow VNet',
-          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
-          description: 'Deploying Nutanix AOS and AHV directly on Azure bare-metal nodes with native Azure Virtual Network (VNet) fabric integration, eliminating nested virtualization performance penalties while preserving sub-millisecond inter-VM latency.',
-          detailedSpecs: [
-            'Azure Bare-Metal Node SKUs: AN36 (36c/72t, 768GB RAM), AN36P (1.5TB RAM), AN64 (64c/128t, 1.5TB RAM), AN100 (104c/208t, 2TB RAM)',
-            'Native Azure Virtual Network (VNet) flow integration assigning native Azure NICs and IPs directly to Nutanix AHV user VMs',
-            'Flow Virtual Networking (VPC, overlay subnets, floating IPs, and inter-cluster routing) for multi-tenant isolation',
-            'Azure ExpressRoute & FastPath direct hybrid interconnectivity linking on-premises VMware data centers to NC2 cluster'
-          ],
-          components: [
-            { name: 'Azure Bare-Metal Host', role: 'Compute Node', details: 'Dual-socket Intel Xeon physical host partitioned with hardware-assisted virtualization and NVMe flash.' },
-            { name: 'Nutanix CVM (Controller VM)', role: 'Storage & Control Plane', details: 'Directly manages local NVMe SSDs and clusters into global Distributed Storage Fabric across all nodes.' },
-            { name: 'Flow Virtual Networking', role: 'SDN & Overlay Fabric', details: 'Provides microsegmentation, VPC peering, and seamless layer 2 broadcast domain management.' }
-          ]
-        },
-        {
-          id: 'nc2-design-2',
-          title: 'Nutanix Move Automated Cross-Hypervisor Migration Pipeline (vSphere to AHV)',
-          badge: 'Nutanix Move ESXi to AHV',
-          imageUrl: '/assets/images/nutanix_move_migration_1791690428522.jpg',
-          description: 'End-to-end automated cross-hypervisor migration engine capturing block-level changed data tracking from VMware ESXi / vCenter and streaming non-disruptive deltas into Nutanix AHV on Azure, injecting VirtIO drivers and converting disk controllers automatically.',
-          detailedSpecs: [
-            'Agentless changed block tracking (CBT) synchronization replicating terabytes of VMDK storage in the background',
-            'Automatic VirtIO driver injection and disk controller translation (PVSCSI/LSI to VirtIO-SCSI) during staging phase',
-            'Near-zero cutover window: Target VM is prepared in seconds; source VM is cleanly quiesced and network cutover executed',
-            'Flow Layer 2 Subnet Extension preserving source IP addresses during multi-wave application migrations without re-IPing'
-          ],
-          components: [
-            { name: 'Nutanix Move Appliance', role: 'Migration Orchestrator', details: 'Linux virtual appliance coordinating vCenter snapshots, data streaming, driver injection, and cutover.' },
-            { name: 'VirtIO Driver Injection Engine', role: 'OS Compatibility Tool', details: 'Prepares Windows and Linux guest operating systems for native AHV hardware acceleration.' },
-            { name: 'Flow L2 Gateway Agent', role: 'Subnet Stretch', details: 'Extends on-premises broadcast VLANs into Azure VNet without requiring manual default gateway changes.' }
-          ]
-        },
-        {
-          id: 'nc2-design-3',
-          title: 'Distributed Storage Fabric (DSF), Resiliency & Multi-Region BCDR',
-          badge: 'DSF RF2/RF3 & Leap DR',
-          imageUrl: '/assets/images/nutanix_dsf_storage_bcdr_1791690439733.jpg',
-          description: 'Enterprise hyperconverged storage architecture with Replication Factor 2 (RF2) and Replication Factor 3 (RF3), inline deduplication, compression, erasure coding (EC-X), and automated disaster recovery orchestration with Nutanix Leap.',
-          detailedSpecs: [
-            'Distributed Storage Fabric (DSF) pooling all local Azure bare-metal NVMe SSDs into a single resilient datastore namespace',
-            'Configurable RF2 (tolerates 1 node failure) and RF3 (tolerates 2 simultaneous node failures) with automated data re-protection',
-            'Storage tiering and snapshot archival to Azure Blob Storage and Azure NetApp Files for cold data archiving',
-            'Nutanix Leap DR orchestration executing non-disruptive disaster recovery testing and automated cross-region failover'
-          ],
-          components: [
-            { name: 'DSF Storage Pool', role: 'Global Enterprise Storage', details: 'Distributes VM data blocks across all cluster nodes with metadata localized for low-latency IOPS.' },
-            { name: 'Nutanix Leap Engine', role: 'Disaster Recovery Orchestrator', details: 'Policy-based runbooks managing protection policies, recovery plans, and test bubble validation.' },
-            { name: 'Azure Blob Tiering Connector', role: 'Cold Data Archive', details: 'Automated policy engine moving stale snapshots to cost-efficient Azure Object Storage.' }
           ]
         }
       ]
@@ -1468,6 +1468,601 @@ function Set-NsxtWorkloadTag {
     }
   ],
   knowledgeBase: [
+    {
+      id: 'KB-NTX-1001',
+      title: 'Layer 2 Extension from VMware to Nutanix: Keeping the Same IP During Migration',
+      component: 'Nutanix Flow Virtual Networking',
+      serviceCategory: 'Network & Routing',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] The third-party VTEP gateway appliance model on the source side and the explicit rollback sequence must be confirmed against the vendor documentation for the deployment.',
+      symptoms: [
+        'Workload migration requires moving virtual machines in phases without modifying IP address, MAC address, or default gateway.',
+        'Layer 3 underlay connectivity exists between the source environment and the target Nutanix availability zone.',
+        'Subnet extension must span from a Nutanix availability zone to a non-Nutanix datacenter using a VTEP gateway.'
+      ],
+      rootCause: 'Layer 2 network extension allows workloads to retain their network identity across availability zones when routed underlay connectivity is in place. Because extension between a Nutanix availability zone and a non-Nutanix datacenter operates exclusively over VTEP, the remote peer requires a third-party VTEP gateway. VTEP-based extension is unencrypted and point-to-multipoint, so the decision to apply encryption across the underlying network belongs to the transport underlay design.',
+      impactScope: 'Applies to subnets extended between a local Nutanix cluster and a non-Nutanix datacenter terminating on a third-party VTEP gateway. Each extended subnet on the same network gateway requires a unique VxLAN Network Identifier. A non-HA VTEP gateway outage disrupts extension traffic until the gateway restarts on another host, though HA-enabled active and backup gateways operate transparently; confirm for the current version.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Verify Layer 3 Underlay Reachability',
+          description: 'Confirm that routed Layer 3 connectivity is established between the endpoints. Verify that IP reachability is established between the local network gateway and the remote third-party VTEP gateway endpoint IP addresses. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Deploy and Configure Local VTEP Gateway',
+          description: 'On the on-premises Prism Central, navigate to Networking & Security > Connectivity > Subnet Extension. Create a local gateway on Prism Central using a dedicated VLAN subnet for the gateway appliance. The local VTEP gateway can be configured as a single gateway or deployed with HA enablement using transparent active and backup components.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Define Remote Third-Party VTEP Gateway',
+          description: 'Register the remote third-party VTEP gateway by specifying its remote endpoint IP addresses on the target cluster. Additional endpoint addresses can be added to the remote gateway definition without stopping the active subnet extension. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Create Subnets and Assign VxLAN Network Identifiers',
+          description: 'Create a subnet for the extension on both the source environment and the Nutanix cluster. Assign a unique VxLAN Network Identifier (VNI) to each extended subnet hosted within the same network gateway appliance. Configure policy-based routing (PBR) forward together with Layer 2 stretch based on gateway placement to avoid asymmetric routing.'
+        },
+        {
+          stepNumber: 5,
+          title: 'Migrate Workloads Across Extended Subnets',
+          description: 'Migrate virtual machines across the extended segment in scheduled phases while retaining source IP and MAC addresses. Ensure that VMs communicating across the extended boundary route traffic through the designated default gateway. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 6,
+          title: 'Decommission Subnet Extension',
+          description: 'Once all virtual machines belonging to the subnet are migrated, remove the extended subnet mappings. Delete the subnet extensions and remove the local and remote VTEP gateway appliances when no longer required. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Confirm that migrated virtual machines in the target Nutanix availability zone and remaining source virtual machines communicate across the extended subnet using the same IP subnet range. Verify that workload IP address, MAC address, and default gateway remain intact after relocation. Confirm that cross-subnet traffic traverses policy-based routing forward configurations symmetrically.',
+      tags: ['nutanix-migration', 'flow-virtual-networking', 'l2-extension', 'vtep-gateway'],
+      relatedDocLinks: [
+        {
+          label: 'Flow Virtual Networking Guide, Layer 2 Network Extension',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-v5_0_0%3Aear-flow-nw-l2-virtual-network-extension-c.html'
+        },
+        {
+          label: 'Flow Virtual Networking Guide, Layer 2 Network Extension over VTEP',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-v7_6_0%3Aear-virtual-subnet-extend-vtep-c.html'
+        },
+        {
+          label: 'NC2 on Azure, Configuring Disaster Recovery Over Layer 2 Stretched Network',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-nc2-azure-configure-layer-2-stretch-dr-t.html'
+        },
+        {
+          label: 'Flow Virtual Networking (pc.2024.2), Layer 2 Network Extension Over VTEP',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-vpc_2024_2%3Aear-virtual-subnet-extend-vtep-c.html'
+        }
+      ]
+    },
+    {
+      id: 'KB-NTX-1002',
+      title: 'Same IP on Migration: Nutanix Move IP Retention vs Layer 2 Extension',
+      component: 'Nutanix AHV & Move',
+      serviceCategory: 'Workload Mobility',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] Confirm the same options in the ESXi-to-AHV plan for the Move version in use.',
+      symptoms: [
+        'Planning workload migration to Nutanix AHV while evaluating options for retaining existing guest IP configurations.',
+        'Assessing whether network infrastructure requires temporary Layer 2 subnet extension or host-level guest IP configuration retention.',
+        'Evaluating multi-NIC virtual machine configurations requiring MAC address and IP preservation during migration.'
+      ],
+      rootCause: 'Nutanix Move provides migration plan options to retain source IP configurations via guest preparation scripts and retain source MAC addresses. Layer 2 network extension extends the broadcast domain across availability zones over an existing Layer 3 underlay so virtual machines retain their IP address, MAC address, and default gateway concurrently. Design implication: Move IP retention preserves static guest configurations upon cutover onto a target network, whereas Layer 2 extension maintains continuous broadcast connectivity to the original default gateway while workloads reside on both sides during phased cutover.',
+      impactScope: 'Applies to virtual machines migrating to Nutanix AHV from supported hypervisors using Move or Flow Virtual Networking. Move does not support all hypervisor sources or non-AHV targets, so heterogeneous source and target combinations require distinct migration methods. For multi-NIC virtual machines in Move, source IP configuration is applied correctly if MAC retention is selected, otherwise it maps one NIC at a time on a best-effort basis.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Evaluate Network Architecture Requirements',
+          description: 'Determine whether virtual machines can cut over to a pre-created target network or must maintain concurrent Layer 2 connectivity to source-side systems. When concurrent cross-site communication on the same subnet is required during phased migration, plan for Layer 2 subnet extension. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Configure Nutanix Move Plan for IP and MAC Retention',
+          description: 'Deploy the Nutanix Move virtual appliance and open its HTML5 management interface. When creating the migration plan, enable Retain Source IP Configurations and Retain MAC Addresses from the Source VMs. For multi-NIC virtual machines, ensure MAC retention is selected so IP configurations are mapped accurately rather than on a best-effort basis.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Implement Layer 2 Subnet Extension If Concurrent Presence Is Required',
+          description: 'If workloads cannot cut over simultaneously and require active communication on the same broadcast domain, configure Layer 2 subnet extension across availability zones. Verify that Layer 3 underlay connectivity exists before deploying network gateways. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Execute Cutover and Plan Decommissioning',
+          description: 'Perform cutover using the selected method while observing guest network behavior. If Layer 2 subnet extension was used for phased migration, decommission the extensions and associated gateways once all virtual machines on the subnet are migrated. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Verify that migrated virtual machines maintain their assigned IP configurations and MAC addresses upon starting on Nutanix AHV. When Layer 2 extension is used, verify that virtual machines on both source and target clusters can communicate across the common subnet range. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'move', 'ip-retention', 'l2-extension'],
+      relatedDocLinks: [
+        {
+          label: 'Flow Virtual Networking Guide, Layer 2 Network Extension',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-v5_0_0%3Aear-flow-nw-l2-virtual-network-extension-c.html'
+        },
+        {
+          label: 'Nutanix Move 6.3, Creating a Migration Plan (ESXi to ESXi)',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Move-v6_3%3Atop-create-migration-plan-esxi-esxi-t.html'
+        },
+        {
+          label: 'TN-2072 AHV Migration, Nutanix Move',
+          url: 'https://portal.nutanix.com/page/documents/solutions/details?targetId=TN-2072-AHV-Migration%3Anutanix-move.html'
+        }
+      ]
+    },
+    {
+      id: 'KB-NTX-1003',
+      title: 'VMware ESXi to Nutanix AHV with Nutanix Move: Planning Checklist',
+      component: 'Nutanix AHV & Move',
+      serviceCategory: 'Workload Mobility',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] Confirm the same options in the ESXi-to-AHV plan for the Move version in use, including driver injection and guest credential requirements.',
+      symptoms: [
+        'Planning the migration of virtual machines hosted on VMware ESXi to Nutanix AHV.',
+        'Preparing virtual machines with automated driver installation prior to hypervisor cutover.',
+        'Organizing inventory discovery and wave migration planning from source ESXi clusters.'
+      ],
+      rootCause: 'Nutanix recommends Move for migrating virtual machines from ESXi, Hyper-V, Azure, or AWS sources to Nutanix AHV. Move is deployed as a standalone virtual machine that presents an HTML5 management interface for managing migration plans. Move automates guest VM preparation, including VirtIO driver installation, so workloads can initialize after the hypervisor change.',
+      impactScope: 'Applies to virtual machines migrating from VMware ESXi to Nutanix AHV targets. Move does not support all hypervisor sources or non-AHV targets, and unsupported source/target combinations require alternative migration methods. Confirm against the Nutanix documentation for the version in use regarding specific source version compatibility.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Discover Inventory Using RVTools Analyzer',
+          description: 'Export the inventory report from the source vCenter environment and upload it to the platform RVTools Migration Readiness Engine at /tools/rvtools-analyzer for automated cluster profiling. Analyze provisioned storage, vCPU assignments, and network port group mappings across source virtual machines. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Deploy the Nutanix Move Appliance',
+          description: 'Deploy the Nutanix Move virtual machine on the target Nutanix cluster or supported host environment. Access the Move HTML5 web interface through a supported browser session. Connect Move to the source vCenter server and the target Prism Central or Prism Element cluster.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Configure Migration Plan and Automated Driver Preparation',
+          description: 'Create a new migration plan in Nutanix Move selecting VMware ESXi as the source and Nutanix AHV as the target. Enable automated VM preparation so Move installs required VirtIO drivers into the guest operating systems prior to cutover. Configure network mapping between source port groups and target AHV virtual networks.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Configure IP and MAC Address Retention Settings',
+          description: 'Select Retain Source IP Configurations and Retain MAC Addresses from the Source VMs in the migration plan settings. For multi-NIC virtual machines, verify that MAC retention is active to ensure proper IP configuration mapping. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 5,
+          title: 'Perform Baseline Data Replication and Final Cutover',
+          description: 'Initiate baseline replication to seed virtual machine disk data to the target Nutanix AHV storage tier. Monitor ongoing synchronization until virtual machines are ready for scheduled migration cutover. Schedule cutover to stop the source VM, complete final synchronization, and power on the VM on AHV.'
+        }
+      ],
+      verificationCheck: 'Verify that migrated virtual machines start on Nutanix AHV with VirtIO drivers active and accessible network connectivity. Confirm that guest IP configurations and MAC addresses match source definitions. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'move', 'esxi-to-ahv', 'migration-checklist'],
+      relatedDocLinks: [
+        {
+          label: 'TN-2072 AHV Migration, Nutanix Move',
+          url: 'https://portal.nutanix.com/page/documents/solutions/details?targetId=TN-2072-AHV-Migration%3Anutanix-move.html'
+        },
+        {
+          label: 'Nutanix blog, Supercharge Your VM Migrations to Nutanix AHV with Nutanix Move',
+          url: 'https://www.nutanix.com/blog/supercharge-your-vm-migrations-to-nutanix-ahv'
+        },
+        {
+          label: 'Nutanix Move 6.3, Creating a Migration Plan (ESXi to ESXi)',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Move-v6_3%3Atop-create-migration-plan-esxi-esxi-t.html'
+        }
+      ]
+    },
+    {
+      id: 'KB-NC2-2001',
+      title: 'NC2 on Azure Architecture Basics',
+      component: 'Nutanix NC2 on Azure',
+      serviceCategory: 'SDDC Lifecycle',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      symptoms: [
+        'Architecting Nutanix Cloud Clusters on Azure bare-metal infrastructure.',
+        'Designing Azure virtual network peering and Flow Gateway connectivity for NC2 clusters.',
+        'Establishing overlay networks and north-south traffic routing for enterprise workloads on Azure.'
+      ],
+      rootCause: 'NC2 on Azure runs Prism Central, Prism Element, Flow, AOS storage, and AHV directly on Azure bare-metal hosts. A cluster has a minimum of 3 and a maximum of 28 bare-metal nodes, managed by a Prism Central instance located in the same region and Azure subscription. Flow Virtual Networking builds overlay networks that abstract the Azure network, supporting over 500 subnets within one VNet.',
+      impactScope: 'Applies to all NC2 on Azure cluster deployments and associated Azure subscription virtual networks. Every node in a cluster must use the same bare-metal SKU, including any nodes added during cluster expansion. Flow Gateway virtual machines sit in the Prism Central VNet for ExpressRoute or Virtual WAN, or in a dedicated Flow Gateway VNet for active-active VPN connectivity.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Provision Azure Bare-Metal Hosts and Peered VNets',
+          description: 'Deploy Azure bare-metal hosts within the designated Azure region and subscription. Ensure the cluster VNet and Prism Central VNet are established, allowing automatic virtual network peering. Deploy clusters within the supported node range between 3 and 28 nodes using uniform bare-metal SKUs.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Deploy Prism Central Management Instance',
+          description: 'Deploy Prism Central in the same Azure region and subscription as the target NC2 bare-metal cluster. Prism Central maintains the central control plane for cluster management and Flow Virtual Networking. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Deploy and Configure Flow Gateway VMs',
+          description: 'Deploy Flow Gateway virtual machines to connect the Nutanix cluster to the Azure native network. When using ExpressRoute or Virtual WAN, locate the Flow Gateway VMs in the Prism Central VNet. For active-active VPN designs, position Flow Gateway VMs in a dedicated Flow Gateway VNet.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Establish Flow Virtual Networking Overlay',
+          description: 'Configure Flow Virtual Networking overlay networks on Prism Central to provide connectivity to Azure native services and handle north-south traffic. Overlay networking abstracts the Azure physical network and supports over 500 subnets within one VNet. With ExpressRoute, allocate Flow Gateway and BGP subnets from the Prism Central VNet, optionally selecting Azure Route Server.'
+        }
+      ],
+      verificationCheck: 'Verify through Prism Central that all bare-metal nodes are healthy, running AOS storage and AHV within the 3 to 28 node limit. Confirm that the cluster VNet and Prism Central VNet are peered and that Flow Gateway VMs route north-south traffic to Azure native networks. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'nc2-azure', 'architecture-basics', 'flow-networking'],
+      relatedDocLinks: [
+        {
+          label: 'Microsoft Learn, NC2 on Azure architectural concepts and requirements',
+          url: 'https://learn.microsoft.com/en-us/azure/baremetal-infrastructure/workloads/nc2-on-azure/requirements'
+        },
+        {
+          label: 'NC2 on Azure, Creating a Cluster',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-clusters-azure-creating-a-cluster-t.html'
+        },
+        {
+          label: 'NC2 on Azure Networking Best Practices (BP-2159)',
+          url: 'https://portal.nutanix.com/page/documents/solutions/details?targetId=BP-2159-NC2-Azure-Networking%3ABP-2159-NC2-Azure-Networking'
+        },
+        {
+          label: 'The Nutanix Bible, Nutanix Cloud Clusters on Azure',
+          url: 'https://www.nutanixbible.com/10b-book-of-nutanix-clusters-azure.html'
+        }
+      ]
+    },
+    {
+      id: 'KB-NC2-2002',
+      title: 'NC2 on Azure Licensing Model: NCI License Type, Pay-As-You-Go and Capacity Reservations',
+      component: 'Nutanix NC2 on Azure',
+      serviceCategory: 'SDDC Lifecycle',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] Confirm how existing on-premises software licenses are transferred or applied to NC2 against current Nutanix licensing documentation.',
+      symptoms: [
+        'Evaluating licensing tiers and portfolio options during NC2 on Azure cluster creation.',
+        'Configuring Nutanix Cloud Infrastructure (NCI) license types and add-ons for cloud bare-metal clusters.',
+        'Establishing pay-as-you-go usage tiers alongside NCI license capacity reservations.'
+      ],
+      rootCause: 'At cluster creation, administrators can select either new portfolio licensing (NCI, EUC) or legacy portfolio licensing (AOS, VDI). When selecting NCI portfolio licensing, the license type and add-ons are chosen as the pay-as-you-go usage tier, configured together with NCI license capacity reservations. Confirm against the Nutanix documentation for the version in use for specific tier features.',
+      impactScope: 'Applies to licensing configuration during initial cluster deployment on NC2 on Azure. The licensing portfolio choice determines the tier structure and capacity reservation mechanics available to the cluster. Confirm against the Nutanix documentation for the version in use.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Select Portfolio Licensing Model',
+          description: 'During initial NC2 on Azure cluster creation, navigate to the licensing configuration section. Choose between new portfolio licensing (NCI, EUC) or legacy portfolio licensing (AOS, VDI) based on organizational licensing entitlements. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Configure NCI License Type and Add-ons',
+          description: 'When utilizing the NCI portfolio, select the designated NCI license type and relevant add-on features. Configure the selection to serve as the pay-as-you-go usage tier for cluster consumption. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Configure License Capacity Reservations',
+          description: 'Establish NCI license capacity reservations to align with cluster sizing requirements. Verify that committed capacity reservations match the planned bare-metal node count and resource allocation. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Verify Licensing Application on Cluster Creation',
+          description: 'Review the licensing summary before finalizing cluster deployment on Azure bare-metal infrastructure. Complete cluster deployment and confirm license assignment in Prism Central. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Verify in the NC2 console and Prism Central that the cluster reflects the selected licensing portfolio and NCI license tier. Confirm that pay-as-you-go usage tiers and capacity reservations are properly registered against the cluster. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'nc2-azure', 'licensing', 'nci-reservations'],
+      relatedDocLinks: [
+        {
+          label: 'NC2 on Azure, Creating a Cluster',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-clusters-azure-creating-a-cluster-t.html'
+        },
+        {
+          label: 'Microsoft Learn, NC2 on Azure architectural concepts and requirements',
+          url: 'https://learn.microsoft.com/en-us/azure/baremetal-infrastructure/workloads/nc2-on-azure/requirements'
+        }
+      ]
+    },
+    {
+      id: 'KB-NC2-2003',
+      title: 'NC2 on Azure Cluster Sizing Constraints',
+      component: 'Nutanix NC2 on Azure',
+      serviceCategory: 'SDDC Lifecycle',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      symptoms: [
+        'Determining bare-metal node counts and boundary limits for an NC2 on Azure cluster.',
+        'Planning cluster node additions while maintaining node uniformity constraints.',
+        'Evaluating cluster capacity against enterprise compute and storage requirements using interactive sizing tools.'
+      ],
+      rootCause: 'NC2 on Azure enforces strict cluster node minimum and maximum thresholds: an NC2 cluster requires a minimum of 3 and supports a maximum of 28 bare-metal nodes. Every node in an NC2 cluster must use the identical bare-metal SKU, including any nodes added later during cluster expansion. Sizing assessments should model required compute and storage capacity before cluster provisioning.',
+      impactScope: 'Applies to bare-metal host sizing and lifecycle scaling operations for all NC2 on Azure clusters. Cluster scaling must remain within the 3 to 28 node boundary, and mixing heterogeneous bare-metal host types within a single cluster is not supported. Confirm SKU and regional availability against the Microsoft Learn requirements page.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Model Compute and Storage via Engineering Sizers',
+          description: 'Evaluate workload resource demands using the platform Nutanix NC2 Assessment tool at /tools/nutanix-nc2-assessment and the Node Sizing Estimator at /tools/sizing. Model baseline vCPU, memory, and raw storage consumption across source workloads. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Apply Cluster Node Boundary Constraints',
+          description: 'Ensure that initial cluster deployment specifies at least the mandatory minimum of 3 bare-metal nodes. Verify that total projected cluster expansion will not exceed the supported ceiling of 28 bare-metal nodes. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Enforce Uniform Bare-Metal SKU Selection',
+          description: 'Select an available bare-metal SKU based on the official Microsoft Learn requirements page. Ensure that every node added to the cluster during future expansion uses the exact same bare-metal SKU as the initial nodes. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Validate Availability and Deploy Cluster',
+          description: 'Confirm that the selected bare-metal SKU is supported in the target Azure region and subscription. Deploy the cluster through the NC2 portal within the validated node limits. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Verify that the deployed NC2 cluster reports between 3 and 28 active bare-metal nodes in Prism Central. Confirm that all cluster nodes share an identical bare-metal hardware SKU specification. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'nc2-azure', 'cluster-sizing', 'node-constraints'],
+      relatedDocLinks: [
+        {
+          label: 'Microsoft Learn, NC2 on Azure architectural concepts and requirements',
+          url: 'https://learn.microsoft.com/en-us/azure/baremetal-infrastructure/workloads/nc2-on-azure/requirements'
+        },
+        {
+          label: 'NC2 on Azure, Creating a Cluster',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-clusters-azure-creating-a-cluster-t.html'
+        },
+        {
+          label: 'The Nutanix Bible, Nutanix Cloud Clusters on Azure',
+          url: 'https://www.nutanixbible.com/10b-book-of-nutanix-clusters-azure.html'
+        }
+      ]
+    },
+    {
+      id: 'KB-NC2-2004',
+      title: 'Migrating to NC2 on Azure: Paths and Network Design',
+      component: 'Nutanix NC2 on Azure',
+      serviceCategory: 'Workload Mobility',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] Confirm support and network prerequisites for migrating on-premises ESXi workloads directly to NC2 on Azure as a target.',
+      symptoms: [
+        'Evaluating migration pathways from on-premises environments or Azure VMware Solution to NC2 on Azure.',
+        'Designing network transit across ExpressRoute or VPN for workload cutover and disaster recovery.',
+        'Choosing between Nutanix Move automated migration and Layer 2 stretched subnet migration.'
+      ],
+      rootCause: 'Workloads can migrate to NC2 on Azure using Nutanix Move or through Layer 2 stretched subnets configured over routed hybrid underlays. Underlay reachability between on-premises and NC2 is established over VPN or ExpressRoute connections. Move automates VM preparation and VirtIO driver installation, supporting migrations from Azure VMware Solution to NC2 on Azure and on-premises AHV.',
+      impactScope: 'Applies to network and workload migration architectures connecting on-premises datacenters or AVS to NC2 on Azure. Underlay transit requires ExpressRoute or VPN connectivity, and Flow Gateway VMs provide access to the Azure native network. Bare-metal SKU and regional availability are governed by published Microsoft Learn specifications.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Establish Hybrid Underlay Connectivity',
+          description: 'Provision routed underlay connectivity between the on-premises environment and Azure using ExpressRoute or VPN. With ExpressRoute, allocate Flow Gateway and BGP subnets from the Prism Central VNet and peer with the cluster VNet. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Select Migration Pathway: Nutanix Move',
+          description: 'Deploy the Nutanix Move virtual appliance to automate workload discovery and preparation. Utilize Move for migration from Azure VMware Solution to NC2 on Azure, taking advantage of automated VirtIO driver installation. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Select Migration Pathway: Layer 2 Stretched Subnets',
+          description: 'If workloads must retain their IP addresses during phased cutover, configure Layer 2 subnet extension on Prism Central. Navigate to Networking & Security > Connectivity > Subnet Extension to configure local and remote gateways over VPN or VTEP. Deploy a local network gateway VM in Azure and on-premises, creating a remote gateway when pairing with a third-party VTEP appliance.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Implement Policy-Based Routing for Stretched Subnets',
+          description: 'Determine default gateway placement on-premises or in NC2 based on firewall location. Configure policy-based routing (PBR) forward in conjunction with Layer 2 stretch to avoid asymmetric routing across the extended segment. Create matching subnets for the extension on both clusters.'
+        },
+        {
+          stepNumber: 5,
+          title: 'Execute Cutover and Finalize Topology',
+          description: 'Perform virtual machine migration cutover onto NC2 on Azure over the validated pathway. If Layer 2 extension was utilized, decommission subnet extensions and gateways once all virtual machines on the subnet are migrated. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Verify that migrated virtual machines run on NC2 on Azure bare-metal nodes with active network connectivity. If Layer 2 stretched subnets were used, confirm that virtual machines on both sides communicate within the same IP subnet range without asymmetric routing drops. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'nc2-azure', 'network-design', 'l2-stretch'],
+      relatedDocLinks: [
+        {
+          label: 'NC2 on Azure, Layer 2 Stretch Connectivity',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-nc2-azure-dr-l2-t.html'
+        },
+        {
+          label: 'NC2 on Azure, Configuring Disaster Recovery Over Layer 2 Stretched Network',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-nc2-azure-configure-layer-2-stretch-dr-t.html'
+        },
+        {
+          label: 'NC2 on Azure Networking Best Practices (BP-2159)',
+          url: 'https://portal.nutanix.com/page/documents/solutions/details?targetId=BP-2159-NC2-Azure-Networking%3ABP-2159-NC2-Azure-Networking'
+        },
+        {
+          label: 'Nutanix blog, Supercharge Your VM Migrations to Nutanix AHV with Nutanix Move',
+          url: 'https://www.nutanix.com/blog/supercharge-your-vm-migrations-to-nutanix-ahv'
+        }
+      ]
+    },
+    {
+      id: 'KB-NTX-1004',
+      title: 'Nutanix-to-Nutanix Migration with Nutanix Disaster Recovery',
+      component: 'Nutanix Disaster Recovery',
+      serviceCategory: 'Disaster Recovery',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] Planned failover execution procedures and Nutanix Move AHV-to-AHV migration capabilities must be confirmed against current documentation.',
+      symptoms: [
+        'Replicating virtual machine workloads between Nutanix clusters across availability zones.',
+        'Planning disaster recovery and workload migration between on-premises Nutanix clusters and NC2 on Azure.',
+        'Configuring replication schedules and recovery point objectives (RPOs) between Nutanix environments.'
+      ],
+      rootCause: 'Nutanix Disaster Recovery provides native replication schedules that vary depending on cluster topology and solution type. Between on-premises availability zones, replication supports asynchronous, NearSync, and synchronous schedules. Between on-premises clusters and NC2, replication supports asynchronous schedules of 1 hour or more, whereas between two NC2 availability zones, both asynchronous and synchronous schedules are supported.',
+      impactScope: 'Applies to protection policies and recovery plans configured between Nutanix clusters managed by Prism Central. Asynchronous RPO is 1 hour or more, NearSync RPO ranges from 1 to 15 minutes, and synchronous replication achieves zero RPO. Replication behavior and schedule support are version-dependent, so confirm against the Nutanix documentation for the version in use.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Establish Availability Zone Interconnect',
+          description: 'Establish routed network connectivity between the source and target Nutanix availability zones. When pairing an on-premises cluster with NC2 on Azure, ensure reachability over VPN or ExpressRoute connections. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Configure Protection Policy Replication Schedules',
+          description: 'In Prism Central, create a protection policy and select the appropriate replication schedule based on the cluster pairing. Between on-premises clusters, select asynchronous, NearSync (1-15 minutes), or synchronous (zero RPO) replication based on requirements. When replicating between on-premises and NC2, configure asynchronous replication with an RPO of 1 hour or more.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Optionally Configure Layer 2 Subnet Extension',
+          description: 'If disaster recovery or migration requires workloads to keep their IP addresses upon failover, configure Layer 2 stretched subnets. Deploy local and remote network gateways to bridge subnets between the availability zones. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Build Recovery Plans and Execute Failover',
+          description: 'Create recovery plans defining virtual machine startup sequence and network mappings. For planned failover behavior and Nutanix Move AHV-to-AHV paths, confirm against the Nutanix documentation for the version in use. Execute planned recovery to transition workloads to the target cluster.'
+        }
+      ],
+      verificationCheck: 'Verify in Prism Central that replication status shows healthy synchronization adhering to the configured RPO schedule. Confirm that virtual machines in recovery plans fail over successfully to the target availability zone. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'disaster-recovery', 'nutanix-to-nutanix', 'rpo-schedules'],
+      relatedDocLinks: [
+        {
+          label: 'Nutanix Disaster Recovery Guide, Protection Policy and Recovery Plan Based Method',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Disaster-Recovery-DRaaS-Guide-vpc_2024_3%3Aecd-ecdr-procedure-automatedprotection-pc-c.html'
+        },
+        {
+          label: 'NC2 on Azure, Layer 2 Stretch Connectivity',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-nc2-azure-dr-l2-t.html'
+        },
+        {
+          label: 'NC2 on Azure, Configuring Disaster Recovery Over Layer 2 Stretched Network',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Cloud-Clusters-Azure%3Anc2-nc2-azure-configure-layer-2-stretch-dr-t.html'
+        }
+      ]
+    },
+    {
+      id: 'KB-NTX-1005',
+      title: 'Layer 2 Subnet Extension Between Nutanix Clusters: VPN or VTEP',
+      component: 'Nutanix Flow Virtual Networking',
+      serviceCategory: 'Network & Routing',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      symptoms: [
+        'Connecting broadcast domains between two Nutanix availability zones.',
+        'Selecting between VPN and VTEP encapsulation methods for Layer 2 subnet extension.',
+        'Evaluating performance overhead and encryption requirements across inter-site underlays.'
+      ],
+      rootCause: 'Between two Nutanix availability zones, Layer 2 subnet extension can be established over VPN or VTEP. Extension over VPN is point-to-point and secure, supporting only the Nutanix VPN solution at both ends and requiring VPN gateway version 5.0 or higher. VTEP-based extension is unencrypted and point-to-multipoint; when connectivity between sites already provides encryption, VTEP is the preferred method because it reduces networking overhead.',
+      impactScope: 'Applies to Layer 2 subnet extensions connecting pairs of Nutanix availability zones managed by Prism Central. Extension over VPN does not support third-party VPN solutions and requires version 5.0 or higher. VTEP gateway services must be set up on local and remote availability zones as either standalone gateways or HA-enabled active and backup pairs.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Assess Inter-Site Underlay Security',
+          description: 'Evaluate whether the existing Layer 3 underlay between availability zones already provides transport encryption, such as pre-existing private circuits or WAN encryption. If underlay encryption is already in place, select VTEP-based extension to eliminate redundant encapsulation overhead. If underlay transit is unencrypted and security is required, select extension over VPN.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Deploy Gateway Services for Selected Method',
+          description: 'On the local Prism Central, navigate to Networking & Security > Connectivity > Subnet Extension. If using VPN, deploy the Nutanix VPN gateway at version 5.0 or higher at both endpoints. If using VTEP, configure local and remote VTEP network gateways, selecting HA enablement if active/backup resilience is required.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Configure Subnet Extensions on Prism Central',
+          description: 'Define subnets for extension on both clusters through Prism Central. Assign unique VxLAN Network Identifiers (VNIs) for VTEP extensions if multiple subnets share a network gateway appliance. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Configure Default Gateway Routing Policies',
+          description: 'Designate default gateway placement on the appropriate availability zone cluster. Configure policy-based routing (PBR) forward alongside Layer 2 extension to prevent asymmetric routing across the extended segment. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Verify that virtual machines in both Nutanix availability zones communicate over the extended subnet using the same IP subnet range. Confirm that VPN tunnel status or VTEP gateway communication reports active state in Prism Central. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'flow-virtual-networking', 'vpn-vs-vtep', 'subnet-extension'],
+      relatedDocLinks: [
+        {
+          label: 'Flow Virtual Networking Guide, Layer 2 Network Extension',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-v5_0_0%3Aear-flow-nw-l2-virtual-network-extension-c.html'
+        },
+        {
+          label: 'Flow Virtual Networking Guide, Layer 2 Network Extension Over VPN',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-v7_0_0%3Aear-flow-net-virtual-subnet-extend-vpn-c.html'
+        },
+        {
+          label: 'Flow Virtual Networking Guide, Layer 2 Network Extension over VTEP',
+          url: 'https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide-v7_6_0%3Aear-virtual-subnet-extend-vtep-c.html'
+        },
+        {
+          label: 'Nutanix blog, Networking that is Powering Hybrid Multicloud Mobility',
+          url: 'https://www.nutanix.com/blog/networking-that-is-powering-hybrid-multicloud-mobility'
+        }
+      ]
+    },
+    {
+      id: 'KB-NTX-1006',
+      title: 'Moving Workloads from Nutanix AHV to VMware ESXi: Supported Methods and Limits',
+      component: 'Nutanix AHV & Move',
+      serviceCategory: 'Workload Mobility',
+      severity: 'Advisory',
+      status: 'published',
+      articleType: 'guide',
+      verifiedInProduction: false,
+      lastUpdated: '2026-11-03',
+      architectNote: '[AUTHOR TO CONFIRM] For targets outside of Nutanix-managed clusters, supported reverse migration methods must be confirmed against vendor documentation. Static IP address preservation in cross-hypervisor disaster recovery workflows is reported as unsupported in community references and requires author validation.',
+      symptoms: [
+        'Evaluating requirements for replicating or migrating virtual machines from Nutanix AHV to VMware ESXi.',
+        'Planning bidirectional workload mobility between Nutanix clusters running different hypervisors.',
+        'Assessing virtual hardware compatibility and driver requirements before hypervisor conversion.'
+      ],
+      rootCause: 'AOS VM Mobility replicates Windows and Linux virtual machines bidirectionally between a Nutanix ESXi cluster and a Nutanix AHV cluster. A Nutanix cluster can be converted from ESXi to AHV, or converted from AHV to ESXi only if it was previously converted from ESXi. Nutanix Move does not support all hypervisor sources or non-AHV targets, and for targets outside of Nutanix clusters the supported migration method must be confirmed.',
+      impactScope: 'Applies strictly to virtual machines moving between Nutanix clusters running ESXi and AHV. Nutanix Guest Tools (NGT) must be installed so required drivers are available on the virtual machines. ESXi delta disks are not supported, virtual machines with SATA or PCI devices are not supported, and VM Mobility includes network mapping between AHV and ESXi networks.',
+      resolutionSteps: [
+        {
+          stepNumber: 1,
+          title: 'Verify Cluster and Hypervisor Scope',
+          description: 'Confirm that the source and target environments consist of Nutanix clusters running AHV and ESXi. If the migration target is a non-Nutanix VMware environment, confirm against the Nutanix documentation for the version in use. Verify that the cluster was previously converted from ESXi if cluster-level hypervisor conversion is being evaluated.'
+        },
+        {
+          stepNumber: 2,
+          title: 'Install Nutanix Guest Tools (NGT)',
+          description: 'Install Nutanix Guest Tools (NGT) on all candidate virtual machines to ensure appropriate hypervisor drivers are present. Verify that NGT communication is active with Prism Element before initiating replication. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 3,
+          title: 'Validate Virtual Machine Configuration Limits',
+          description: 'Inspect virtual machine hardware definitions to confirm absence of unsupported SATA or PCI devices. Verify that the virtual machine has no active ESXi delta disks attached prior to replication. Confirm against the Nutanix documentation for the version in use.'
+        },
+        {
+          stepNumber: 4,
+          title: 'Configure Network Mapping and Replication',
+          description: 'Configure network mapping rules between AHV virtual networks and target ESXi networks within VM Mobility settings. Replicate virtual machines bidirectionally between the Nutanix ESXi and Nutanix AHV clusters using AOS storage replication. Confirm against the Nutanix documentation for the version in use.'
+        }
+      ],
+      verificationCheck: 'Verify that virtual machines replicated via AOS VM Mobility power on successfully on the target Nutanix ESXi cluster with network connectivity mapped. Confirm that guest operating system drivers function properly following hypervisor transition. Confirm against the Nutanix documentation for the version in use.',
+      tags: ['nutanix-migration', 'ahv-to-esxi', 'vm-mobility', 'hypervisor-conversion'],
+      relatedDocLinks: [
+        {
+          label: 'BP-2029 Nutanix Hypervisor Mobility and Conversion',
+          url: 'https://portal.nutanix.com/page/solutions/BP-2029-AHV:nutanix-hypervisor-mobility-and-conversion.html'
+        },
+        {
+          label: 'TN-2072 AHV Migration, Nutanix Move',
+          url: 'https://portal.nutanix.com/page/documents/solutions/details?targetId=TN-2072-AHV-Migration%3Anutanix-move.html'
+        }
+      ]
+    },
     {
       id: 'KB-AVS-8921',
       title: 'Resolving ExpressRoute FastPath BGP Route Flapping & MTU 1500/9000 Fragmentation between Cisco ASR and AVS T0',

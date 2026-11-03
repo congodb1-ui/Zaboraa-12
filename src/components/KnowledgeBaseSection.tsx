@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { KnowledgeBaseArticle, KBSolutionStep } from '../types/siteData';
 import {
@@ -22,44 +22,139 @@ import {
   Network,
   Share2,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  ArrowDown,
+  ArrowUp,
+  Compass,
+  Hash,
+  Filter,
+  Sparkles
 } from 'lucide-react';
 
 export const KnowledgeBaseSection: React.FC = () => {
-  const { siteConfig, setIsBriefingModalOpen } = useCustomization();
+  const { siteConfig, isAdmin, setIsBriefingModalOpen } = useCustomization();
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticle | null>(null);
   const [componentFilter, setComponentFilter] = useState<string>('All');
   const [severityFilter, setSeverityFilter] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
   const [copiedFullRunbook, setCopiedFullRunbook] = useState<boolean>(false);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
 
-  const kbArticles = siteConfig.knowledgeBase || [];
+  const rawArticles = siteConfig.knowledgeBase || [];
+  // Show all published articles to everyone; draft articles only if admin
+  const kbArticles = useMemo(() => {
+    return rawArticles.filter(item => isAdmin || item.status !== 'draft');
+  }, [rawArticles, isAdmin]);
 
+  // Priority-ordered articles: 1. Nutanix, 2. AVS, 3. All others
+  const sortedArticles = useMemo(() => {
+    return [...kbArticles].sort((a, b) => {
+      const getPriority = (comp: string) => {
+        if (comp.startsWith('Nutanix')) return 1;
+        if (comp === 'Azure VMware Solution') return 2;
+        return 3;
+      };
+      const pA = getPriority(a.component);
+      const pB = getPriority(b.component);
+      if (pA !== pB) return pA - pB;
+      return a.id.localeCompare(b.id);
+    });
+  }, [kbArticles]);
+
+  // Grouped buckets
+  const nutanixArticles = useMemo(() => {
+    return sortedArticles.filter(a => a.component.startsWith('Nutanix'));
+  }, [sortedArticles]);
+
+  const avsArticles = useMemo(() => {
+    return sortedArticles.filter(a => a.component === 'Azure VMware Solution');
+  }, [sortedArticles]);
+
+  const otherArticles = useMemo(() => {
+    return sortedArticles.filter(a => !a.component.startsWith('Nutanix') && a.component !== 'Azure VMware Solution');
+  }, [sortedArticles]);
+
+  // Component filter buttons arranged: 1. Nutanix, 2. AVS, 3. All others
   const components = [
     'All',
+    'All Nutanix',
+    'Nutanix NC2 on Azure',
+    'Nutanix AHV & Move',
+    'Nutanix Flow Virtual Networking',
+    'Nutanix Disaster Recovery',
     'Azure VMware Solution',
+    'VMware HCX',
+    'VMware NSX-T',
     'Google Cloud VMware Engine',
     'VMware Cloud on AWS',
-    'VMware NSX-T',
-    'VMware HCX',
     'VMware Site Recovery Manager',
     'VMware Aria Operations for Networks'
   ];
 
-  const filteredArticles = kbArticles.filter(item => {
-    const matchesComponent = componentFilter === 'All' || item.component === componentFilter;
-    const matchesSeverity = severityFilter === 'All' || item.severity === severityFilter;
-    const matchesSearch =
-      item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.component.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.rootCause.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.symptoms.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      item.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Filtering
+  const filteredArticles = useMemo(() => {
+    return sortedArticles.filter(item => {
+      let matchesComponent = true;
+      if (componentFilter === 'All') {
+        matchesComponent = true;
+      } else if (componentFilter === 'All Nutanix') {
+        matchesComponent = item.component.startsWith('Nutanix');
+      } else {
+        matchesComponent = item.component === componentFilter;
+      }
 
-    return matchesComponent && matchesSeverity && matchesSearch;
-  });
+      const matchesSeverity = severityFilter === 'All' || item.severity === severityFilter;
+      const matchesSearch =
+        item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.component.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.rootCause.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.symptoms.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        item.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      return matchesComponent && matchesSeverity && matchesSearch;
+    });
+  }, [sortedArticles, componentFilter, severityFilter, searchTerm]);
+
+  // Check URL hash on mount or when hash changes to scroll to specific article
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && (hash.startsWith('KB-') || hash.startsWith('kb-'))) {
+      const targetId = hash.toUpperCase();
+      setTimeout(() => {
+        scrollToCard(targetId);
+      }, 400);
+    }
+  }, []);
+
+  // Smooth scroll helper
+  const scrollToElement = (elementId: string) => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const scrollToCard = (articleId: string) => {
+    const card = document.getElementById(articleId) || document.getElementById(`kb-${articleId.toLowerCase()}`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedCardId(articleId);
+      setTimeout(() => {
+        setHighlightedCardId(null);
+      }, 3500);
+    }
+  };
+
+  const handleCopyLink = (articleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}${window.location.pathname}#${articleId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLinkId(articleId);
+    setTimeout(() => setCopiedLinkId(null), 2000);
+  };
 
   const handleCopySnippet = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -68,17 +163,21 @@ export const KnowledgeBaseSection: React.FC = () => {
   };
 
   const handleCopyFullRunbook = (article: KnowledgeBaseArticle) => {
-    const fullText = `[${article.id}] ${article.title}
+    const isGuide = article.articleType === 'guide';
+    const fullText = `[${article.id}] ${article.title}${article.status === 'draft' ? ' [DRAFT]' : ''}
 Component: ${article.component} | Category: ${article.serviceCategory}
 Severity: ${article.severity} | Verified in Production: ${article.verifiedInProduction ? 'YES' : 'NO'}
-
-SYMPTOMS:
+${article.architectNote ? `\nARCHITECT NOTE:\n${article.architectNote}\n` : ''}
+${isGuide ? 'WHEN THIS APPLIES:' : 'SYMPTOMS:'}
 ${article.symptoms.map(s => `- ${s}`).join('\n')}
 
-ROOT CAUSE:
+${isGuide ? 'DESIGN RATIONALE:' : 'ROOT CAUSE:'}
 ${article.rootCause}
 
-RESOLUTION STEPS:
+${isGuide ? 'SCOPE AND LIMITS:' : 'IMPACT SCOPE:'}
+${article.impactScope}
+
+${isGuide ? 'PROCEDURE:' : 'RESOLUTION STEPS:'}
 ${article.resolutionSteps.map(step => `
 Step ${step.stepNumber}: ${step.title}
 ${step.description}
@@ -86,9 +185,9 @@ ${step.commandSnippet ? `\nCode (${step.commandSnippet.environment || step.comma
 ${step.architectNote ? `Architect Note: ${step.architectNote}\n` : ''}
 `).join('\n')}
 
-VERIFICATION:
+${isGuide ? 'VALIDATION:' : 'VERIFICATION:'}
 ${article.verificationCheck}
-`;
+${article.relatedDocLinks && article.relatedDocLinks.length > 0 ? `\nREFERENCES:\n${article.relatedDocLinks.map(l => `- ${l.label}: ${l.url}`).join('\n')}\n` : ''}`;
     navigator.clipboard.writeText(fullText);
     setCopiedFullRunbook(true);
     setTimeout(() => setCopiedFullRunbook(false), 2500);
@@ -110,6 +209,14 @@ ${article.verificationCheck}
         return 'text-rose-400 border-rose-500/30 bg-rose-950/50';
       case 'VMware Aria Operations for Networks':
         return 'text-indigo-400 border-indigo-500/30 bg-indigo-950/50';
+      case 'Nutanix NC2 on Azure':
+        return 'text-sky-400 border-sky-500/30 bg-sky-950/50';
+      case 'Nutanix AHV & Move':
+        return 'text-emerald-400 border-emerald-500/30 bg-emerald-950/50';
+      case 'Nutanix Flow Virtual Networking':
+        return 'text-teal-300 border-teal-500/30 bg-teal-950/50';
+      case 'Nutanix Disaster Recovery':
+        return 'text-purple-400 border-purple-500/30 bg-purple-950/50';
       default:
         return 'text-slate-400 border-slate-700 bg-slate-900';
     }
@@ -123,51 +230,249 @@ ${article.verificationCheck}
         return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
       case 'Operational':
         return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30';
+      case 'Advisory':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
       default:
         return 'bg-slate-800 text-slate-300 border-slate-700';
     }
   };
 
+  // Render individual card helper
+  const renderCard = (article: KnowledgeBaseArticle) => {
+    const isGuide = article.articleType === 'guide';
+    const isHighlighted = highlightedCardId === article.id;
+    return (
+      <article
+        key={article.id}
+        id={article.id}
+        onClick={() => setSelectedArticle(article)}
+        className={`cursor-pointer group flex flex-col justify-between rounded-2xl bg-slate-900/70 border p-6 transition-all duration-300 scroll-mt-32 relative ${
+          isHighlighted
+            ? 'border-cyan-400 ring-2 ring-cyan-400 shadow-2xl shadow-cyan-500/30 scale-[1.01] bg-slate-900'
+            : 'border-slate-800 hover:border-slate-700 hover:shadow-2xl hover:shadow-cyan-950/20'
+        }`}
+      >
+        <div className="space-y-3.5">
+          {/* Meta Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-400 font-bold flex items-center gap-1">
+                <Hash className="w-3 h-3 text-cyan-500" />
+                {article.id}
+              </span>
+              <span className={`px-2 py-0.5 rounded-lg border font-mono text-[10px] ${getSeverityBadgeColor(article.severity)}`}>
+                {article.severity}
+              </span>
+              {article.status === 'draft' && (
+                <span className="px-2 py-0.5 rounded-lg border border-amber-500/40 bg-amber-950/70 text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider">
+                  Draft
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => handleCopyLink(article.id, e)}
+                title="Copy direct anchor link to this runbook"
+                className="p-1 rounded-md text-slate-500 hover:text-cyan-400 hover:bg-slate-800 transition-colors"
+              >
+                {copiedLinkId === article.id ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Share2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <span className={`px-2 py-0.5 rounded-lg border font-mono text-[10px] ${getComponentBadgeColor(article.component)}`}>
+                {article.component}
+              </span>
+            </div>
+          </div>
+
+          {/* Article Title */}
+          <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors leading-snug">
+            {article.title}
+          </h3>
+
+          {/* Root Cause / Design Rationale Teaser */}
+          <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+            <strong className="text-slate-300">{isGuide ? 'Design rationale:' : 'Root Cause:'}</strong> {article.rootCause}
+          </p>
+
+          {/* Symptoms / When this applies Preview Bullets */}
+          <div className="space-y-1 pt-1">
+            <div className="text-[11px] font-mono uppercase text-slate-500 font-semibold">
+              {isGuide ? 'When this applies:' : 'Key Observed Symptoms:'}
+            </div>
+            {article.symptoms.slice(0, 2).map((symptom, sIdx) => (
+              <div key={sIdx} className="flex items-start gap-1.5 text-xs text-slate-300">
+                <span className={isGuide ? 'text-cyan-400 font-bold' : 'text-rose-400 font-bold'}>
+                  {isGuide ? '•' : '✕'}
+                </span>
+                <span className="truncate">{symptom}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Card Bottom: Steps count & Open Action */}
+        <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
+            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{article.resolutionSteps.length} Step {isGuide ? 'Procedure' : 'Runbook'}</span>
+          </div>
+
+          <div className="text-cyan-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            <span>{isGuide ? 'View Guide' : 'View Runbook'}</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+  const isShowingAll = componentFilter === 'All' && searchTerm.trim() === '' && severityFilter === 'All';
+
   return (
     <section 
       id="knowledge-base" 
-      className="py-20 sm:py-28 bg-slate-950 border-b border-slate-800 scroll-mt-16 relative overflow-hidden"
+      className="py-16 sm:py-24 bg-slate-950 border-b border-slate-800 scroll-mt-16 relative overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        
         {/* Section Top Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-800/80">
           <div className="space-y-3 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
               <span className="font-mono text-emerald-400 font-bold tracking-wider">
-                FIELD-PROVEN KNOWLEDGE BASE
+                FIELD-PROVEN ENGINEERING RUNBOOKS
               </span>
               <span className="text-slate-600">·</span>
               <span className="px-2.5 py-0.5 rounded-full border border-emerald-500/30 text-emerald-300 bg-emerald-950/60 font-mono text-[11px]">
-                Production Runbooks
+                {kbArticles.length} Verified Runbooks
               </span>
               <span className="text-slate-600">·</span>
-              <span className="text-slate-400 font-medium">All Cloud Platforms & VMware Components</span>
+              <span className="text-cyan-400 font-medium">Nutanix · AVS · Multi-Cloud</span>
             </div>
 
             <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
               Enterprise Knowledge Base & Engineering Runbooks
             </h2>
 
-            <p className="text-sm sm:text-base text-slate-400 leading-relaxed">
-              In-depth troubleshooting procedures, exact CLI remediation commands, and root-cause post-mortems crafted from real-world enterprise deployments across AVS, GCVE, VMC on AWS, NSX-T DFW, HCX, SRM, and Aria Networks.
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+              Exhaustive technical runbooks, architecture migration guides, exact network procedures, and root-cause post-mortems crafted from high-stakes deployments across Nutanix Cloud Clusters, Azure VMware Solution, and hybrid cloud infrastructures.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 shrink-0 self-start md:self-auto">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{kbArticles.length} Verified Production Runbooks</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0 self-start md:self-auto">
+            {/* Runbook counts pill */}
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-300 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{kbArticles.length} Technical Guides Available</span>
+            </div>
           </div>
         </div>
 
-        {/* Filter & Search Bar */}
-        <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 space-y-3">
-          {/* Top Row: Component Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
+        {/* Quick-Jump Category Navigation & Interactive Scroll Selector */}
+        <div className="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            
+            {/* 1-2-3 Quick-Jump Anchor Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-mono text-slate-400 font-semibold flex items-center gap-1 mr-1">
+                <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                Quick Scroll:
+              </span>
+
+              <button
+                type="button"
+                onClick={() => scrollToElement('kb-group-nutanix')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-950 border border-slate-800 hover:border-emerald-500 text-slate-300 hover:text-emerald-300 transition-all cursor-pointer shadow-sm group"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 group-hover:animate-ping" />
+                <span className="font-semibold text-white">1. Nutanix</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900 text-emerald-400 font-mono">
+                  {nutanixArticles.length}
+                </span>
+                <ArrowDown className="w-3 h-3 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToElement('kb-group-avs')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-950 border border-slate-800 hover:border-cyan-500 text-slate-300 hover:text-cyan-300 transition-all cursor-pointer shadow-sm group"
+              >
+                <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                <span className="font-semibold text-white">2. Azure VMware Solution</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900 text-cyan-400 font-mono">
+                  {avsArticles.length}
+                </span>
+                <ArrowDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToElement('kb-group-others')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-950 border border-slate-800 hover:border-indigo-500 text-slate-300 hover:text-indigo-300 transition-all cursor-pointer shadow-sm group"
+              >
+                <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                <span className="font-semibold text-white">3. All Others</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-900 text-indigo-400 font-mono">
+                  {otherArticles.length}
+                </span>
+                <ArrowDown className="w-3 h-3 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+              </button>
+            </div>
+
+            {/* "Scroll to Specific KB" Interactive Dropdown */}
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <label htmlFor="kb-quick-scroll" className="text-xs font-mono text-slate-400 whitespace-nowrap hidden sm:inline">
+                Scroll to KB:
+              </label>
+              <div className="relative w-full lg:w-80">
+                <select
+                  id="kb-quick-scroll"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      scrollToCard(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  defaultValue=""
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-cyan-500 text-slate-200 text-xs rounded-xl px-3 py-2 pr-8 focus:outline-none focus:border-cyan-400 cursor-pointer transition-colors"
+                >
+                  <option value="" disabled>
+                    ⚡ Jump directly to any Runbook / Guide...
+                  </option>
+                  <optgroup label="1. Nutanix Architecture & Migration (10 Guides)">
+                    {nutanixArticles.map(a => (
+                      <option key={a.id} value={a.id}>
+                        [{a.id}] {a.title.slice(0, 45)}...
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="2. Azure VMware Solution (2 Runbooks)">
+                    {avsArticles.map(a => (
+                      <option key={a.id} value={a.id}>
+                        [{a.id}] {a.title.slice(0, 45)}...
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="3. All Other Cloud & VMware Runbooks (6 Runbooks)">
+                    {otherArticles.map(a => (
+                      <option key={a.id} value={a.id}>
+                        [{a.id}] {a.title.slice(0, 45)}...
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Component Tabs Bar */}
+          <div className="pt-3 border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
             {components.map(comp => (
               <button
                 key={comp}
@@ -184,7 +489,7 @@ ${article.verificationCheck}
             ))}
           </div>
 
-          {/* Bottom Row: Search & Severity Filter */}
+          {/* Search & Severity Filter */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800/60">
             <div className="relative w-full sm:max-w-md">
               <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -192,14 +497,14 @@ ${article.verificationCheck}
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search error codes, symptoms, CLI commands..."
+                placeholder="Search procedures, error signatures, symptoms..."
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
               />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end text-xs">
               <span className="text-slate-500 text-[11px] font-mono">Severity:</span>
-              {['All', 'Critical', 'High', 'Operational'].map(sev => (
+              {['All', 'Critical', 'High', 'Operational', 'Advisory'].map(sev => (
                 <button
                   key={sev}
                   type="button"
@@ -217,82 +522,181 @@ ${article.verificationCheck}
           </div>
         </div>
 
-        {/* KB Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {filteredArticles.map(article => (
-            <article
-              key={article.id}
-              onClick={() => setSelectedArticle(article)}
-              className="cursor-pointer group flex flex-col justify-between rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 p-6 transition-all hover:shadow-2xl hover:shadow-cyan-950/20"
-            >
-              <div className="space-y-3.5">
-                {/* Meta Header */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Content Display: If "All" view with no search, show 3 distinct hierarchical sections */}
+        {isShowingAll ? (
+          <div className="space-y-14">
+            
+            {/* GROUP 1: NUTANIX */}
+            <div id="kb-group-nutanix" className="space-y-6 scroll-mt-24">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-400 font-bold">
-                      {article.id}
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold uppercase tracking-wider">
+                      Section 1
                     </span>
-                    <span className={`px-2 py-0.5 rounded-lg border font-mono text-[10px] ${getSeverityBadgeColor(article.severity)}`}>
-                      {article.severity}
+                    <span className="text-xs font-mono text-emerald-400 font-semibold">
+                      Enterprise Migration & Architecture
                     </span>
                   </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    Nutanix Cloud Clusters (NC2), AHV, Flow & Disaster Recovery
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    10 comprehensive architectural guides, VMware-to-Nutanix migration procedures, and cross-cluster recovery runbooks.
+                  </p>
+                </div>
 
-                  <span className={`px-2 py-0.5 rounded-lg border font-mono text-[10px] ${getComponentBadgeColor(article.component)}`}>
-                    {article.component}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1 rounded-xl bg-slate-950 border border-emerald-500/40 font-mono text-xs text-emerald-300 font-bold">
+                    {nutanixArticles.length} Guides
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => scrollToElement('kb-group-avs')}
+                    title="Scroll down to Azure VMware Solution"
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-400 text-slate-400 hover:text-cyan-300 transition-colors"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
                 </div>
+              </div>
 
-                {/* Article Title */}
-                <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors leading-snug">
-                  {article.title}
-                </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {nutanixArticles.map(article => renderCard(article))}
+              </div>
+            </div>
 
-                {/* Root Cause Teaser */}
-                <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                  <strong className="text-slate-300">Root Cause:</strong> {article.rootCause}
-                </p>
-
-                {/* Symptoms Preview Bullets */}
-                <div className="space-y-1 pt-1">
-                  <div className="text-[11px] font-mono uppercase text-slate-500 font-semibold">
-                    Key Observed Symptoms:
+            {/* GROUP 2: AZURE VMWARE SOLUTION */}
+            <div id="kb-group-avs" className="space-y-6 scroll-mt-24">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-900 border border-cyan-500/30">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 font-mono text-[11px] font-bold uppercase tracking-wider">
+                      Section 2
+                    </span>
+                    <span className="text-xs font-mono text-cyan-400 font-semibold">
+                      Enterprise Cloud Infrastructure
+                    </span>
                   </div>
-                  {article.symptoms.slice(0, 2).map((symptom, sIdx) => (
-                    <div key={sIdx} className="flex items-start gap-1.5 text-xs text-slate-300">
-                      <span className="text-rose-400 font-bold">✕</span>
-                      <span className="truncate">{symptom}</span>
-                    </div>
-                  ))}
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    Azure VMware Solution (AVS) Engineering Runbooks
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Production BGP route damping, NSX-T gateway symmetry, and enterprise Azure NetApp Files datastore resolution procedures.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1 rounded-xl bg-slate-950 border border-cyan-500/40 font-mono text-xs text-cyan-300 font-bold">
+                    {avsArticles.length} Runbooks
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => scrollToElement('kb-group-others')}
+                    title="Scroll down to All Other Runbooks"
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-indigo-400 text-slate-400 hover:text-indigo-300 transition-colors"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Card Bottom: Steps count & Open Action */}
-              <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
-                  <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{article.resolutionSteps.length} Step Procedure</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {avsArticles.map(article => renderCard(article))}
+              </div>
+            </div>
+
+            {/* GROUP 3: ALL OTHERS */}
+            <div id="kb-group-others" className="space-y-6 scroll-mt-24">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-500/30">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[11px] font-bold uppercase tracking-wider">
+                      Section 3
+                    </span>
+                    <span className="text-xs font-mono text-indigo-400 font-semibold">
+                      Hybrid Cloud & VMware Ecosystem
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">
+                    Multi-Cloud & VMware Infrastructure Runbooks
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Remediation procedures across Google Cloud VMware Engine (GCVE), VMware Cloud on AWS, NSX-T DFW, HCX, SRM, and Aria Networks.
+                  </p>
                 </div>
 
-                <div className="text-cyan-400 font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                  <span>View Runbook</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1 rounded-xl bg-slate-950 border border-indigo-500/40 font-mono text-xs text-indigo-300 font-bold">
+                    {otherArticles.length} Runbooks
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => scrollToElement('knowledge-base')}
+                    title="Scroll back to top of Knowledge Base"
+                    className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-400 text-slate-400 hover:text-cyan-300 transition-colors"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-            </article>
-          ))}
-        </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {otherArticles.map(article => renderCard(article))}
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          /* Filtered or Searched Grid View */
+          <div className="space-y-6">
+            <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+              <span>
+                Showing <strong className="text-white">{filteredArticles.length}</strong> matching runbooks
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setComponentFilter('All');
+                  setSeverityFilter('All');
+                  setSearchTerm('');
+                }}
+                className="text-cyan-400 hover:underline font-semibold"
+              >
+                Reset to All Categories (1. Nutanix &rarr; 2. AVS &rarr; 3. Others)
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {filteredArticles.map(article => renderCard(article))}
+            </div>
+          </div>
+        )}
 
         {filteredArticles.length === 0 && (
-          <div className="p-12 text-center rounded-2xl border border-slate-800 bg-slate-900/40 text-slate-400 text-xs space-y-2">
-            <p>No Knowledge Base runbooks match your search filter.</p>
+          <div className="p-12 text-center rounded-2xl border border-slate-800 bg-slate-900/40 text-slate-400 text-xs space-y-3">
+            <p className="text-sm text-slate-300">No Knowledge Base runbooks match your selected filter.</p>
             <button
               onClick={() => { setComponentFilter('All'); setSeverityFilter('All'); setSearchTerm(''); }}
-              className="text-cyan-400 hover:underline font-semibold"
+              className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs hover:bg-cyan-400 transition-colors cursor-pointer"
             >
-              Reset all filters
+              Reset all filters to view 18 Runbooks
             </button>
           </div>
         )}
+
+        {/* Back to top scroll button at bottom of section */}
+        <div className="flex justify-center pt-8 border-t border-slate-800/80">
+          <button
+            type="button"
+            onClick={() => scrollToElement('knowledge-base')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-white text-xs font-medium transition-all shadow-md cursor-pointer"
+          >
+            <ArrowUp className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Back to Top of Knowledge Base</span>
+          </button>
+        </div>
+
       </div>
 
       {/* Reader Modal / Full Resolution Runbook Drawer */}
@@ -308,6 +712,11 @@ ${article.verificationCheck}
                 <span className={`px-2 py-0.5 rounded-lg border font-mono text-[10px] ${getSeverityBadgeColor(selectedArticle.severity)}`}>
                   {selectedArticle.severity}
                 </span>
+                {selectedArticle.status === 'draft' && (
+                  <span className="px-2 py-0.5 rounded-lg border border-amber-500/40 bg-amber-950/70 text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider">
+                    Draft
+                  </span>
+                )}
                 <span className={`px-2 py-0.5 rounded-lg border font-mono text-[10px] ${getComponentBadgeColor(selectedArticle.component)}`}>
                   {selectedArticle.component}
                 </span>
@@ -325,12 +734,12 @@ ${article.verificationCheck}
                   {copiedFullRunbook ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">Runbook Copied</span>
+                      <span className="text-emerald-400">Copied</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy Runbook</span>
+                      <span>Copy</span>
                     </>
                   )}
                 </button>
@@ -347,11 +756,23 @@ ${article.verificationCheck}
 
             {/* Article Header & Verified Badge */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Verified in Production Deployments</span>
-                </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedArticle.verifiedInProduction ? (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Verified in Production Deployments</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono">
+                    <Shield className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Advisory Technical Guide</span>
+                  </div>
+                )}
+                {selectedArticle.status === 'draft' && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-950/70 border border-amber-500/40 text-amber-300 text-xs font-mono font-semibold">
+                    <span>Draft Status (Admin Preview Only)</span>
+                  </div>
+                )}
               </div>
 
               <h2 className="text-xl sm:text-3xl font-extrabold text-white leading-tight">
@@ -360,43 +781,63 @@ ${article.verificationCheck}
 
               <div className="text-xs text-slate-400 space-y-1">
                 <div><strong className="text-slate-300">Service Category:</strong> {selectedArticle.serviceCategory}</div>
-                <div><strong className="text-slate-300">Impact Scope:</strong> {selectedArticle.impactScope}</div>
+                <div>
+                  <strong className="text-slate-300">
+                    {selectedArticle.articleType === 'guide' ? 'Scope and limits:' : 'Impact Scope:'}
+                  </strong>{' '}
+                  {selectedArticle.impactScope}
+                </div>
               </div>
+
+              {selectedArticle.architectNote && (
+                <div className="p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-500/40 text-xs text-indigo-300 flex items-start gap-2.5">
+                  <Shield className="w-4 h-4 shrink-0 mt-0.5 text-indigo-400" />
+                  <div>
+                    <strong className="font-mono text-indigo-200">Architect Advisory Note:</strong> {selectedArticle.architectNote}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Symptoms Box */}
-            <div className="p-4 rounded-2xl bg-rose-950/20 border border-rose-900/40 space-y-2">
-              <div className="text-xs font-mono uppercase text-rose-400 font-bold flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>Observed Symptoms & Error Signatures</span>
+            {/* Symptoms / When this applies Box */}
+            <div className={`p-4 rounded-2xl border space-y-2 ${
+              selectedArticle.articleType === 'guide'
+                ? 'bg-slate-950 border-cyan-800/40'
+                : 'bg-rose-950/20 border-rose-900/40'
+            }`}>
+              <div className={`text-xs font-mono uppercase font-bold flex items-center gap-1.5 ${
+                selectedArticle.articleType === 'guide' ? 'text-cyan-400' : 'text-rose-400'
+              }`}>
+                {selectedArticle.articleType === 'guide' ? <Layers className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                <span>{selectedArticle.articleType === 'guide' ? 'When this applies' : 'Observed Symptoms & Error Signatures'}</span>
               </div>
               <ul className="space-y-1.5 text-xs text-slate-200">
                 {selectedArticle.symptoms.map((s, idx) => (
                   <li key={idx} className="flex items-start gap-2">
-                    <span className="text-rose-400 font-bold shrink-0 mt-0.5">•</span>
+                    <span className={selectedArticle.articleType === 'guide' ? 'text-cyan-400 font-bold shrink-0 mt-0.5' : 'text-rose-400 font-bold shrink-0 mt-0.5'}>•</span>
                     <span>{s}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Root Cause Post-Mortem */}
+            {/* Root Cause / Design Rationale Post-Mortem */}
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
               <div className="text-xs font-mono uppercase text-amber-400 font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Technical Root Cause</span>
+                <span>{selectedArticle.articleType === 'guide' ? 'Design rationale' : 'Technical Root Cause'}</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {selectedArticle.rootCause}
               </p>
             </div>
 
-            {/* Resolution Steps Runbook */}
+            {/* Resolution Steps / Procedure */}
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-400 font-mono flex items-center gap-2">
                   <Terminal className="w-4 h-4" />
-                  <span>Step-by-Step Resolution Runbook</span>
+                  <span>{selectedArticle.articleType === 'guide' ? 'Procedure' : 'Step-by-Step Resolution Runbook'}</span>
                 </h3>
                 <span className="text-xs font-mono text-slate-500">
                   {selectedArticle.resolutionSteps.length} Steps
@@ -467,16 +908,41 @@ ${article.verificationCheck}
               </div>
             </div>
 
-            {/* Verification Check */}
+            {/* Verification / Validation Check */}
             <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
               <div className="text-xs font-mono uppercase text-emerald-400 font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Production Verification & Validation Check</span>
+                <span>{selectedArticle.articleType === 'guide' ? 'Validation' : 'Production Verification & Validation Check'}</span>
               </div>
               <p className="text-xs text-slate-200 leading-relaxed">
                 {selectedArticle.verificationCheck}
               </p>
             </div>
+
+            {/* Official Documentation Links */}
+            {selectedArticle.relatedDocLinks && selectedArticle.relatedDocLinks.length > 0 && (
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="text-xs font-mono uppercase text-cyan-400 font-bold flex items-center gap-1.5">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Official Architecture & Engineering References</span>
+                </div>
+                <ul className="space-y-1.5 text-xs">
+                  {selectedArticle.relatedDocLinks.map((link, idx) => (
+                    <li key={idx}>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 hover:underline inline-flex items-center gap-1.5"
+                      >
+                        <span>{link.label}</span>
+                        <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Modal Bottom Actions */}
             <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-4">

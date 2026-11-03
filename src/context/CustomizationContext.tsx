@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig } from '../types/siteData';
+import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig, KnowledgeBaseArticle } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { useAuth } from './AuthContext';
 import { adminService } from '../services/adminService';
@@ -57,6 +57,18 @@ function sanitizePlatformShowcase(p: PlatformShowcase): PlatformShowcase {
 function sanitizeVideosList(rawVideos: any[]): VideoItem[] {
   if (!Array.isArray(rawVideos)) return [];
   return rawVideos.filter(v => v && v.embedUrl && !isDummyVideoUrl(v.embedUrl));
+}
+
+function mergeKnowledgeBaseArticles(
+  stored: KnowledgeBaseArticle[] | undefined,
+  defaults: KnowledgeBaseArticle[] = INITIAL_SITE_DATA.knowledgeBase || []
+): KnowledgeBaseArticle[] {
+  if (!stored || !Array.isArray(stored) || stored.length === 0) return defaults;
+  const storedMap = new Map(stored.map(a => [a.id, a]));
+  const merged = defaults.map(d => storedMap.get(d.id) || d);
+  const defaultIds = new Set(defaults.map(d => d.id));
+  const customOnly = stored.filter(a => !defaultIds.has(a.id));
+  return [...merged, ...customOnly];
 }
 
 interface CustomizationContextType {
@@ -211,7 +223,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
               ? parsed.featuredVideoId
               : undefined,
             tutorials: parsed.tutorials || INITIAL_SITE_DATA.tutorials,
-            knowledgeBase: parsed.knowledgeBase || INITIAL_SITE_DATA.knowledgeBase,
+            knowledgeBase: mergeKnowledgeBaseArticles(parsed.knowledgeBase),
             caseStudies: parsed.caseStudies || INITIAL_SITE_DATA.caseStudies,
             services: parsed.services || INITIAL_SITE_DATA.services,
             enableHotspots: parsed.enableHotspots !== undefined ? parsed.enableHotspots : true
@@ -546,7 +558,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         diagrams: Array.isArray(siteContent.diagrams) && siteContent.diagrams.length > 0 ? siteContent.diagrams : prev.diagrams,
         videos: sanitizeVideosList(Array.isArray(siteContent.videos) && siteContent.videos.length > 0 ? siteContent.videos : prev.videos),
         tutorials: Array.isArray(siteContent.tutorials) && siteContent.tutorials.length > 0 ? siteContent.tutorials : prev.tutorials,
-        knowledgeBase: Array.isArray(siteContent.knowledgeBase) && siteContent.knowledgeBase.length > 0 ? siteContent.knowledgeBase : prev.knowledgeBase,
+        knowledgeBase: mergeKnowledgeBaseArticles(Array.isArray(siteContent.knowledgeBase) && siteContent.knowledgeBase.length > 0 ? siteContent.knowledgeBase : prev.knowledgeBase),
         caseStudies: Array.isArray(siteContent.caseStudies) && siteContent.caseStudies.length > 0 ? siteContent.caseStudies : prev.caseStudies,
         services: Array.isArray(siteContent.services) && siteContent.services.length > 0 ? siteContent.services : prev.services,
         platformShowcases: (Array.isArray(siteContent.platformShowcases) && siteContent.platformShowcases.length > 0

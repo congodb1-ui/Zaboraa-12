@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
-import { Search, X, Layers, BookOpen, Film, Server, ArrowRight, Cpu, HardDrive, FileSpreadsheet, ShieldAlert, History, Trash2 } from 'lucide-react';
+import { Search, X, Layers, BookOpen, Film, Server, ArrowRight, Cpu, HardDrive, FileSpreadsheet, ShieldAlert, History, Trash2, Terminal } from 'lucide-react';
 import { isDummyVideoUrl } from '../utils/videoUtils';
 
 const RECENT_SEARCHES_KEY = 'zaboraa_recent_searches_v1';
@@ -10,6 +10,7 @@ export const SearchCommandModal: React.FC = () => {
   const navigate = useNavigate();
   const {
     siteConfig,
+    isAdmin,
     isSearchOpen,
     setIsSearchOpen,
     setSelectedTutorial,
@@ -125,6 +126,18 @@ export const SearchCommandModal: React.FC = () => {
        v.tags.some(tag => tag.toLowerCase().includes(lowerQuery)))
   );
 
+  const matchingKBArticles = (siteConfig.knowledgeBase || [])
+    .filter(a => isAdmin || a.status !== 'draft')
+    .filter(
+      a =>
+        a.id.toLowerCase().includes(lowerQuery) ||
+        a.title.toLowerCase().includes(lowerQuery) ||
+        a.component.toLowerCase().includes(lowerQuery) ||
+        a.rootCause.toLowerCase().includes(lowerQuery) ||
+        a.symptoms.some(s => s.toLowerCase().includes(lowerQuery)) ||
+        a.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+    );
+
   const engineeringTools = [
     { title: 'Node & Storage Sizing Estimator', path: '/tools/sizing', desc: 'Decoupled ANF/FSx storage node sprawl reduction' },
     { title: 'RVTools Migration Readiness Engine', path: '/tools/rvtools-analyzer', desc: 'In-browser .xlsx assessment & HCX wave mapping' },
@@ -139,6 +152,7 @@ export const SearchCommandModal: React.FC = () => {
     matchingTutorials.length > 0 ||
     matchingDiagrams.length > 0 ||
     matchingVideos.length > 0 ||
+    matchingKBArticles.length > 0 ||
     engineeringTools.length > 0;
 
   return (
@@ -392,6 +406,44 @@ export const SearchCommandModal: React.FC = () => {
                       </div>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Knowledge Base Runbooks Matches */}
+          {matchingKBArticles.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5" />
+                <span>Knowledge Base & Technical Runbooks ({matchingKBArticles.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {matchingKBArticles.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => handleNavigateWithQuery(() => {
+                      navigate('/resources/kb');
+                    })}
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white group-hover:text-cyan-300">
+                          {a.title}
+                        </span>
+                        {a.status === 'draft' && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono border border-amber-500/40 bg-amber-950/70 text-amber-300 uppercase font-bold">
+                            Draft
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {a.id} · {a.component} · {a.serviceCategory}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 ))}
               </div>

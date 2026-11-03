@@ -5,7 +5,7 @@ Zaboraa (https://zaboraa.com) is a founder-led enterprise cloud architecture adv
 Primary call to action: Book Briefing (free consultation). Secondary: use the free tools at https://zaboraa.com/tools. There is no pricing page, credits system or billing.
 
 ## Founder
-Wasim Sayyed, Founder and Principal Cloud Architect. Listed certifications: VCAP-DCV Design and Deploy; VMC on AWS Master Specialist; VMware Cloud Foundation (VCF) Specialist; Azure Solutions Architect Expert; Google Cloud Professional Cloud Architect; NSX-T Advanced Network Security. Stated track record: 12+ years in enterprise infrastructure, 40+ hyperscaler migrations, 100% zero-downtime cutover record.
+Wasim Sayyed, Founder and Principal Architect. Listed certifications: VCAP-DCV Design and Deploy; VMC on AWS Master Specialist; VMware Cloud Foundation (VCF) Specialist; Azure Solutions Architect Expert; Google Cloud Professional Cloud Architect; NSX-T Advanced Network Security. Stated track record: 12+ years in enterprise infrastructure, 40+ hyperscaler migrations, 100% zero-downtime cutover record.
 
 ## Advisory specialisations
 - Hyperscaler procurement and sizing: avoid cluster over-provisioning by moving data to external NFS storage (Azure NetApp Files, Amazon FSx for NetApp ONTAP).

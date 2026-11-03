@@ -22,7 +22,9 @@ import {
 import {
   StoragePolicyId,
   ENTERPRISE_STORAGE_POLICIES,
-  calculateStorageCapacity
+  calculateStorageCapacity,
+  equivalentPolicyId,
+  policiesForFamily
 } from '../../utils/storageCalculator';
 import { exportDualCloudComparisonExcel } from '../../utils/excelFormatter';
 
@@ -30,53 +32,105 @@ interface CloudPreset {
   name: string;
   provider: 'Azure AVS' | 'AWS VMC' | 'Google Cloud GCVE' | 'Azure NC2';
   nodeModel: string;
+  /** PHYSICAL cores per host. Never logical threads (Google lists vCPU = threads; that is converted here). */
   nodeCores: number;
   nodeRamGB: number;
+  /** Local capacity tier per host in decimal TB, EXCLUDING cache tier. 0 = diskless host (external storage only). */
   rawStoragePerNodeTB: number;
+  hasLocalStorage: boolean;
+  /** Smallest cluster the vendor will provision for production. */
+  minNodes: number;
+  /** Largest cluster the vendor supports. */
+  maxNodesCluster: number;
   externalStorageName: string;
-  monthlyPriceEst: number;
+  /** Indicative flat monthly host price in USD. null = no figure entered. NOT a vendor list price. */
+  monthlyPriceEst: number | null;
+  specSource: string;
+  specVerifiedOn: string;
+  specNote?: string;
 }
+
+/**
+ * Pricing metadata. Figures below are indicative planning numbers, not vendor list prices.
+ * Vendors publish node prices per region and per term (pay-as-you-go, 1-year, 3-year), so a single
+ * flat figure cannot match an official price. Update priceFixedOn when the numbers are re-quoted.
+ */
+export const PRICING_META = {
+  status: 'indicative-unverified',
+  priceFixedOn: null as string | null, // original entry date was not recorded in the repository
+  reviewedOn: '2026-11-03',
+  notice:
+    'Prices are indicative planning figures, not vendor list prices (original entry date not recorded; last reviewed 3 Nov 2026). Host infrastructure only: excludes Broadcom VCF and Nutanix licences, external storage (ANF / FSx / GCNV), egress, support and tax. Validate in the vendor pricing calculator for your region and term.'
+};
+
+const SPEC_DATE = '2026-11-03';
+const SRC_AVS = 'https://learn.microsoft.com/en-us/azure/azure-vmware/architecture-private-clouds';
+const SRC_VMC = 'https://vmc.techzone.vmware.com/resource/feature-brief-sddc-host-types';
+const SRC_GCVE = 'https://cloud.google.com/vmware-engine/docs/concepts-node-types';
+const SRC_NC2 = 'https://learn.microsoft.com/en-us/azure/nutanix/available-regions-skus';
 
 const CLOUD_PRESETS: Record<string, CloudPreset> = {
   'nc2-an36': {
     name: 'Nutanix NC2 on Azure',
     provider: 'Azure NC2',
-    nodeModel: 'AN36 (Intel Xeon Scalable)',
+    nodeModel: 'AN36 (Intel Xeon Gold 6140)',
+    nodeCores: 36,
+    nodeRamGB: 576,
+    rawStoragePerNodeTB: 18.6,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 28,
+    externalStorageName: 'External NFS / Nutanix Files (confirm support for your design)',
+    monthlyPriceEst: 4450,
+    specSource: SRC_NC2,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'Cluster maximum of 28 nodes not re-verified in this review.'
+  },
+  'nc2-an36p': {
+    name: 'Nutanix NC2 on Azure',
+    provider: 'Azure NC2',
+    nodeModel: 'AN36P (Intel Xeon Gold 6240)',
     nodeCores: 36,
     nodeRamGB: 768,
-    rawStoragePerNodeTB: 19.2,
-    externalStorageName: 'Nutanix DSF + Azure Blob Tier',
-    monthlyPriceEst: 4450
+    rawStoragePerNodeTB: 20.77,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 28,
+    externalStorageName: 'External NFS / Nutanix Files (confirm support for your design)',
+    monthlyPriceEst: null,
+    specSource: SRC_NC2,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'No price entered. Add an indicative price to include this SKU in cost comparison.'
   },
   'nc2-an64': {
     name: 'Nutanix NC2 on Azure',
     provider: 'Azure NC2',
-    nodeModel: 'AN64 (Intel Xeon Performance)',
+    nodeModel: 'AN64 (Intel Xeon Platinum 8462Y+)',
     nodeCores: 64,
-    nodeRamGB: 1536,
+    nodeRamGB: 1024,
     rawStoragePerNodeTB: 38.4,
-    externalStorageName: 'Nutanix DSF + Azure Blob Tier',
-    monthlyPriceEst: 7200
-  },
-  'nc2-an100': {
-    name: 'Nutanix NC2 on Azure',
-    provider: 'Azure NC2',
-    nodeModel: 'AN100 (Intel Xeon Ultra-Dense)',
-    nodeCores: 104,
-    nodeRamGB: 2048,
-    rawStoragePerNodeTB: 76.8,
-    externalStorageName: 'Nutanix DSF + Azure Blob Tier',
-    monthlyPriceEst: 11500
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 28,
+    externalStorageName: 'External NFS / Nutanix Files (confirm support for your design)',
+    monthlyPriceEst: 7200,
+    specSource: SRC_NC2,
+    specVerifiedOn: SPEC_DATE
   },
   'avs-av36p': {
     name: 'Azure VMware Solution',
     provider: 'Azure AVS',
-    nodeModel: 'AV36P (Intel Xeon Gold 6354)',
+    nodeModel: 'AV36P (Intel Xeon Gold 6240)',
     nodeCores: 36,
-    nodeRamGB: 576,
-    rawStoragePerNodeTB: 15.4,
-    externalStorageName: 'Azure NetApp Files (ANF Standard/Premium)',
-    monthlyPriceEst: 4850
+    nodeRamGB: 768,
+    rawStoragePerNodeTB: 19.2,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 16,
+    externalStorageName: 'Azure NetApp Files, Elastic SAN or Pure Cloud Block Store',
+    monthlyPriceEst: 4850,
+    specSource: SRC_AVS,
+    specVerifiedOn: SPEC_DATE
   },
   'avs-av36': {
     name: 'Azure VMware Solution',
@@ -84,39 +138,61 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeModel: 'AV36 (Intel Xeon Gold 6140)',
     nodeCores: 36,
     nodeRamGB: 576,
-    rawStoragePerNodeTB: 15.4,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    monthlyPriceEst: 4600
+    rawStoragePerNodeTB: 15.2,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 16,
+    externalStorageName: 'Azure NetApp Files, Elastic SAN or Pure Cloud Block Store',
+    monthlyPriceEst: 4600,
+    specSource: SRC_AVS,
+    specVerifiedOn: SPEC_DATE
   },
   'avs-av48': {
     name: 'Azure VMware Solution',
     provider: 'Azure AVS',
-    nodeModel: 'AV48 (Intel Xeon Platinum 8368)',
+    nodeModel: 'AV48 (Intel Xeon Gold 6442Y, vSAN ESA)',
     nodeCores: 48,
-    nodeRamGB: 768,
-    rawStoragePerNodeTB: 23.0,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    monthlyPriceEst: 6200
+    nodeRamGB: 1024,
+    rawStoragePerNodeTB: 25.6,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 16,
+    externalStorageName: 'Azure NetApp Files, Elastic SAN or Pure Cloud Block Store',
+    monthlyPriceEst: 6200,
+    specSource: SRC_AVS,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'ESA host: RAID-5 overhead is 1.5x below 6 hosts and 1.25x at 6+ hosts, so the 1.33x OSA factor is conservative at 6+ hosts.'
   },
   'avs-av52': {
     name: 'Azure VMware Solution',
     provider: 'Azure AVS',
-    nodeModel: 'AV52 (Intel Xeon Platinum 8470Q)',
+    nodeModel: 'AV52 (Intel Xeon Platinum 8270)',
     nodeCores: 52,
     nodeRamGB: 1536,
     rawStoragePerNodeTB: 38.4,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    monthlyPriceEst: 7500
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 16,
+    externalStorageName: 'Azure NetApp Files, Elastic SAN or Pure Cloud Block Store',
+    monthlyPriceEst: 7500,
+    specSource: SRC_AVS,
+    specVerifiedOn: SPEC_DATE
   },
   'avs-av64': {
     name: 'Azure VMware Solution',
     provider: 'Azure AVS',
-    nodeModel: 'AV64 (Intel Xeon Platinum 8470)',
+    nodeModel: 'AV64 (Intel Xeon Platinum 8370C)',
     nodeCores: 64,
     nodeRamGB: 1024,
-    rawStoragePerNodeTB: 30.7,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    monthlyPriceEst: 8400
+    rawStoragePerNodeTB: 15.36,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 16,
+    externalStorageName: 'Azure NetApp Files, Elastic SAN or Pure Cloud Block Store',
+    monthlyPriceEst: 8400,
+    specSource: SRC_AVS,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'OSA capacity shown (15.36 TB). Gen 2 / ESA deployments list 19.25 TB. AV64 needs an existing AV36/AV36P/AV48/AV52 private cloud in Gen 1.'
   },
   'vmc-i4i': {
     name: 'VMware Cloud on AWS',
@@ -124,9 +200,15 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeModel: 'i4i.metal (Intel Xeon Ice Lake)',
     nodeCores: 64,
     nodeRamGB: 1024,
-    rawStoragePerNodeTB: 30.0,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP (Multi-AZ)',
-    monthlyPriceEst: 5400
+    rawStoragePerNodeTB: 22.5,
+    hasLocalStorage: true,
+    minNodes: 2,
+    maxNodesCluster: 16,
+    externalStorageName: 'Amazon FSx for NetApp ONTAP',
+    monthlyPriceEst: 5400,
+    specSource: SRC_VMC,
+    specVerifiedOn: SPEC_DATE,
+    specNote: '30 TB NVMe per host in total; 7.5 TB is cache. vSAN OSA capacity is 22.5 TB (20.46 TiB); vSAN ESA is about 30 TB (27.28 TiB).'
   },
   'vmc-i3en': {
     name: 'VMware Cloud on AWS',
@@ -134,41 +216,72 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeModel: 'i3en.metal (Storage-Optimized)',
     nodeCores: 48,
     nodeRamGB: 768,
-    rawStoragePerNodeTB: 60.0,
+    rawStoragePerNodeTB: 50.0,
+    hasLocalStorage: true,
+    minNodes: 2,
+    maxNodesCluster: 16,
     externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    monthlyPriceEst: 6800
+    monthlyPriceEst: 6800,
+    specSource: SRC_VMC,
+    specVerifiedOn: SPEC_DATE,
+    specNote: '60 TB NVMe per host in total; about 50 TB (45.84 TiB) is vSAN capacity tier after cache.'
   },
   'vmc-m7i': {
     name: 'VMware Cloud on AWS',
     provider: 'AWS VMC',
-    nodeModel: 'm7i.metal-24xl (Compute-Intensive)',
-    nodeCores: 96,
+    nodeModel: 'm7i.metal-24xl (diskless, Sapphire Rapids)',
+    nodeCores: 48,
     nodeRamGB: 384,
-    rawStoragePerNodeTB: 15.0,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    monthlyPriceEst: 6100
+    rawStoragePerNodeTB: 0,
+    hasLocalStorage: false,
+    minNodes: 2,
+    maxNodesCluster: 16,
+    externalStorageName: 'Amazon FSx for NetApp ONTAP or VMware Cloud Flex Storage (required)',
+    monthlyPriceEst: 6100,
+    specSource: SRC_VMC,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'No local storage. 48 physical cores (96 logical threads). All workload data must sit on external NFS.'
   },
   'gcve-ve1': {
     name: 'Google Cloud VMware Engine',
     provider: 'Google Cloud GCVE',
-    nodeModel: 've1-standard-72 (Intel Xeon 6240)',
-    nodeCores: 72,
+    nodeModel: 've1-standard-72 (36 cores / 72 vCPU threads)',
+    nodeCores: 36,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 19.2,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 32,
     externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
-    monthlyPriceEst: 5100
+    monthlyPriceEst: 5100,
+    specSource: SRC_GCVE,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'Google lists 72 vCPUs per node; a vCPU is a logical thread, so physical cores = 36. Cluster maximum of 32 not re-verified.'
   },
   'gcve-ve2': {
     name: 'Google Cloud VMware Engine',
     provider: 'Google Cloud GCVE',
-    nodeModel: 've2-standard-128 (Emerald Rapids)',
-    nodeCores: 128,
+    nodeModel: 've2-standard-128 (64 cores / 128 vCPU threads)',
+    nodeCores: 64,
     nodeRamGB: 2048,
-    rawStoragePerNodeTB: 51.2,
+    rawStoragePerNodeTB: 25.5,
+    hasLocalStorage: true,
+    minNodes: 3,
+    maxNodesCluster: 32,
     externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
-    monthlyPriceEst: 8900
+    monthlyPriceEst: 8900,
+    specSource: SRC_GCVE,
+    specVerifiedOn: SPEC_DATE,
+    specNote: 'Google lists 128 vCPUs per node (threads), so physical cores = 64. 25.5 TB raw excludes cache; 51.2 TB belongs to ve2-mega. Core count is customisable per node type (64 to 128 vCPUs).'
   }
 };
+
+type PolicyFamily = 'vmware' | 'nutanix';
+const familyOf = (p: CloudPreset): PolicyFamily => (p.provider === 'Azure NC2' ? 'nutanix' : 'vmware');
+const vsanShareFor = (p: CloudPreset, decoupled: boolean, vsanPct: number): number =>
+  p.hasLocalStorage ? (decoupled ? vsanPct : 100) : 0;
+const monthlyCost = (p: CloudPreset, nodes: number): number =>
+  p.monthlyPriceEst == null ? 0 : nodes * p.monthlyPriceEst;
 
 export const NodeSizingToolPage: React.FC = () => {
   const navigate = useNavigate();
@@ -183,32 +296,36 @@ export const NodeSizingToolPage: React.FC = () => {
   const [ramBufferPercent, setRamBufferPercent] = useState<number>(15); // 10%, 15%, 20%
   const [storagePolicyId, setStoragePolicyId] = useState<StoragePolicyId>('raid5_ftt1');
   const [slackFactorPercent, setSlackFactorPercent] = useState<number>(25); // 25% default
+  const [includeNPlus1, setIncludeNPlus1] = useState<boolean>(true); // one spare host for HA
 
   // Storage Allocation Split (vSAN % vs External SAN %)
   const [enableDecoupledStorage, setEnableDecoupledStorage] = useState<boolean>(true);
   const [vsanPercentage, setVsanPercentage] = useState<number>(35); // 35% vSAN, 65% External
 
   const preset = CLOUD_PRESETS[selectedCloudKey];
-  const selectedPolicy = ENTERPRISE_STORAGE_POLICIES[storagePolicyId];
+  const policyFamilyA = familyOf(preset);
+  const selectedPolicy = ENTERPRISE_STORAGE_POLICIES[equivalentPolicyId(storagePolicyId, policyFamilyA)];
+  const policyIdA = selectedPolicy.id;
 
   // Storage Capacity Math
-  const effectiveVsanPercent = enableDecoupledStorage ? vsanPercentage : 100;
+  const effectiveVsanPercent = vsanShareFor(preset, enableDecoupledStorage, vsanPercentage);
   const storageAnalysis = useMemo(() => {
     return calculateStorageCapacity({
       totalUsedStorageTB: totalStorageTB,
       totalProvisionedStorageTB: totalStorageTB * 1.3,
       vsanPercentage: effectiveVsanPercent,
-      storagePolicyId,
+      storagePolicyId: policyIdA,
       slackFactorPercent,
       nodeRawStorageTB: preset.rawStoragePerNodeTB
     });
-  }, [totalStorageTB, effectiveVsanPercent, storagePolicyId, slackFactorPercent, preset.rawStoragePerNodeTB]);
+  }, [totalStorageTB, effectiveVsanPercent, policyIdA, slackFactorPercent, preset.rawStoragePerNodeTB]);
 
   // Compute and Node Calculations
   const calculations = useMemo(() => {
     const totalRequiredVcpu = vmCount * avgVcpu;
     const effectiveCoresNeeded = totalRequiredVcpu / vCpuOvercommit;
     const computeNodesNeeded = Math.ceil(effectiveCoresNeeded / preset.nodeCores);
+    const haSpare = includeNPlus1 ? 1 : 0;
 
     const totalRawRam = vmCount * avgRamGB;
     const totalRamWithBuffer = totalRawRam * (1 + ramBufferPercent / 100);
@@ -218,24 +335,26 @@ export const NodeSizingToolPage: React.FC = () => {
     const pureStorage = calculateStorageCapacity({
       totalUsedStorageTB: totalStorageTB,
       totalProvisionedStorageTB: totalStorageTB * 1.3,
-      vsanPercentage: 100,
-      storagePolicyId,
+      vsanPercentage: preset.hasLocalStorage ? 100 : 0,
+      storagePolicyId: policyIdA,
       slackFactorPercent,
       nodeRawStorageTB: preset.rawStoragePerNodeTB
     });
     const vsanNodesNeededPure = pureStorage.vsanStorageNodesRequired;
-    const nodesWithoutDecoupled = Math.max(selectedPolicy.minHosts, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeededPure);
+    const nodesWithoutDecoupled = Math.max(preset.minNodes, computeNodesNeeded + haSpare, memoryNodesNeeded + haSpare, vsanNodesNeededPure);
 
     // With Decoupled External Storage
     const vsanNodesNeededDecoupled = storageAnalysis.vsanStorageNodesRequired;
-    const nodesWithDecoupled = Math.max(selectedPolicy.minHosts, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeededDecoupled);
+    const nodesWithDecoupled = Math.max(preset.minNodes, computeNodesNeeded + haSpare, memoryNodesNeeded + haSpare, vsanNodesNeededDecoupled);
 
     const nodeReduction = Math.max(0, nodesWithoutDecoupled - nodesWithDecoupled);
-    const percentReduction = Math.round((nodeReduction / nodesWithoutDecoupled) * 100);
+    const percentReduction = nodesWithoutDecoupled > 0 ? Math.round((nodeReduction / nodesWithoutDecoupled) * 100) : 0;
 
     // Identify Limiting Resource
     let limitingResource = 'Compute (vCPU Cores)';
-    if (memoryNodesNeeded >= computeNodesNeeded && memoryNodesNeeded >= vsanNodesNeededDecoupled) {
+    if (nodesWithDecoupled === preset.minNodes && computeNodesNeeded + haSpare < preset.minNodes && memoryNodesNeeded + haSpare < preset.minNodes && vsanNodesNeededDecoupled < preset.minNodes) {
+      limitingResource = `Platform minimum (${preset.minNodes} hosts)`;
+    } else if (memoryNodesNeeded >= computeNodesNeeded && memoryNodesNeeded >= vsanNodesNeededDecoupled) {
       limitingResource = 'Memory (RAM Footprint)';
     } else if (vsanNodesNeededDecoupled >= computeNodesNeeded && vsanNodesNeededDecoupled >= memoryNodesNeeded) {
       limitingResource = 'Storage Capacity (vSAN Parity)';
@@ -254,9 +373,12 @@ export const NodeSizingToolPage: React.FC = () => {
       nodesWithDecoupled,
       nodeReduction,
       percentReduction,
-      limitingResource
+      limitingResource,
+      haSpare,
+      exceedsClusterLimit: nodesWithDecoupled > preset.maxNodesCluster
     };
   }, [
+    includeNPlus1,
     vmCount,
     avgVcpu,
     avgRamGB,
@@ -273,16 +395,18 @@ export const NodeSizingToolPage: React.FC = () => {
   const [compareCloudKey, setCompareCloudKey] = useState<string>('nc2-an36');
 
   const presetB = CLOUD_PRESETS[compareCloudKey];
+  const selectedPolicyB = ENTERPRISE_STORAGE_POLICIES[equivalentPolicyId(storagePolicyId, familyOf(presetB))];
+  const effectiveVsanPercentB = vsanShareFor(presetB, enableDecoupledStorage, vsanPercentage);
   const cloudBStorageAnalysis = useMemo(() => {
     return calculateStorageCapacity({
       totalUsedStorageTB: totalStorageTB,
       totalProvisionedStorageTB: totalStorageTB * 1.3,
-      vsanPercentage: effectiveVsanPercent,
-      storagePolicyId,
+      vsanPercentage: effectiveVsanPercentB,
+      storagePolicyId: selectedPolicyB.id,
       slackFactorPercent,
       nodeRawStorageTB: presetB.rawStoragePerNodeTB
     });
-  }, [totalStorageTB, effectiveVsanPercent, storagePolicyId, slackFactorPercent, presetB.rawStoragePerNodeTB]);
+  }, [totalStorageTB, effectiveVsanPercentB, selectedPolicyB.id, slackFactorPercent, presetB.rawStoragePerNodeTB]);
 
   const cloudBCalculations = useMemo(() => {
     const totalRequiredVcpu = vmCount * avgVcpu;
@@ -294,19 +418,24 @@ export const NodeSizingToolPage: React.FC = () => {
     const memoryNodesNeeded = Math.ceil(totalRamWithBuffer / presetB.nodeRamGB);
 
     const vsanNodesNeededDecoupled = cloudBStorageAnalysis.vsanStorageNodesRequired;
-    const nodesWithDecoupled = Math.max(selectedPolicy.minHosts, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeededDecoupled);
+    const haSpare = includeNPlus1 ? 1 : 0;
+    const nodesWithDecoupled = Math.max(presetB.minNodes, computeNodesNeeded + haSpare, memoryNodesNeeded + haSpare, vsanNodesNeededDecoupled);
 
     return {
       computeNodesNeeded,
       memoryNodesNeeded,
       vsanNodesNeededDecoupled,
-      nodesWithDecoupled
+      nodesWithDecoupled,
+      exceedsClusterLimit: nodesWithDecoupled > presetB.maxNodesCluster
     };
-  }, [vmCount, avgVcpu, avgRamGB, vCpuOvercommit, ramBufferPercent, presetB, selectedPolicy, cloudBStorageAnalysis]);
+  }, [vmCount, avgVcpu, avgRamGB, vCpuOvercommit, ramBufferPercent, includeNPlus1, presetB, cloudBStorageAnalysis]);
 
   const savingsComparisonText = useMemo(() => {
-    const costA = calculations.nodesWithDecoupled * preset.monthlyPriceEst;
-    const costB = cloudBCalculations.nodesWithDecoupled * presetB.monthlyPriceEst;
+    const costA = monthlyCost(preset, calculations.nodesWithDecoupled);
+    const costB = monthlyCost(presetB, cloudBCalculations.nodesWithDecoupled);
+    if (preset.monthlyPriceEst == null || presetB.monthlyPriceEst == null) {
+      return 'Cost comparison unavailable: no indicative price entered for one of the selected SKUs';
+    }
     const diff = Math.abs(costA - costB);
     const diffPct = Math.round((diff / Math.max(costA, costB)) * 100);
     if (costA < costB) {
@@ -318,11 +447,12 @@ export const NodeSizingToolPage: React.FC = () => {
   }, [calculations.nodesWithDecoupled, cloudBCalculations.nodesWithDecoupled, preset, presetB]);
 
   const handleExportComparisonExcel = () => {
-    const costA = calculations.nodesWithDecoupled * preset.monthlyPriceEst;
-    const costB = cloudBCalculations.nodesWithDecoupled * presetB.monthlyPriceEst;
+    const costA = monthlyCost(preset, calculations.nodesWithDecoupled);
+    const costB = monthlyCost(presetB, cloudBCalculations.nodesWithDecoupled);
     exportDualCloudComparisonExcel({
       projectName: 'Hyperscaler Multi-Cloud Architecture Evaluation',
-      architectName: 'Wasim Sayyed, Principal VMware Architect',
+      architectName: 'Wasim Sayyed, Principal Cloud Architect',
+      pricingNote: PRICING_META.notice,
       cloudA: {
         name: preset.name,
         nodeSku: preset.nodeModel,
@@ -423,7 +553,7 @@ export const NodeSizingToolPage: React.FC = () => {
             <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Bare-Metal</span>
           </div>
           <div className="space-y-1.5">
-            {(['nc2-an36', 'nc2-an64', 'nc2-an100'] as const).map(k => (
+            {(['nc2-an36', 'nc2-an36p', 'nc2-an64'] as const).map(k => (
               <button
                 key={k}
                 onClick={() => setSelectedCloudKey(k)}
@@ -434,7 +564,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB NVMe</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TB capacity tier</div>
               </button>
             ))}
           </div>
@@ -444,7 +574,7 @@ export const NodeSizingToolPage: React.FC = () => {
         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
           <div className="text-xs font-mono font-bold text-cyan-400 uppercase">Azure VMware Solution (AVS)</div>
           <div className="grid grid-cols-2 gap-1.5">
-            {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av64'] as const).map(k => (
+            {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av52', 'avs-av64'] as const).map(k => (
               <button
                 key={k}
                 onClick={() => setSelectedCloudKey(k)}
@@ -476,7 +606,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].hasLocalStorage ? `${CLOUD_PRESETS[k].rawStoragePerNodeTB} TB capacity tier` : 'no local storage'}</div>
               </button>
             ))}
           </div>
@@ -497,7 +627,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].hasLocalStorage ? `${CLOUD_PRESETS[k].rawStoragePerNodeTB} TB capacity tier` : 'no local storage'}</div>
               </button>
             ))}
           </div>
@@ -518,7 +648,7 @@ export const NodeSizingToolPage: React.FC = () => {
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              Benchmark Nutanix NC2 vs Azure AVS / AWS VMC with side-by-side cost breakdown charts and color-coded Excel export.
+              Benchmark Nutanix NC2 vs Azure AVS / AWS VMC with side-by-side host-count and indicative-cost charts and color-coded Excel export. {PRICING_META.notice}
             </p>
           </div>
         </div>
@@ -572,7 +702,7 @@ export const NodeSizingToolPage: React.FC = () => {
               >
                 {Object.entries(CLOUD_PRESETS).map(([key, item]) => (
                   <option key={key} value={key}>
-                    {item.name} - {item.nodeModel} (${item.monthlyPriceEst}/mo)
+                    {item.name} - {item.nodeModel} ({item.monthlyPriceEst != null ? `$${item.monthlyPriceEst.toLocaleString()}/mo` : 'price not set'})
                   </option>
                 ))}
               </select>
@@ -593,7 +723,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-black text-cyan-300 font-mono">
-                    ${(calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst).toLocaleString()}
+                    ${(monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)).toLocaleString()}
                   </div>
                   <div className="text-[10px] text-slate-500">Est. Monthly Opex</div>
                 </div>
@@ -617,9 +747,9 @@ export const NodeSizingToolPage: React.FC = () => {
                   <span className="text-cyan-300 truncate max-w-[200px]">{CLOUD_PRESETS[selectedCloudKey].externalStorageName}</span>
                 </div>
                 <div className="flex justify-between text-slate-300 py-1">
-                  <span>3-Year TCO Estimate:</span>
+                  <span>36-Month Indicative Cost (hosts only):</span>
                   <span className="text-emerald-400 font-bold">
-                    ${(calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst * 36).toLocaleString()}
+                    ${(monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled) * 36).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -637,7 +767,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-black text-indigo-300 font-mono">
-                    ${(cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst).toLocaleString()}
+                    ${(monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)).toLocaleString()}
                   </div>
                   <div className="text-[10px] text-slate-500">Est. Monthly Opex</div>
                 </div>
@@ -661,9 +791,9 @@ export const NodeSizingToolPage: React.FC = () => {
                   <span className="text-indigo-300 truncate max-w-[200px]">{CLOUD_PRESETS[compareCloudKey].externalStorageName}</span>
                 </div>
                 <div className="flex justify-between text-slate-300 py-1">
-                  <span>3-Year TCO Estimate:</span>
+                  <span>36-Month Indicative Cost (hosts only):</span>
                   <span className="text-emerald-400 font-bold">
-                    ${(cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst * 36).toLocaleString()}
+                    ${(monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled) * 36).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -689,7 +819,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 <div className="flex justify-between text-xs font-mono">
                   <span className="text-slate-300">Monthly Opex ({CLOUD_PRESETS[selectedCloudKey].nodeModel} vs {CLOUD_PRESETS[compareCloudKey].nodeModel})</span>
                   <span className="text-cyan-400">
-                    ${(calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst).toLocaleString()} vs ${(cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst).toLocaleString()}
+                    ${(monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)).toLocaleString()} vs ${(monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)).toLocaleString()}
                   </span>
                 </div>
                 <div className="w-full h-5 rounded-lg bg-slate-900 flex overflow-hidden border border-slate-800">
@@ -697,8 +827,8 @@ export const NodeSizingToolPage: React.FC = () => {
                     className="bg-cyan-500 h-full flex items-center justify-center text-[10px] font-bold text-slate-950 font-mono transition-all duration-500"
                     style={{
                       width: `${Math.round(
-                        ((calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst) /
-                          Math.max(1, (calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst) + (cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst))) * 100
+                        ((monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)) /
+                          Math.max(1, (monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)) + (monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)))) * 100
                       )}%`
                     }}
                   >
@@ -708,8 +838,8 @@ export const NodeSizingToolPage: React.FC = () => {
                     className="bg-indigo-500 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
                     style={{
                       width: `${Math.round(
-                        ((cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst) /
-                          Math.max(1, (calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst) + (cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst))) * 100
+                        ((monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)) /
+                          Math.max(1, (monthlyCost(CLOUD_PRESETS[selectedCloudKey], calculations.nodesWithDecoupled)) + (monthlyCost(CLOUD_PRESETS[compareCloudKey], cloudBCalculations.nodesWithDecoupled)))) * 100
                       )}%`
                     }}
                   >
@@ -778,6 +908,7 @@ export const NodeSizingToolPage: React.FC = () => {
                   setRamBufferPercent(15);
                   setStoragePolicyId('raid5_ftt1');
                   setSlackFactorPercent(25);
+                  setIncludeNPlus1(true);
                   setEnableDecoupledStorage(true);
                   setVsanPercentage(35);
                 }}
@@ -902,14 +1033,27 @@ export const NodeSizingToolPage: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs font-mono text-slate-200 cursor-pointer"
                 >
                   <option value={10}>10% Buffer (Hypervisor Baseline)</option>
-                  <option value={15}>15% Buffer (Standard N+1 HA & NSX-T)</option>
-                  <option value={20}>20% Buffer (High-Resilience N+2 Buffer)</option>
+                  <option value={15}>15% Buffer (hypervisor, management & growth)</option>
+                  <option value={20}>20% Buffer (extra growth headroom)</option>
                 </select>
                 <span className="text-[10px] text-slate-500 block">
                   {calculations.totalRamGB} GiB allocated expands to {calculations.totalRamWithBuffer} GiB
                 </span>
               </div>
             </div>
+
+            <label className="flex items-start gap-2 p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeNPlus1}
+                onChange={e => setIncludeNPlus1(e.target.checked)}
+                className="mt-0.5 accent-cyan-400"
+              />
+              <span>
+                <span className="font-bold text-white">Reserve one spare host (N+1 HA)</span>
+                {' '}Microsoft configures every AVS cluster for n+1 availability, so one host of compute and memory is held back for failover. Applied to the compute and memory sizing.
+              </span>
+            </label>
 
             {/* Storage Policy Dropdown & Slack Factor Selector */}
             <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-4">
@@ -919,7 +1063,7 @@ export const NodeSizingToolPage: React.FC = () => {
                   <span>Enterprise Storage Policy & Parity Multiplier</span>
                 </div>
                 <span className="text-[10px] font-mono text-cyan-400">
-                  Overhead Factor: {selectedPolicy.overheadMultiplier.toFixed(2)}x
+                  Overhead Factor: {selectedPolicy.id === 'nutanix_rf2_ecx' ? '1.25x to 1.50x (by node count)' : `${selectedPolicy.overheadMultiplier.toFixed(2)}x`}
                 </span>
               </div>
 
@@ -928,13 +1072,13 @@ export const NodeSizingToolPage: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs text-slate-300">Storage Policy (RAID/FTT)</label>
                   <select
-                    value={storagePolicyId}
+                    value={policyIdA}
                     onChange={e => setStoragePolicyId(e.target.value as StoragePolicyId)}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-xs font-mono text-white cursor-pointer"
                   >
-                    <option value="raid1_ftt1">RAID 1, FTT 1 (2.0x raw capacity factor)</option>
-                    <option value="raid5_ftt1">RAID 5, FTT 1 (~1.33x efficiency factor)</option>
-                    <option value="raid6_ftt2">RAID 6, FTT 2 (~1.50x dual-parity factor)</option>
+                    {policiesForFamily(policyFamilyA).map(id => (
+                      <option key={id} value={id}>{ENTERPRISE_STORAGE_POLICIES[id].shortLabel}</option>
+                    ))}
                   </select>
                   <span className="text-[10px] text-slate-400 block">
                     {selectedPolicy.description} (Min {selectedPolicy.minHosts} hosts).
@@ -949,8 +1093,8 @@ export const NodeSizingToolPage: React.FC = () => {
                     onChange={e => setSlackFactorPercent(Number(e.target.value))}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-xs font-mono text-white cursor-pointer"
                   >
-                    <option value={20}>20% Slack (Minimum VMware Baseline)</option>
-                    <option value={25}>25% Slack (Enterprise Standard Recommended)</option>
+                    <option value={20}>20% Slack (below Microsoft AVS 25% guidance)</option>
+                    <option value={25}>25% Slack (matches AVS 75% capacity limit)</option>
                     <option value={30}>30% Slack (High Snapshot / Resync Headroom)</option>
                   </select>
                   <span className="text-[10px] text-slate-400 block">
@@ -969,7 +1113,7 @@ export const NodeSizingToolPage: React.FC = () => {
                     <span>Storage Tier Allocation Split</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    Distribute total used storage between high-performance local vSAN and External NFS ({preset.externalStorageName}).
+                    {preset.hasLocalStorage ? <>Distribute total used storage between high-performance local vSAN and External NFS ({preset.externalStorageName}).</> : <>This host has no local storage, so 100% of workload data is placed on external storage ({preset.externalStorageName}).</>}
                   </div>
                 </div>
                 <button
@@ -989,8 +1133,8 @@ export const NodeSizingToolPage: React.FC = () => {
               {enableDecoupledStorage ? (
                 <div className="space-y-3 pt-2 border-t border-cyan-500/20">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-cyan-300">Local vSAN: {vsanPercentage}% ({storageAnalysis.vsanUsedDataTB} TB)</span>
-                    <span className="text-emerald-300">External SAN: {100 - vsanPercentage}% ({storageAnalysis.externalUsedStorageTB} TB)</span>
+                    <span className="text-cyan-300">Local vSAN: {effectiveVsanPercent}% ({storageAnalysis.vsanUsedDataTB} TB)</span>
+                    <span className="text-emerald-300">External SAN: {100 - effectiveVsanPercent}% ({storageAnalysis.externalUsedStorageTB} TB)</span>
                   </div>
                   <input
                     type="range"
@@ -1058,6 +1202,20 @@ export const NodeSizingToolPage: React.FC = () => {
               <span className="text-slate-400">Limiting Constraint:</span>
               <span className="font-bold text-amber-300 font-mono">{calculations.limitingResource}</span>
             </div>
+
+            {calculations.exceedsClusterLimit && (
+              <div className="p-3 rounded-lg bg-amber-950/40 border border-amber-500/40 text-[11px] text-amber-200 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  {calculations.nodesWithDecoupled} hosts exceeds the {preset.maxNodesCluster}-host cluster limit for {preset.name}. Split the design across multiple clusters; per-cluster management and HA overhead then applies to each one.
+                </span>
+              </div>
+            )}
+            {preset.specNote && (
+              <div className="text-[10px] text-slate-500">
+                Spec note ({preset.nodeModel.split(' (')[0]}): {preset.specNote} Specs checked against vendor documentation on {preset.specVerifiedOn}.
+              </div>
+            )}
 
             {/* Constraints Breakdown */}
             <div className="space-y-2 text-xs font-mono pt-2 border-t border-slate-800">

@@ -1,4 +1,4 @@
-# zaboraa.com — Zaboraa Technologies
+# zaboraa.com — Zaboraa
 # Canonical host is the apex domain (www redirects to it).
 
 User-agent: *

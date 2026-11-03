@@ -66,6 +66,46 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       {
+        name: 'vite-plugin-prerender-preview',
+        configureServer(server) {
+          server.middlewares.use(async (req, res, next) => {
+            if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+            const urlPath = req.url?.split('?')[0].split('#')[0] || '/';
+            // Don't intercept static assets, APIs, vite internal URLs, or source code
+            if (
+              urlPath.startsWith('/@') ||
+              urlPath.startsWith('/src/') ||
+              urlPath.startsWith('/api/') ||
+              urlPath.startsWith('/assets/') ||
+              urlPath.startsWith('/public/') ||
+              urlPath.startsWith('/node_modules/') ||
+              /\.[a-zA-Z0-9]+$/.test(urlPath)
+            ) {
+              return next();
+            }
+
+            const cleanPath = urlPath.replace(/\/+$/, '') || '/';
+            const staticPath = cleanPath === '/'
+              ? path.join(__dirname, 'dist/index.html')
+              : path.join(__dirname, 'dist', cleanPath.replace(/^\//, ''), 'index.html');
+
+            if (fs.existsSync(staticPath)) {
+              try {
+                let staticHtml = fs.readFileSync(staticPath, 'utf-8');
+                staticHtml = await server.transformIndexHtml(urlPath, staticHtml);
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                res.statusCode = 200;
+                res.end(staticHtml);
+                return;
+              } catch (err) {
+                console.warn('Error serving prerendered file in dev server:', err);
+              }
+            }
+            next();
+          });
+        }
+      },
+      {
         name: 'blueprint-api-middleware',
 
         configureServer(server) {

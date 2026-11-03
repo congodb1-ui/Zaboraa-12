@@ -645,7 +645,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [isAdmin]);
 
-  const brandName = siteConfig.brand || siteConfig.adminSettings?.brandName || 'Zaboraa Technologies';
+  const brandName = siteConfig.brand || siteConfig.adminSettings?.brandName || 'Zaboraa';
   const brandLogoUrl = siteConfig.brandLogoUrl || siteConfig.adminSettings?.brandLogoUrl;
 
   const updateBranding = (data: { brandName: string; brandLogoUrl?: string; brandTagline?: string }) => {
@@ -687,7 +687,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Dynamically synchronize document.title and meta descriptions with branding state
   useEffect(() => {
-    const currentBrand = siteConfig.brand || 'Zaboraa Technologies';
+    const currentBrand = siteConfig.brand || 'Zaboraa';
     const currentTagline = siteConfig.brandTagline || 'Enterprise VMware Cloud Architecture';
     document.title = `${currentBrand} - ${currentTagline}`;
 

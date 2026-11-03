@@ -25,9 +25,14 @@ export const AriaNetworksToolPage: React.FC = () => {
         </Link>
         <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
         <span className="text-cyan-400 font-semibold">
-          Aria Operations for Networks (vRNI) Engine
+          VMware Aria Operations for Networks (vRNI) Engine
         </span>
       </nav>
+
+      <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-slate-400 flex items-center justify-between gap-2">
+        <span>Product: VMware Aria Operations for Networks (vRNI)</span>
+        <span className="text-cyan-300">Notice: Broadcom has rebranded Aria under VCF Operations and Automation.</span>
+      </div>
 
       {/* Main Aria Deep Dive Section with sample data & file ingestion */}
       <AriaNetworkDeepDiveSection />

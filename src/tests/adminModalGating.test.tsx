@@ -74,7 +74,7 @@ vi.mock('../components/TelemetryBackground', () => ({
 // Mock CustomizationContext to control isAdmin
 let mockIsAdmin = false;
 const mockSiteConfig = {
-  brand: 'Zaboraa Technologies',
+  brand: 'Zaboraa',
   adminSettings: {
     themePreset: 'default',
     layoutDensity: 'balanced',

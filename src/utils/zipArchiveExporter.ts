@@ -20,7 +20,7 @@ export const ENTERPRISE_WHITEPAPERS: WhitepaperMetadata[] = [
     discipline: 'VMware SDDC to Nutanix NC2 on Azure',
     version: '2.4.0',
     date: '2026-10-10',
-    author: 'Wasim Sayyed, Principal Cloud Architect',
+    author: 'Wasim Sayyed, Principal VMware Architect',
     abstract: 'Comprehensive engineering guide detailing the deployment of Nutanix AHV hypervisors directly onto Azure physical bare-metal hardware (AN36, AN36P, AN64, AN100 SKUs). Eliminates nested virtualization performance penalties while integrating directly with Azure Virtual Network (VNet) subnets and ExpressRoute FastPath border routing.',
     targetArchitecture: 'Azure Bare-Metal + Nutanix AOS & AHV + Flow Virtual Networking',
     specsJson: {
@@ -44,7 +44,7 @@ export const ENTERPRISE_WHITEPAPERS: WhitepaperMetadata[] = [
     },
     contentMarkdown: `# Nutanix Cloud Clusters (NC2) on Azure
 ## Bare-Metal Architecture & Flow Virtual Networking Whitepaper
-**Author:** Wasim Sayyed, Principal Cloud Architect  
+**Author:** Wasim Sayyed, Principal VMware Architect  
 **Classification:** Enterprise Engineering Reference Architecture
 
 ---
@@ -75,7 +75,7 @@ Transitioning legacy VMware vSphere software-defined datacenters (SDDC) to Nutan
     discipline: 'VMware SDDC to Nutanix NC2 on Azure',
     version: '3.1.2',
     date: '2026-10-10',
-    author: 'Wasim Sayyed, Principal Cloud Architect',
+    author: 'Wasim Sayyed, Principal VMware Architect',
     abstract: 'Operational methodology and runbook for orchestrating mass cross-hypervisor migration of hundreds of production VMs from VMware ESXi / vCenter to Nutanix AHV on Azure. Features agentless CBT changed block synchronization, automated VirtIO injection, disk controller conversion, and L2 subnet extension.',
     targetArchitecture: 'VMware vSphere 7.0/8.0 -> Nutanix Move Appliance -> Nutanix AHV on Azure',
     specsJson: {
@@ -93,7 +93,7 @@ Transitioning legacy VMware vSphere software-defined datacenters (SDDC) to Nutan
     },
     contentMarkdown: `# Nutanix Move Automated Migration Pipeline
 ## Cross-Hypervisor Evacuation Runbook: vSphere to AHV
-**Author:** Wasim Sayyed, Principal Cloud Architect  
+**Author:** Wasim Sayyed, Principal VMware Architect  
 **Classification:** Enterprise Migration Practice
 
 ---
@@ -126,7 +126,7 @@ Nutanix Move provides an agentless, enterprise-grade migration pipeline specific
     discipline: 'VMware SDDC to Nutanix NC2 on Azure',
     version: '2.8.0',
     date: '2026-10-10',
-    author: 'Wasim Sayyed, Principal Cloud Architect',
+    author: 'Wasim Sayyed, Principal VMware Architect',
     abstract: 'Architectural blueprint covering Nutanix Distributed Storage Fabric (DSF), Replication Factor 2 (RF2) and Replication Factor 3 (RF3) failure domains, inline compression, deduplication, EC-X erasure coding, Azure Blob cold tiering, and Nutanix Leap disaster recovery runbooks.',
     targetArchitecture: 'Nutanix Distributed Storage Fabric + Nutanix Leap + Azure Blob Object Storage',
     specsJson: {
@@ -148,7 +148,7 @@ Nutanix Move provides an agentless, enterprise-grade migration pipeline specific
     },
     contentMarkdown: `# Distributed Storage Fabric (DSF) & Multi-Region BCDR
 ## Enterprise Storage Resiliency on Microsoft Azure
-**Author:** Wasim Sayyed, Principal Cloud Architect  
+**Author:** Wasim Sayyed, Principal VMware Architect  
 **Classification:** Enterprise Storage Blueprint
 
 ---
@@ -178,7 +178,7 @@ To optimize total cost of ownership (TCO), DSF integrates directly with Azure Bl
     discipline: 'Azure VMware Solution',
     version: '4.0.1',
     date: '2026-10-10',
-    author: 'Wasim Sayyed, Principal Cloud Architect',
+    author: 'Wasim Sayyed, Principal VMware Architect',
     abstract: 'Design guide detailing ExpressRoute FastPath border routing, Hub-Spoke VNet transit via Azure Route Server, and decoupled external storage architecture using Azure NetApp Files (ANF) NFSv3 datastores for enterprise AVS clusters.',
     targetArchitecture: 'Microsoft Azure AVS AV36/AV64 + ExpressRoute FastPath + ANF Ultra Datastores',
     specsJson: {
@@ -189,7 +189,7 @@ To optimize total cost of ownership (TCO), DSF integrates directly with Azure Bl
     },
     contentMarkdown: `# Azure VMware Solution (AVS) Architecture Guide
 ## ExpressRoute FastPath & Azure NetApp Files Decoupled Storage
-**Author:** Wasim Sayyed, Principal Cloud Architect  
+**Author:** Wasim Sayyed, Principal VMware Architect  
 **Classification:** Enterprise Hyperscaler Architecture
 
 ---
@@ -230,7 +230,7 @@ export async function downloadWhitepapersZip(
     packageName: effectiveBundle,
     generatedDate: new Date().toISOString(),
     organization: effectiveOrg,
-    curator: 'Wasim Sayyed, Principal Cloud Architect',
+    curator: 'Wasim Sayyed, Principal VMware Architect',
     totalDocuments: selectedPapers.length,
     documents: selectedPapers.map(wp => ({
       id: wp.id,
@@ -249,7 +249,7 @@ export async function downloadWhitepapersZip(
   // 2. Add README
   const readmeContent = `# ${effectiveOrg} Enterprise Architecture Bundle
 Generated: ${new Date().toLocaleDateString()}
-Curator: Wasim Sayyed (Principal Cloud Architect)
+Curator: Wasim Sayyed (Principal VMware Architect)
 
 This archive contains ${selectedPapers.length} technical whitepapers and architecture specifications curated for enterprise VMware hyperscaler migration.
 

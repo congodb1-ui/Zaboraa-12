@@ -12,7 +12,7 @@ export const Footer: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const words = (brandName || siteConfig.brand || 'Zaboraa Technologies').trim().split(/\s+/);
+  const words = (brandName || siteConfig.brand || 'Zaboraa').trim().split(/\s+/);
   const primaryWord = words[0] || brandName;
   const secondaryWord = words.slice(1).join(' ');
 

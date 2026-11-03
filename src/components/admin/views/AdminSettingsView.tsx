@@ -31,7 +31,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
   } = useCustomization();
 
   // Local Form States initialized from existing siteConfig
-  const [brandName, setBrandName] = useState(siteConfig.brand || 'Zaboraa Technologies');
+  const [brandName, setBrandName] = useState(siteConfig.brand || 'Zaboraa');
   const [brandTagline, setBrandTagline] = useState(
     siteConfig.brandTagline || 'Enterprise VMware Cloud Architecture'
   );
@@ -284,7 +284,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
                 required
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
-                placeholder="Zaboraa Technologies"
+                placeholder="Zaboraa"
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-500 font-sans"
               />
               <p className="text-[11px] text-slate-400 mt-1">Appears in header, browser titles, and exported architectural documents.</p>
@@ -621,7 +621,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
             onClick={() => {
               if (window.confirm('Reset all platform settings to original factory defaults? This will clear saved branding.')) {
                 resetToDefaults();
-                setBrandName('Zaboraa Technologies');
+                setBrandName('Zaboraa');
                 setBrandTagline('Enterprise VMware Cloud Architecture');
                 setBrandLogoUrl('');
                 setFeedback({ type: 'success', message: 'Platform settings reset to factory defaults.' });

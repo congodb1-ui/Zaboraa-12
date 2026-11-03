@@ -133,7 +133,7 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({
           <div className="pb-3 border-b border-slate-800">
             <h2 className="text-sm font-bold text-white">Lead Acquisition Source Attribution</h2>
             <p className="text-[11px] text-slate-400">
-              Where enterprise architects and CIOs discover Zaboraa Technologies.
+              Where enterprise architects and CIOs discover Zaboraa.
             </p>
           </div>
 

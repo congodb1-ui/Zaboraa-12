@@ -103,7 +103,7 @@ export const HeroStatsModal: React.FC = () => {
                       type="text"
                       value={stat.value}
                       onChange={(e) => handleStatChange(idx, 'value', e.target.value)}
-                      placeholder="e.g. 140+"
+                      placeholder="e.g. 14+"
                       className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold text-sm focus:outline-none focus:border-cyan-400"
                       required
                     />

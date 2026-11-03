@@ -39,7 +39,7 @@ export interface ExcelExportOptions {
 export function exportColorCodedWavePlanExcel(options: ExcelExportOptions): void {
   const {
     customerName,
-    architectName = 'Wasim Sayyed, Principal Cloud Architect',
+    architectName = 'Wasim Sayyed, Principal VMware Architect',
     targetCloud,
     nodeSku,
     storagePolicy,

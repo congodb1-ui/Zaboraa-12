@@ -301,7 +301,7 @@ describe('Admin Persistence, Hydration & Public Isolation Suite', () => {
 
   it('safely merges partial remote settings without erasing existing fields', () => {
     const current = {
-      brand: 'Zaboraa Technologies',
+      brand: 'Zaboraa',
       brandTagline: 'Enterprise VMware Cloud',
       hero: { headline: 'Enterprise Multi-Cloud', subheadline: 'Existing Subheadline' },
       services: [{ id: 's1', name: 'Cloud Migration' }]

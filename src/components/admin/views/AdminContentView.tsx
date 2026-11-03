@@ -47,7 +47,7 @@ export const AdminContentView: React.FC<AdminContentViewProps> = ({
   );
 
   // Brand Info
-  const [brandName, setBrandName] = useState(siteConfig.brand || 'Zaboraa Technologies');
+  const [brandName, setBrandName] = useState(siteConfig.brand || 'Zaboraa');
   const [brandTagline, setBrandTagline] = useState(
     siteConfig.brandTagline || 'Enterprise VMware Cloud & Hyperscaler Architecture'
   );

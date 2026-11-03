@@ -331,7 +331,7 @@ resource "nsxt_firewall_section" "dfw_rule_${rule.id}" {
 
     exportColorCodedWavePlanExcel({
       customerName: customerName.trim() || 'Global Financial Enterprises',
-      architectName: 'Wasim Sayyed, Principal Cloud Architect',
+      architectName: 'Wasim Sayyed, Principal VMware Architect',
       targetCloud: 'Azure VMware Solution (AVS)',
       nodeSku: 'AV36P Bare-Metal Cluster',
       storagePolicy: 'RAID 5, FTT 1 (~1.33x Overhead)',

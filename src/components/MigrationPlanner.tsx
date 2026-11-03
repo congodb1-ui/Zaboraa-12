@@ -83,7 +83,7 @@ export const MigrationPlanner: React.FC<MigrationPlannerProps> = ({
   const handleTriggerExcelExport = () => {
     exportColorCodedWavePlanExcel({
       customerName: customerName.trim() || 'Global Financial Enterprises',
-      architectName: 'Wasim Sayyed, Principal Cloud Architect',
+      architectName: 'Wasim Sayyed, Principal VMware Architect',
       targetCloud: 'Azure VMware Solution (AVS)',
       nodeSku: 'AV36P Bare-Metal Host',
       storagePolicy: 'RAID 5, FTT 1 (~1.33x Overhead)',

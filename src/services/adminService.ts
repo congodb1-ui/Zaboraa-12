@@ -1092,7 +1092,7 @@ class AdminService {
     return [
       {
         page_path: '/',
-        meta_title: 'Zaboraa Technologies - Enterprise VMware Cloud Architecture',
+        meta_title: 'Zaboraa - Enterprise VMware Cloud Architecture',
         meta_description: 'Founder-led VMware cloud architecture, hyperscaler migration, interactive diagrams, video masterclasses, and software tutorials across Azure AVS, AWS VMC, and Google Cloud GCVE.',
         canonical_url: `${CANONICAL_PRODUCTION_DOMAIN}/`,
         og_image_url: `${CANONICAL_PRODUCTION_DOMAIN}/assets/images/architecture_avs_mesh_1791450083586.jpg`,
@@ -1212,7 +1212,7 @@ ${entries}
   }
 
   generateRobotsTxt(): string {
-    return `# Zaboraa Technologies Enterprise Robots Configuration
+    return `# Zaboraa Enterprise Robots Configuration
 User-agent: *
 Allow: /
 Disallow: /admin

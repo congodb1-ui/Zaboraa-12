@@ -1,5 +1,5 @@
 /**
- * Canonical domain configuration and URL management utility for Zaboraa Technologies.
+ * Canonical domain configuration and URL management utility for Zaboraa.
  * 
  * Canonical production domain: https://zaboraa.com
  */

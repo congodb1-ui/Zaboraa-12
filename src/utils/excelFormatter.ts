@@ -42,7 +42,7 @@ export interface DualCloudComparisonData {
 }
 
 export function exportDualCloudComparisonExcel(data: DualCloudComparisonData): void {
-  const { projectName, architectName = 'Wasim Sayyed, Principal Cloud Architect', cloudA, cloudB } = data;
+  const { projectName, architectName = 'Wasim Sayyed, Principal VMware Architect', cloudA, cloudB } = data;
   const exportDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

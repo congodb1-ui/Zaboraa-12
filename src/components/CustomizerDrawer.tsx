@@ -172,7 +172,7 @@ export const CustomizerDrawer: React.FC = () => {
 
   const handleUpdateBranding = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanBrand = brand.trim() || 'Zaboraa Technologies';
+    const cleanBrand = brand.trim() || 'Zaboraa';
     updateBranding({
       brandName: cleanBrand,
       brandLogoUrl: brandLogo.trim() || undefined,
@@ -183,7 +183,7 @@ export const CustomizerDrawer: React.FC = () => {
 
   const handleSaveGeneral = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanBrand = brand.trim() || 'Zaboraa Technologies';
+    const cleanBrand = brand.trim() || 'Zaboraa';
     updateGeneralInfo({
       brand: cleanBrand,
       brandTagline: tagline,

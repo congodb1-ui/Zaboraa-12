@@ -597,7 +597,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
   ],
   founder: {
     name: 'Wasim Sayyed',
-    role: 'Founder & Principal Cloud Architect',
+    role: 'Founder & Principal VMware Architect',
     certifications: [
       'VCAP-DCV Design & Deploy',
       'VMC on AWS Master Specialist',
@@ -606,10 +606,10 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       'Google Cloud Professional Cloud Architect',
       'NSX-T Advanced Network Security'
     ],
-    bio: 'Architecting high-consequence enterprise cloud evacuations and sovereign VMware environments across Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC), and NSX-T SDN with a 100% zero-downtime cutover track record.',
+    bio: 'Architecting high-consequence enterprise cloud evacuations and sovereign VMware environments across Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC), and NSX-T SDN. Zero-downtime RAV for eligible workloads; minimal-downtime Bulk for the rest.',
     phone: '+91 7497624807',
     email: 'wasim@zaboraa.com',
-    location: 'Pune & Global Advisory',
+    location: 'Pune, Maharashtra, India',
     portraitImage: '/assets/images/Wasim-Pic-02.png',
     photoStyle: {
       zoom: 1.0,
@@ -624,10 +624,10 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     headline: 'Minimal Downtime VMware Cloud & Hyperscaler Migration Authority',
     subheadline: 'Architecting mission-critical enterprise cloud evacuations, sovereign VMware software-defined datacenters, and automated disaster recovery across Azure (AVS), AWS (VMC), and Google Cloud (GCVE).',
     stats: [
-      { value: '12+', label: 'Years Enterprise Infrastructure' },
-      { value: '40+', label: 'Hyperscaler Migrations Executed' },
-      { value: '8×', label: 'Verified Cloud Certifications' },
-      { value: '100%', label: 'Zero-Downtime Cutover Record' }
+      { value: '14+', label: 'Middle East Government Entities' },
+      { value: '13', label: 'Years VMware Architecture' },
+      { value: 'AVS · GCVE · VMC', label: 'Hyperscaler Platforms' },
+      { value: '6×', label: 'Verified Certifications' }
     ],
     heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.jpg'
   },
@@ -1142,7 +1142,7 @@ resource "nsxt_policy_security_policy" "db_isolation" {
       tags: ['Azure AVS', 'ExpressRoute FastPath', 'Global Reach', 'Terraform', 'Azure CLI'],
       author: {
         name: 'Wasim Sayyed',
-        title: 'Founder & Principal Cloud Architect'
+        title: 'Founder & Principal VMware Architect'
       },
       prerequisites: [
         'Active Azure Subscription with approved AVS quota (minimum 3 AV36 or AV64 nodes)',
@@ -1236,7 +1236,7 @@ az network express-route peering connection create \\
       tags: ['VMware HCX', 'L2 Extension', 'Asymmetric Routing', 'PowerCLI', 'Troubleshooting'],
       author: {
         name: 'Wasim Sayyed',
-        title: 'Founder & Principal Cloud Architect'
+        title: 'Founder & Principal VMware Architect'
       },
       prerequisites: [
         'HCX Enterprise License deployed on both On-Premises and Hyperscaler Cloud Target',
@@ -1318,7 +1318,7 @@ ip -s link show dev geneve-hcx0`
       tags: ['NSX-T', 'Distributed Firewall', 'Zero-Trust', 'Microsegmentation', 'Aria Operations'],
       author: {
         name: 'Wasim Sayyed',
-        title: 'Founder & Principal Cloud Architect'
+        title: 'Founder & Principal VMware Architect'
       },
       prerequisites: [
         'vSphere 7.0/8.0 cluster prepared with NSX-T kernel modules (VIBs)',
@@ -1388,7 +1388,7 @@ function Set-NsxtWorkloadTag {
       tags: ['VMware Cloud on AWS', 'Amazon FSx ONTAP', 'NFS Datastores', 'FinOps', 'AWS Direct Connect'],
       author: {
         name: 'Wasim Sayyed',
-        title: 'Founder & Principal Cloud Architect'
+        title: 'Founder & Principal VMware Architect'
       },
       prerequisites: [
         'VMC on AWS SDDC running vSphere 7.0u3c or later',
@@ -1435,7 +1435,7 @@ function Set-NsxtWorkloadTag {
       tags: ['GCVE', 'BigQuery', 'Datastream', 'Private Services Access', 'Change Data Capture'],
       author: {
         name: 'Wasim Sayyed',
-        title: 'Founder & Principal Cloud Architect'
+        title: 'Founder & Principal VMware Architect'
       },
       prerequisites: [
         'Google Cloud VMware Engine private cloud configured with PSA peering',
@@ -2659,60 +2659,5 @@ Set-VDSwitch -VDSwitch $vds \\
       tags: ['VMware Aria Networks', 'vRNI', 'IPFIX', 'VDS NetFlow', 'Flow Discovery', 'PowerCLI']
     }
   ],
-  caseStudies: [
-    {
-      id: 'case-fintech-bank',
-      sector: 'Tier-1 Banking Institution',
-      title: 'Multi-Petabyte Core Banking Evacuation to Azure VMware Solution (AVS)',
-      subtitle: 'Zero downtime cutover of 1,240 VMs, Oracle RAC clusters, and SWIFT messaging gateways under strict regulatory scrutiny.',
-      metrics: {
-        vms: '1,240 VMs',
-        downtime: '0 Hours',
-        costReduction: '38% TCO',
-        timeline: '90 Days'
-      },
-      summary: 'When a premier financial institution faced an impending datacenter lease termination and hardware end-of-life, Zaboraa Technologies architected and executed an end-to-end migration to Azure VMware Solution using HCX Replication-Assisted vMotion and Azure NetApp Files.',
-      architectureSolution: [
-        'Engineered redundant 10 Gbps ExpressRoute FastPath circuits with Global Reach to bypass Virtual Network Gateway CPU bottlenecks.',
-        'Decoupled 320 TB of archive transaction logs onto Azure NetApp Files Ultra tier NFS datastores, eliminating the need to purchase 8 additional AV36 nodes.',
-        'Executed 14 synchronized migration waves with custom PowerCLI orchestration scripts, migrating 100+ VMs per weekend without breaking regulatory compliance.'
-      ]
-    },
-    {
-      id: 'case-healthcare-hospital',
-      sector: 'Healthcare Network (18 Hospitals)',
-      title: 'In-Place NSX-V to NSX-T Migration & Zero-Trust Microsegmentation',
-      subtitle: 'Securing 4,500 patient EHR workloads and biomedical telemetry endpoints with zero downtime across 18 acute care hospitals.',
-      metrics: {
-        vms: '4,500 VMs',
-        downtime: '0 Min',
-        costReduction: '24% Capex',
-        timeline: '60 Days'
-      },
-      summary: 'With VMware NSX-V reaching end-of-support, this healthcare conglomerate required an urgent transition to NSX-T with zero interruption to live clinical workstations and surgical theater monitoring feeds.',
-      architectureSolution: [
-        'Implemented dual-stack NSX-V and NSX-T migration coordinator topology with cross-bridged Layer-2 edges.',
-        'Converted legacy IP-based firewall sets into dynamic tag-based Distributed Firewall policies grouping workloads by hospital campus and clinical tier.',
-        'Migrated edge load balancers to VMware Avi Vantage, introducing automated SSL offloading and Layer 7 HIPAA compliance inspection.'
-      ]
-    },
-    {
-      id: 'case-global-logistics',
-      sector: 'Global Freight & Supply Chain',
-      title: 'Multi-AZ VMC on AWS Stretched Cluster & Real-Time Fleet Tracking',
-      subtitle: 'Active-Active high-availability disaster recovery architecture handling 15M daily IoT geolocation events.',
-      metrics: {
-        vms: '820 VMs',
-        downtime: '99.999%',
-        costReduction: '$1.4M / Yr',
-        timeline: '45 Days'
-      },
-      summary: 'Migrated 820 mission-critical freight dispatch and route optimization workloads from an aging colo to a Multi-AZ stretched cluster on VMware Cloud on AWS, directly linking into Amazon Aurora and Kinesis streams.',
-      architectureSolution: [
-        'Deployed 6-node stretched clusters across AWS us-east-1a and us-east-1b with sub-4ms vSAN synchronous replication.',
-        'Configured Connected VPC high-bandwidth ENI links to stream real-time Kafka telematics directly into AWS EKS containers.',
-        'Reduced recovery time objective (RTO) from 4 hours down to instantaneous automated DRS failover with zero manual touch.'
-      ]
-    }
-  ]
+  caseStudies: []
 };

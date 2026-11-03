@@ -35,8 +35,11 @@ import { DesignGeneratorPage } from './pages/tools/DesignGeneratorPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { ResourcesPage } from './pages/ResourcesPage';
 import { CaseStudiesPage } from './pages/CaseStudiesPage';
+import { CaseStudyDetailPage } from './pages/CaseStudyDetailPage';
 import { AboutPage } from './pages/AboutPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminControlCenterPage } from './pages/admin/AdminControlCenterPage';
+import { RouteHead } from './components/seo/RouteHead';
 
 import {
   Sliders,
@@ -80,6 +83,9 @@ export const PublicLayout: React.FC = () => {
       } theme-root flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative`}
     >
 
+
+      {/* Dynamic SEO Head Tags via React 19 native hoisting */}
+      <RouteHead />
 
       {/* Live Ambient Telemetry Particles */}
       <TelemetryBackground />
@@ -213,8 +219,9 @@ export default function App() {
                   <Route path="/resources" element={<ResourcesPage />} />
                   <Route path="/resources/:tab" element={<ResourcesPage />} />
                   <Route path="/case-studies" element={<CaseStudiesPage />} />
+                  <Route path="/case-studies/:slug" element={<CaseStudyDetailPage />} />
                   <Route path="/about" element={<AboutPage />} />
-                  <Route path="*" element={<HomePage />} />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Route>
 
                 {/* 2. Dedicated Admin Console Routes (Completely Isolated Layout) */}

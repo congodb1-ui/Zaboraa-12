@@ -169,6 +169,11 @@ export const DisciplineDetailPage: React.FC = () => {
           <p className="text-base text-slate-300 leading-relaxed">
             {platform.description}
           </p>
+          {platform.id === 'aria' && (
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-cyan-300">
+              Notice: Broadcom has rebranded VMware Aria under VCF Operations and Automation.
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">

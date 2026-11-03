@@ -272,3 +272,122 @@ for (const route of ROUTE_MANIFEST) {
 }
 
 console.log(`[Prerender Success] Successfully prerendered ${generatedCount} static HTML routes with independent canonicals, JSON-LD, and static body text.`);
+
+// --- PART C: Generate sitemap.xml at build from route manifest (30 URLs total) ---
+const sitemapUrls = ROUTE_MANIFEST.map(r => {
+  const loc = `https://zaboraa.com${r.path === '/' ? '' : r.path}`;
+  const lastmod = r.lastmod || '2026-11-03';
+  return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
+}).join('\n');
+
+const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapUrls}
+</urlset>
+`;
+
+fs.writeFileSync(path.join(distDir, 'sitemap.xml'), sitemapXml, 'utf-8');
+const publicDir = path.resolve('public');
+if (fs.existsSync(publicDir)) {
+  fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemapXml, 'utf-8');
+}
+console.log(`[Sitemap Success] Generated sitemap.xml with ${ROUTE_MANIFEST.length} URLs (omitted priority and changefreq).`);
+
+// --- PART C: Generate llms-full.txt at build from caseStudies.ts so it cannot drift ---
+const caseStudiesFullMarkdown = CASE_STUDIES.map((study, idx) => {
+  const sectionsText = (study.sections || []).map(sec => {
+    let out = `#### ${sec.heading}\n\n${(sec.body || []).join('\n\n')}`;
+    if (sec.table) {
+      const headerRow = `| ${sec.table.headers.join(' | ')} |`;
+      const sepRow = `| ${sec.table.headers.map(() => '---').join(' | ')} |`;
+      const dataRows = sec.table.rows.map(r => `| ${r.join(' | ')} |`).join('\n');
+      out += `\n\n${headerRow}\n${sepRow}\n${dataRows}`;
+    }
+    if (sec.subsections) {
+      const subs = sec.subsections.map(sub => `##### ${sub.heading}\n\n${(sub.body || []).join('\n\n')}`).join('\n\n');
+      out += `\n\n${subs}`;
+    }
+    return out;
+  }).join('\n\n');
+
+  const lessonsText = (study.lessonsLearned || []).map((l, i) => `${i + 1}. ${l}`).join('\n');
+  const faqsText = (study.faq || []).map(f => `**Q: ${f.question}**\nA: ${f.answer}`).join('\n\n');
+
+  return `### Case Study 0${idx + 1}: ${study.h1}
+- URL: https://zaboraa.com/case-studies/${study.slug}
+- Sector: ${study.sector}
+- Scale: ${study.facts.scale}
+- Platforms: ${study.facts.platforms}
+- Connectivity: ${study.facts.connectivity}
+- Role: ${study.facts.role}
+- Confidentiality Notice: This case study is anonymised and aggregated across multiple engagements.
+- Architecture Note: Broadcom has rebranded VMware Aria under VCF Operations and Automation.
+
+Summary:
+${study.summary}
+
+${sectionsText}
+
+#### Lessons Learned
+${lessonsText}
+
+#### Frequently Asked Questions
+${faqsText}
+`;
+}).join('\n---\n\n');
+
+const llmsFullText = `# Zaboraa — full plain-text reference
+
+Zaboraa (https://zaboraa.com) is a founder-led enterprise VMware architecture advisory based in Pune, Maharashtra, India. Tagline: Minimal Downtime VMware Cloud and Hyperscaler Migration Authority. Led by Principal VMware Architect Wasim Sayyed, who brings 13 years of enterprise VMware infrastructure architecture experience.
+
+Advisory engagements serve CIOs, cloud directors, infrastructure architects, and migration leads at regulated, high-uptime public sector and enterprise organizations moving VMware datacenters to Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC), or Nutanix NC2 on Azure.
+
+Primary call to action: Book Briefing (confidential technical consultation). Secondary: utilize the free browser-based tools at https://zaboraa.com/tools. There is no consumer software tier, pricing page, credits system, or billing.
+
+## Founder
+Wasim Sayyed, Founder and Principal VMware Architect. 13 years in VMware infrastructure architecture. Based in Pune, Maharashtra, India. Specialist in sovereign cloud migrations, Azure VMware Solution, Google Cloud VMware Engine, and VMware Cloud on AWS.
+
+## Advisory specialisations
+- Hyperscaler procurement and sizing: avoid bare-metal cluster over-provisioning by decoupling storage to external NFS datastores (Azure NetApp Files, Amazon FSx for NetApp ONTAP, Google Cloud NetApp Volumes / Filestore).
+- HCX migration architecture: wave sequencing, Replication-Assisted vMotion (RAV) for zero downtime where IPs are kept, Bulk migration for scheduled reboot windows, Layer-2 Network Extension, and Mobility Optimized Networking (MON).
+- NSX-T microsegmentation: flow-based zero-trust Distributed Firewall (DFW) planning using VMware Aria Operations for Networks (vRNI) before cutover.
+- Disaster recovery validation: automated failover and failback orchestration with Site Recovery Manager (SRM), 5-15 minute RPO modeling, and mandatory semi-annual recovery drills.
+- Operations & Automation: VMware Aria Operations capacity forecasting, right-sizing analysis, and VMware Aria Automation cloud templates with department project isolation.
+
+## Free engineering tools (all execute client-side with zero server storage)
+1. Multi-Cloud Node and Usable Storage Estimator — /tools/sizing. Covers NC2 on Azure, AVS (AV36/AV64), VMC (i4i.metal), and GCVE (ve1/ve2). Applies RAID/FTT policies and vSAN slack factors. Shows host savings from decoupled external NFS storage. Exports Excel.
+2. RVTools Ingestion and Wave Planner — /tools/rvtools-analyzer. Parses vInfo, vDisk, vMemory, vNetwork, vTools. Detects physical-mode RDMs, multi-writer disks, hardware versions below 14, missing VMware Tools, and stale snapshots. Categorizes VMs into HCX RAV, Bulk, or Cold migration waves. Outputs readiness score and Excel schedule.
+3. Nutanix NC2 on Azure Assessment — /tools/nutanix-nc2-assessment. AHV compatibility, VirtIO driver injection requirements, NC2 node sizing (RF2/RF3), and Nutanix Move wave planning.
+4. Aria Operations for Networks Engine — /tools/aria-networks. Ingests IPFIX flow data to discover application tiers, generate NSX Distributed Firewall rule matrices, and sequence migration waves.
+5. DR RPO/RTO Planner — /tools/dr-planner. Evaluates VMware SRM with vSphere Replication, HPE Zerto, JetStream DR, and Veeam. Supports 5-minute to 24-hour RPO modeling, hot standby, pilot light, and cold storage models. Exports Excel and PDF runbooks.
+6. Hybrid Blueprint Generator — /tools/design-generator. 5-step guided wizard for AVS, NC2, GCVE, and VMC architectures. Generates complete bill of materials, vector diagrams, and executive dossiers.
+
+## Case Studies (Aggregated & Anonymised Track Record)
+
+${caseStudiesFullMarkdown}
+
+## Knowledge base topics (https://zaboraa.com/resources/kb)
+AVS ExpressRoute FastPath BGP flapping and MTU fragmentation; mounting Azure NetApp Files NFS datastores on AVS; GCVE Private Services Access peering and DNS; VMC Connected VPC ENI routing asymmetry; migrating non-NSX workloads to NSX DFW; HCX MON asymmetric return traffic; SRM test-failover isolation; IPFIX on vSphere Distributed Switch for Aria.
+
+## Tutorials (https://zaboraa.com/resources/tutorials)
+AVS ExpressRoute FastPath and Global Reach; HCX Network Extension L2 troubleshooting runbook; NSX-T zero-trust east-west microsegmentation; external NFS datastores on VMC with Amazon FSx for NetApp ONTAP; GCVE to BigQuery analytics pipeline.
+
+## Video masterclasses (https://zaboraa.com/resources/videos)
+HCX Bulk vs Replication-Assisted vMotion; ANF datastores for AVS (cost and IOPS); NSX-T Distributed Firewall microsegmentation; GCVE Private Services Access and analytics.
+
+## Migration roadmap (https://zaboraa.com/roadmap)
+Six phases: RVTools discovery, HCX fleet provisioning, live L2 extension, wave migration, non-disruptive cutover, post-migration optimisation.
+
+## Contact
+- Website: https://zaboraa.com
+- Location: Pune, Maharashtra, India
+- Email: wasim@zaboraa.com
+- Founder LinkedIn: https://www.linkedin.com/in/wasim-sayyed-8b857714b/
+- Company LinkedIn: https://www.linkedin.com/company/145341200/
+`;
+
+fs.writeFileSync(path.join(distDir, 'llms-full.txt'), llmsFullText, 'utf-8');
+if (fs.existsSync(publicDir)) {
+  fs.writeFileSync(path.join(publicDir, 'llms-full.txt'), llmsFullText, 'utf-8');
+}
+console.log(`[LLMs Full Success] Generated llms-full.txt with all ${CASE_STUDIES.length} case studies synchronized at build.`);

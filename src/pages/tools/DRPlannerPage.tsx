@@ -807,6 +807,30 @@ export const DRPlannerPage: React.FC = () => {
                 <span>Min: {engine.minRpoMinutes}m</span>
                 <span>Max: {engine.maxRpoMinutes >= 60 ? `${engine.maxRpoMinutes / 60}h` : `${engine.maxRpoMinutes}m`}</span>
               </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[
+                  { label: '5 min (High-Priority)', value: 5 },
+                  { label: '15 min (Standard Tier)', value: 15 },
+                  { label: '30 min', value: 30 },
+                  { label: '1 hour', value: 60 },
+                  { label: '4 hours', value: 240 },
+                  { label: '24 hours', value: 1440 }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={opt.value < engine.minRpoMinutes || opt.value > engine.maxRpoMinutes}
+                    onClick={() => setTargetRpoMinutes(opt.value)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer ${
+                      targetRpoMinutes === opt.value
+                        ? 'bg-rose-500 text-white font-bold shadow'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Slider 4: Daily Churn % */}

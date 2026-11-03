@@ -366,17 +366,6 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
     ]
   },
   {
-    path: '/resources/diagrams',
-    title: '4K Vector Architecture Diagrams — Zaboraa',
-    description: 'Downloadable high-resolution architecture diagrams: AVS stretched clusters, GCVE transit hubs, and Nutanix NC2 bare-metal topologies.',
-    h1: '4K Vector Multi-Cloud Architecture Diagrams',
-    summary: 'Access production-grade architectural diagrams detailing hybrid network topologies, transit routing, and disaster recovery fabrics. Diagrams detail traffic flows between on-premises datacenters, hyperscaler edges, and bare-metal ESXi clusters.',
-    lastmod: '2026-11-03',
-    jsonld: [
-      BASE_ORGANIZATION_JSONLD
-    ]
-  },
-  {
     path: '/resources/videos',
     title: 'Video Masterclasses & Technical Walkthroughs — Zaboraa',
     description: 'Technical video briefings on AVS storage decoupling, HCX live migration mechanics, and NSX-T zero-trust microsegmentation.',
@@ -680,6 +669,170 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
             'acceptedAnswer': {
               '@type': 'Answer',
               'text': 'AVS pairs with Azure NetApp Files (ANF); GCVE pairs with Google Cloud NetApp Volumes or Filestore; and VMC on AWS pairs with Amazon FSx for NetApp ONTAP.'
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  // 29. Case Study 5: NSX-T Microsegmentation Planned with Aria Operations for Networks
+  {
+    path: '/case-studies/nsxt-microsegmentation-aria-networks',
+    title: 'NSX-T Microsegmentation Planning with Aria Operations for Networks',
+    description: 'Flow-based NSX-T microsegmentation planning for government VMware estates using Aria Operations for Networks to eliminate stale rules and secure East-West traffic.',
+    h1: 'NSX-T Microsegmentation: Flow-Based Firewall Planning with Aria Operations for Networks',
+    summary: 'A structured five-phase framework using VMware Aria Operations for Networks (vRNI) to analyze East-West network flow telemetry, eliminate stale legacy rules, and model zero-trust Distributed Firewall (DFW) security policies across Middle East government VMware estates.',
+    lastmod: '2026-11-03',
+    jsonld: [
+      BASE_ORGANIZATION_JSONLD,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': 'NSX-T Microsegmentation: Flow-Based Firewall Planning with Aria Operations for Networks',
+        'url': 'https://zaboraa.com/case-studies/nsxt-microsegmentation-aria-networks',
+        'datePublished': '2026-11-03',
+        'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'NSX-T Microsegmentation with Aria', 'item': 'https://zaboraa.com/case-studies/nsxt-microsegmentation-aria-networks' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'How long should flows be collected before writing DFW rules?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'We recommend capturing IPFIX telemetry for a minimum of 7 to 14 continuous days. This window ensures that scheduled batch jobs, weekly database maintenance windows, and inter-system data transfers are fully captured before defining tier boundaries.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'How does reIP affect firewall rules?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Traditional perimeter firewalls rely on static IP address objects. When workloads undergo reIP during migration, static IP rules break immediately. Modeling microsegmentation with NSX-T DFW uses dynamic VM tags and security groups rather than static IP addresses, decoupling security posture from network IP assignments.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'Can flow data drive migration waves?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Yes. Analyzing East-West communication density in Aria Operations for Networks reveals tightly coupled database and application tiers that must migrate together in the same HCX wave to prevent high-latency cross-site chatter.'
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  // 30. Case Study 6: Aria Operations and Aria Operations for Networks Deployment
+  {
+    path: '/case-studies/aria-operations-networks-deployment',
+    title: 'Aria Operations and Aria for Networks Deployment: Capacity and Wave Planning',
+    description: 'Deploying Aria Operations and Aria Operations for Networks for capacity forecasting, AVS host sizing, and flow-based migration wave planning across vCenters.',
+    h1: 'Aria Operations and Aria Operations for Networks for Multi-vCenter Government Environments',
+    summary: 'Enterprise deployment of VMware Aria Operations and VMware Aria Operations for Networks across multi-vCenter government environments, establishing unified capacity forecasting, right-sizing analysis, and dependency-driven HCX migration wave planning.',
+    lastmod: '2026-11-03',
+    jsonld: [
+      BASE_ORGANIZATION_JSONLD,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': 'Aria Operations and Aria Operations for Networks for Multi-vCenter Government Environments',
+        'url': 'https://zaboraa.com/case-studies/aria-operations-networks-deployment',
+        'datePublished': '2026-11-03',
+        'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'Aria Operations & Networks Deployment', 'item': 'https://zaboraa.com/case-studies/aria-operations-networks-deployment' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'What does Aria Operations add for AVS capacity planning?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'It calculates historical peak CPU, memory demand, and 95th percentile consumption across seasonal spikes rather than allocated virtual resources. This enables precise sizing of bare-metal node counts and decouples storage requirements onto Azure NetApp Files without over-provisioning hosts.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'How do network flows improve wave planning?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Traditional wave planning relies on static CMDB lists, which frequently omit undocumented dependencies. Analyzing network flows in Aria Operations for Networks identifies all communicating systems, ensuring coupled application and database servers migrate in the same scheduled cutover wave.'
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  // 31. Case Study 7: Aria Automation, Cloud Templates & Multi-Team vCenter Isolation
+  {
+    path: '/case-studies/aria-automation-blueprints-vcenter',
+    title: 'Aria Automation Cloud Templates: VM Self-Service with Team Isolation',
+    description: 'Aria Automation cloud templates for government IT: self-service VM catalog, approval governance, naming policies, and department isolation without vCenter access.',
+    h1: 'Aria Automation for Multi-Team Government IT: Cloud Templates, Approvals and vCenter Isolation',
+    summary: 'Standardized VMware Aria Automation deployment for sovereign public sector organizations, establishing self-service cloud templates, automated approval workflows, naming and tagging governance, and secure department isolation without delegating vCenter administrative privileges.',
+    lastmod: '2026-11-03',
+    jsonld: [
+      BASE_ORGANIZATION_JSONLD,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        'headline': 'Aria Automation for Multi-Team Government IT: Cloud Templates, Approvals and vCenter Isolation',
+        'url': 'https://zaboraa.com/case-studies/aria-automation-blueprints-vcenter',
+        'datePublished': '2026-11-03',
+        'dateModified': '2026-11-03'
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://zaboraa.com' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Case Studies', 'item': 'https://zaboraa.com/case-studies' },
+          { '@type': 'ListItem', 'position': 3, 'name': 'Aria Automation Cloud Templates', 'item': 'https://zaboraa.com/case-studies/aria-automation-blueprints-vcenter' }
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': [
+          {
+            '@type': 'Question',
+            'name': 'How do you isolate teams without giving vCenter access?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'Aria Automation projects map developer and database teams to dedicated compute resource pools, storage datastores, and NSX network segments. Users consume catalog items via Service Broker with custom role-based permissions, completely eliminating the need for direct vCenter UI or API access.'
+            }
+          },
+          {
+            '@type': 'Question',
+            'name': 'What are cloud templates (formerly blueprints)?',
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': 'In Aria Automation 8, declarative infrastructure-as-code definitions previously called blueprints are designated as cloud templates. They define virtual machine specifications, customization specs, network connections, and Day 2 operational actions in human-readable YAML.'
             }
           }
         ]

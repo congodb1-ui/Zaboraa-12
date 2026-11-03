@@ -34,7 +34,7 @@ export const CaseStudiesSection: React.FC = () => {
               to="/case-studies"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 font-bold text-xs transition-all shadow-sm cursor-pointer"
             >
-              <span>Explore Case Studies Hub</span>
+              <span>View all 7 case studies</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -48,9 +48,9 @@ export const CaseStudiesSection: React.FC = () => {
           </p>
         </aside>
 
-        {/* Case Study Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {CASE_STUDIES.map((study) => (
+        {/* Case Study Cards Grid - 3 Flagship Studies + Reproduction Tool */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {CASE_STUDIES.slice(0, 3).map((study) => (
             <TiltCard key={study.slug} maxTilt={3} className="h-full">
               <div className="h-full flex flex-col justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 p-6 sm:p-7 space-y-6 hover:border-cyan-500/50 dark:hover:border-cyan-500/50 transition-all shadow-sm hover:shadow-md group relative overflow-hidden">
                 <div className="space-y-4">
@@ -130,6 +130,20 @@ export const CaseStudiesSection: React.FC = () => {
               </div>
             </div>
           </TiltCard>
+        </div>
+
+        {/* Bottom CTA linking to all 7 case studies */}
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 dark:border-slate-800">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+            Full catalog: AVS migrations, cross-region evacuations, DR drills, GCVE, VMC on AWS, NSX-T microsegmentation, and Aria Automation.
+          </p>
+          <Link
+            to="/case-studies"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-cyan-500 text-white dark:text-slate-950 font-bold text-xs hover:bg-slate-800 dark:hover:bg-cyan-400 transition-all shadow-md group cursor-pointer shrink-0"
+          >
+            <span>View all 7 case studies</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
       </div>
     </section>

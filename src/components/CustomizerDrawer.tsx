@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
-import { CloudProvider, ArchitectureDiagram, VideoItem, TutorialArticle } from '../types/siteData';
+import { CloudProvider, ArchitectureDiagram, VideoItem, TutorialArticle, AboutPageConfig } from '../types/siteData';
 import { ZaboraaLogoMark } from './ZaboraaLogo';
 import { AdminParameterControlStudio } from './AdminParameterControlStudio';
+import { INITIAL_SITE_DATA } from '../data/initialData';
+import { CASE_STUDIES } from '../data/caseStudies';
 import {
   X,
   Sliders,
@@ -10,6 +12,7 @@ import {
   Film,
   BookOpen,
   User,
+  UserCheck,
   Download,
   Upload,
   RotateCcw,
@@ -78,10 +81,13 @@ export const CustomizerDrawer: React.FC = () => {
     exportConfigJson,
     importConfigJson,
     featureControls,
-    updateFeatureControls
+    updateFeatureControls,
+    updateAboutPage,
+    customizerInitialTab,
+    setCustomizerInitialTab
   } = useCustomization();
 
-  const [activeTab, setActiveTab] = useState<'appearance' | 'blueprint-studio' | 'feature-controls' | 'track-records' | 'general' | 'hero' | 'platforms' | 'videos' | 'tutorials' | 'backup'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'blueprint-studio' | 'feature-controls' | 'track-records' | 'about' | 'general' | 'hero' | 'platforms' | 'videos' | 'tutorials' | 'backup'>('appearance');
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [importText, setImportText] = useState<string>('');
   const [importError, setImportError] = useState<string>('');
@@ -133,6 +139,70 @@ export const CustomizerDrawer: React.FC = () => {
   const [newTutSectionHeading, setNewTutSectionHeading] = useState('1. Implementation Steps');
   const [newTutSectionContent, setNewTutSectionContent] = useState('');
   const [newTutSectionCode, setNewTutSectionCode] = useState('');
+
+  // About Page Studio State
+  const defaultAbout = INITIAL_SITE_DATA.aboutPage!;
+  const currentAbout = siteConfig.aboutPage || defaultAbout;
+
+  const [aboutBadgeText, setAboutBadgeText] = useState<string>(currentAbout.badgeText || defaultAbout.badgeText || '');
+  const [aboutHeading, setAboutHeading] = useState<string>(currentAbout.heading || defaultAbout.heading || '');
+  const [aboutPositioningLine, setAboutPositioningLine] = useState<string>(currentAbout.positioningLine || defaultAbout.positioningLine || '');
+  const [aboutProofTiles, setAboutProofTiles] = useState<Array<{ value: string; label: string; subtitle?: string }>>(currentAbout.proofTiles || defaultAbout.proofTiles || []);
+  const [aboutOutcomes, setAboutOutcomes] = useState<Array<{ text: string; caseStudySlug?: string; sector?: string }>>(currentAbout.selectedOutcomes || defaultAbout.selectedOutcomes || []);
+  const [aboutTenets, setAboutTenets] = useState<Array<{ label: string; text: string }>>(currentAbout.tenets || defaultAbout.tenets || []);
+  const [aboutContact, setAboutContact] = useState(currentAbout.contactDetails || defaultAbout.contactDetails || {});
+  const [aboutSteps, setAboutSteps] = useState(currentAbout.engagementSteps || defaultAbout.engagementSteps || []);
+
+  useEffect(() => {
+    if (customizerInitialTab) {
+      setActiveTab(customizerInitialTab as any);
+      setCustomizerInitialTab('');
+    }
+  }, [customizerInitialTab, setCustomizerInitialTab]);
+
+  useEffect(() => {
+    if (siteConfig.aboutPage) {
+      setAboutBadgeText(siteConfig.aboutPage.badgeText || defaultAbout.badgeText || '');
+      setAboutHeading(siteConfig.aboutPage.heading || defaultAbout.heading || '');
+      setAboutPositioningLine(siteConfig.aboutPage.positioningLine || defaultAbout.positioningLine || '');
+      setAboutProofTiles(siteConfig.aboutPage.proofTiles || defaultAbout.proofTiles || []);
+      setAboutOutcomes(siteConfig.aboutPage.selectedOutcomes || defaultAbout.selectedOutcomes || []);
+      setAboutTenets(siteConfig.aboutPage.tenets || defaultAbout.tenets || []);
+      setAboutContact(siteConfig.aboutPage.contactDetails || defaultAbout.contactDetails || {});
+      setAboutSteps(siteConfig.aboutPage.engagementSteps || defaultAbout.engagementSteps || []);
+    }
+  }, [siteConfig.aboutPage]);
+
+  const handleSaveAboutPage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    updateAboutPage({
+      badgeText: (aboutBadgeText || '').trim(),
+      heading: (aboutHeading || '').trim(),
+      positioningLine: (aboutPositioningLine || '').trim(),
+      proofTiles: aboutProofTiles,
+      selectedOutcomes: aboutOutcomes,
+      tenets: aboutTenets,
+      contactDetails: aboutContact,
+      engagementSteps: aboutSteps
+    });
+    showNotification('About Me page settings updated and saved!');
+  };
+
+  const handleResetAboutToDefaults = () => {
+    if (window.confirm('Reset About Me page configuration to original defaults?')) {
+      const d = INITIAL_SITE_DATA.aboutPage!;
+      setAboutBadgeText(d.badgeText || '');
+      setAboutHeading(d.heading || '');
+      setAboutPositioningLine(d.positioningLine || '');
+      setAboutProofTiles(d.proofTiles || []);
+      setAboutOutcomes(d.selectedOutcomes || []);
+      setAboutTenets(d.tenets || []);
+      setAboutContact(d.contactDetails || {});
+      setAboutSteps(d.engagementSteps || []);
+      updateAboutPage(d);
+      showNotification('About Me page reset to default settings.');
+    }
+  };
 
   if (!isCustomizerOpen) return null;
 
@@ -409,6 +479,7 @@ export const CustomizerDrawer: React.FC = () => {
             { id: 'blueprint-studio', label: 'Blueprint Studio & Templates', icon: Layout },
             { id: 'feature-controls', label: 'Feature Controls', icon: Sliders },
             { id: 'track-records', label: 'Track Records & Credentials', icon: Shield },
+            { id: 'about', label: 'About Me Page', icon: UserCheck },
             { id: 'general', label: 'General & Founder', icon: User },
             { id: 'hero', label: 'Hero Copy', icon: Sliders },
             { id: 'platforms', label: 'Dedicated Architectures', icon: Layers },
@@ -1334,6 +1405,466 @@ export const CustomizerDrawer: React.FC = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: ABOUT ME PAGE STUDIO */}
+          {activeTab === 'about' && (
+            <div className="space-y-6 text-xs">
+              {/* Header Banner */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-cyan-500/40 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-cyan-400" />
+                    <h3 className="text-sm font-bold text-white">About Me Page Studio</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetAboutToDefaults}
+                      className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[11px] transition-colors"
+                      title="Reset About Me page to factory defaults"
+                    >
+                      Reset Defaults
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveAboutPage()}
+                      className="px-3 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Changes</span>
+                    </button>
+                  </div>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Customize all sections of the About Me page (/about), including the 4 verified proof metrics, real case study outcomes, engineering tenets, contact desk, and engagement steps.
+                </p>
+              </div>
+
+              {/* SECTION 1: VERIFIED ENGINEERING METRICS & PROOF TILES */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div>
+                    <span className="font-bold text-white text-xs uppercase tracking-wider font-mono">
+                      Verified Engineering Metrics (Proof Strip)
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      The 4 compact quantitative cards showcased prominently below the header.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAboutProofTiles(prev => [
+                        ...prev,
+                        { value: '10+', label: 'New Metric Title', subtitle: 'Verified Credential' }
+                      ]);
+                    }}
+                    className="px-2.5 py-1 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono text-[11px] flex items-center gap-1 hover:bg-cyan-900 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Metric</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {aboutProofTiles.map((tile, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-cyan-400 font-bold">
+                          Metric #{idx + 1}
+                        </span>
+                        {aboutProofTiles.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAboutProofTiles(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                            title="Delete Metric"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-mono uppercase">Stat Value</label>
+                        <input
+                          type="text"
+                          value={tile.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAboutProofTiles(prev => {
+                              const copy = [...prev];
+                              copy[idx] = { ...copy[idx], value: val };
+                              return copy;
+                            });
+                          }}
+                          placeholder="e.g. 12+, 40+, 100%, 6"
+                          className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-cyan-300 font-mono font-bold text-sm focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-mono uppercase">Metric Label</label>
+                        <input
+                          type="text"
+                          value={tile.label}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAboutProofTiles(prev => {
+                              const copy = [...prev];
+                              copy[idx] = { ...copy[idx], label: val };
+                              return copy;
+                            });
+                          }}
+                          placeholder="e.g. Years Enterprise Infrastructure"
+                          className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-mono uppercase">Subtitle / Scope (Optional)</label>
+                        <input
+                          type="text"
+                          value={tile.subtitle || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAboutProofTiles(prev => {
+                              const copy = [...prev];
+                              copy[idx] = { ...copy[idx], subtitle: val };
+                              return copy;
+                            });
+                          }}
+                          placeholder="e.g. Azure AVS, NC2, GCVE, VMC"
+                          className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-slate-300 text-[11px] focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SECTION 2: SELECTED OUTCOMES (ACTUAL CASE STUDIES) */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div>
+                    <span className="font-bold text-white text-xs uppercase tracking-wider font-mono">
+                      Selected Outcomes (Linked Case Studies)
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Verified case study achievements that link directly to detailed architecture runbooks.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAboutOutcomes(prev => [
+                        ...prev,
+                        {
+                          text: '820 VMs, 99.999% availability, $1.4M/year saved (global freight)',
+                          caseStudySlug: CASE_STUDIES[0]?.slug || 'middle-east-gov-avs-framework',
+                          sector: 'Global Logistics'
+                        }
+                      ]);
+                    }}
+                    className="px-2.5 py-1 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono text-[11px] flex items-center gap-1 hover:bg-cyan-900 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Outcome</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {aboutOutcomes.map((outcome, idx) => {
+                    const outcomeText = typeof outcome === 'string' ? outcome : outcome.text;
+                    const outcomeSlug = typeof outcome === 'object' ? outcome.caseStudySlug : '';
+                    const outcomeSector = typeof outcome === 'object' ? outcome.sector : '';
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-cyan-400 font-bold">
+                            Outcome #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAboutOutcomes(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                            title="Remove Outcome"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-400 font-mono uppercase">
+                            Outcome Summary & Quantitative Result
+                          </label>
+                          <input
+                            type="text"
+                            value={outcomeText}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setAboutOutcomes(prev => {
+                                const copy = [...prev];
+                                const current = typeof copy[idx] === 'string' ? { text: copy[idx] as string } : { ...copy[idx] };
+                                copy[idx] = { ...current, text: val };
+                                return copy;
+                              });
+                            }}
+                            placeholder="e.g. 1,240 VMs, 0 hours downtime, 38% TCO reduction (Tier-1 bank)"
+                            className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 font-mono uppercase">
+                              Linked Verified Case Study
+                            </label>
+                            <select
+                              value={outcomeSlug || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAboutOutcomes(prev => {
+                                  const copy = [...prev];
+                                  const current = typeof copy[idx] === 'string' ? { text: copy[idx] as string } : { ...copy[idx] };
+                                  copy[idx] = { ...current, caseStudySlug: val };
+                                  return copy;
+                                });
+                              }}
+                              className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-cyan-300 font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                            >
+                              <option value="">-- No Direct Link --</option>
+                              {CASE_STUDIES.map(cs => (
+                                <option key={cs.id} value={cs.slug}>
+                                  {cs.title} ({cs.slug})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 font-mono uppercase">
+                              Sector / Client Tag (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={outcomeSector || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setAboutOutcomes(prev => {
+                                  const copy = [...prev];
+                                  const current = typeof copy[idx] === 'string' ? { text: copy[idx] as string } : { ...copy[idx] };
+                                  copy[idx] = { ...current, sector: val };
+                                  return copy;
+                                });
+                              }}
+                              placeholder="e.g. Tier-1 Bank / Middle East Gov"
+                              className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-slate-300 text-xs focus:border-cyan-400 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SECTION 3: HEADER, BADGE & POSITIONING COPY */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <span className="font-bold text-white text-xs uppercase tracking-wider font-mono block border-b border-slate-800 pb-2">
+                  Header & Executive Positioning
+                </span>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-400 font-mono uppercase">Badge Eyebrow</label>
+                  <input
+                    type="text"
+                    value={aboutBadgeText}
+                    onChange={(e) => setAboutBadgeText(e.target.value)}
+                    placeholder="e.g. FOUNDER & PRINCIPAL VMWARE ARCHITECT"
+                    className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-400 font-mono uppercase">Main Heading</label>
+                  <input
+                    type="text"
+                    value={aboutHeading}
+                    onChange={(e) => setAboutHeading(e.target.value)}
+                    placeholder="e.g. Migration and Disaster Recovery Practice"
+                    className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-white text-sm font-bold focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-400 font-mono uppercase">Executive Positioning Narrative</label>
+                  <textarea
+                    rows={3}
+                    value={aboutPositioningLine}
+                    onChange={(e) => setAboutPositioningLine(e.target.value)}
+                    placeholder="Principal-led architecture and a vetted network of specialist engineers..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-white text-xs leading-relaxed focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* SECTION 4: CORE ENGINEERING TENETS */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <span className="font-bold text-white text-xs uppercase tracking-wider font-mono">
+                    Core Engineering Tenets
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAboutTenets(prev => [
+                        ...prev,
+                        { label: 'Architectural Governance', text: 'Rigorous peer-reviewed runbooks before every deployment.' }
+                      ]);
+                    }}
+                    className="px-2.5 py-1 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 font-mono text-[11px] flex items-center gap-1 hover:bg-cyan-900 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Tenet</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {aboutTenets.map((tenet, idx) => (
+                    <div key={idx} className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-cyan-400 font-bold">
+                          Tenet #{idx + 1}
+                        </span>
+                        {aboutTenets.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAboutTenets(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-mono uppercase">Principle Label</label>
+                        <input
+                          type="text"
+                          value={tenet.label}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAboutTenets(prev => {
+                              const copy = [...prev];
+                              copy[idx] = { ...copy[idx], label: val };
+                              return copy;
+                            });
+                          }}
+                          placeholder="e.g. Zero-Downtime Migration Execution"
+                          className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white font-semibold text-xs focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-mono uppercase">Tenet Description</label>
+                        <textarea
+                          rows={2}
+                          value={tenet.text}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAboutTenets(prev => {
+                              const copy = [...prev];
+                              copy[idx] = { ...copy[idx], text: val };
+                              return copy;
+                            });
+                          }}
+                          placeholder="Explain architectural rule or philosophy..."
+                          className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-slate-300 text-xs focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SECTION 5: CONTACT DESK & OFFICE HOURS */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <span className="font-bold text-white text-xs uppercase tracking-wider font-mono block border-b border-slate-800 pb-2">
+                  Direct Contact Desk & Location
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-mono uppercase">Direct Phone</label>
+                    <input
+                      type="text"
+                      value={aboutContact.phone || '+91 7497624807'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAboutContact(prev => ({ ...prev, phone: val }));
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-400 font-mono uppercase">Email Address</label>
+                    <input
+                      type="email"
+                      value={aboutContact.email || 'wasim@zaboraa.com'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAboutContact(prev => ({ ...prev, email: val }));
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white font-mono text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] text-slate-400 font-mono uppercase">Advisory Hub & Location</label>
+                    <input
+                      type="text"
+                      value={aboutContact.location || 'Pune & Global Advisory'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAboutContact(prev => ({ ...prev, location: val }));
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white text-xs focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Save & Apply Action Button */}
+              <div className="sticky bottom-0 bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-3 shadow-2xl">
+                <div className="text-slate-400 text-[11px]">
+                  All changes immediately synchronize to local storage and remote database.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSaveAboutPage()}
+                  className="px-5 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save About Me Settings</span>
+                </button>
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, CaseStudyFacts, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig, KnowledgeBaseArticle } from '../types/siteData';
+import { SiteConfig, AboutPageConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, CaseStudyFacts, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings, FeatureControlsConfig, KnowledgeBaseArticle } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { useAuth } from './AuthContext';
 import { adminService } from '../services/adminService';
@@ -243,6 +243,10 @@ interface CustomizationContextType {
   setIsHeroStatsModalOpen: (open: boolean) => void;
   updateHeroStats: (stats: SiteConfig['hero']['stats']) => void;
   updateHeroContent: (hero: Partial<SiteConfig['hero']>) => void;
+  updateAboutPage: (about: Partial<AboutPageConfig>) => void;
+  openAboutEditor: () => void;
+  customizerInitialTab: string;
+  setCustomizerInitialTab: (tab: string) => void;
 
   resetToDefaults: () => void;
   exportConfigJson: () => string;
@@ -308,7 +312,13 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             hero: {
               ...INITIAL_SITE_DATA.hero,
               ...(parsed.hero || {}),
-              stats: INITIAL_SITE_DATA.hero.stats
+              stats: (Array.isArray(parsed.hero?.stats) && parsed.hero.stats.length === 4 && !parsed.hero.stats.some((s: any) => s.label === 'Hyperscaler Migrations Executed' || s.label === 'Runbook-Driven Cutovers'))
+                ? parsed.hero.stats
+                : INITIAL_SITE_DATA.hero.stats
+            },
+            aboutPage: {
+              ...INITIAL_SITE_DATA.aboutPage!,
+              ...(parsed.aboutPage || {})
             },
             platformShowcases: (parsed.platformShowcases && parsed.platformShowcases.length > 0
               ? parsed.platformShowcases
@@ -385,6 +395,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isWatermarkModalOpen, setIsWatermarkModalOpenState] = useState(false);
 
   const [isCustomizerOpen, setIsCustomizerOpenState] = useState(false);
+  const [customizerInitialTab, setCustomizerInitialTab] = useState<string>('appearance');
   const [isPhotoEditorOpen, setIsPhotoEditorOpenState] = useState(false);
   const [activeEditPlatformId, setActiveEditPlatformIdState] = useState<string | null>(null);
   const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
@@ -403,6 +414,11 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
   const setIsCustomizerOpen = (open: boolean) => {
     if (open && !isAdmin) return;
     setIsCustomizerOpenState(open);
+  };
+  const openAboutEditor = () => {
+    if (!isAdmin) return;
+    setCustomizerInitialTab('about');
+    setIsCustomizerOpenState(true);
   };
   const setIsPhotoEditorOpen = (open: boolean) => {
     if (open && !isAdmin) return;
@@ -1509,6 +1525,30 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
+  const updateAboutPage = (about: Partial<AboutPageConfig>) => {
+    if (!isAdmin) return;
+    setSiteConfig(prev => {
+      const updatedAbout: AboutPageConfig = {
+        ...(prev.aboutPage || INITIAL_SITE_DATA.aboutPage!),
+        ...about
+      };
+
+      if (isAdmin) {
+        adminService.saveSiteContent(
+          'aboutPage',
+          updatedAbout,
+          'About Me Page Content',
+          user?.email || 'admin@zaboraa.com'
+        ).catch(e => console.warn('Notice persisting aboutPage:', e));
+      }
+
+      return {
+        ...prev,
+        aboutPage: updatedAbout
+      };
+    });
+  };
+
   const resetToDefaults = () => {
     if (!isAdmin) return;
     setSiteConfig(INITIAL_SITE_DATA);
@@ -1873,6 +1913,10 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsHeroStatsModalOpen,
         updateHeroStats,
         updateHeroContent,
+        updateAboutPage,
+        openAboutEditor,
+        customizerInitialTab,
+        setCustomizerInitialTab,
 
         resetToDefaults,
         exportConfigJson,

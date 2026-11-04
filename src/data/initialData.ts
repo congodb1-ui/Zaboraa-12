@@ -628,9 +628,150 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       { value: '14+', label: 'Middle East Government Entities' },
       { value: '12+', label: 'Years Enterprise Infrastructure' },
       { value: 'AVS · NC2 · GCVE · VMC', label: 'Hyperscaler Platforms' },
-      { value: '6×', label: 'Verified Cloud Certifications' }
+      { value: '6x', label: 'Verified Cloud Certifications' }
     ],
     heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.jpg'
+  },
+  aboutPage: {
+    badgeText: 'PRINCIPAL ARCHITECTURAL DESK',
+    heading: 'Enterprise Cloud Architecture & Advisory',
+    proofTiles: [
+      { value: '12+ Years', label: 'Enterprise Infrastructure' },
+      { value: '40+', label: 'Hyperscaler Migrations Executed' },
+      { value: '100%', label: 'Zero-Downtime Cutover Record' },
+      { value: '6', label: 'Free Engineering Tools' }
+    ],
+    positioningLine: 'Founder-led VMware and Nutanix cloud migration and disaster-recovery advisory across Azure AVS, NC2, GCVE and VMC.',
+    tenets: [
+      { label: 'What I own', text: 'Target architecture, risk, RTO/RPO, cutover decisions.' },
+      { label: 'How it is delivered', text: 'A vetted network of VMware, Nutanix, networking and cloud specialists under one delivery framework.' },
+      { label: 'How it is protected', text: 'NDA and a single quality standard.' }
+    ],
+    specializations: [
+      {
+        title: 'Hyperscaler Procurement & Sizing',
+        desc: 'Prevent cluster over-provisioning through decoupled external NFS storage architectures (ANF / FSx ONTAP).',
+        links: [
+          { label: 'AVS Architecture', url: '/disciplines/avs' },
+          { label: 'Node Sizing Tool', url: '/tools/sizing' }
+        ]
+      },
+      {
+        title: 'HCX Zero-Downtime Migration',
+        desc: 'Production wave sequencing, Network Extension L2 broadcast domain stretching, and MON traffic routing.',
+        links: [
+          { label: 'HCX Architecture', url: '/disciplines/hcx' },
+          { label: 'RVTools Analyzer', url: '/tools/rvtools-analyzer' }
+        ]
+      },
+      {
+        title: 'NSX-T Microsegmentation',
+        desc: 'Zero-trust distributed firewall rule discovery via Aria Operations for Networks before hyperscaler cutover.',
+        links: [
+          { label: 'NSX-T Security', url: '/disciplines/nsx' },
+          { label: 'Aria Networks Tool', url: '/tools/aria-networks' }
+        ]
+      },
+      {
+        title: 'Disaster Recovery Validation',
+        desc: 'SRM non-disruptive failover testing, recovery time objective (RTO) sequencing, and WAN delta modeling.',
+        links: [
+          { label: 'SRM Recovery', url: '/disciplines/srm' },
+          { label: 'DR Planner Tool', url: '/tools/dr-planner' }
+        ]
+      },
+      {
+        title: 'Nutanix NC2 on Azure Migration',
+        desc: 'AHV compatibility, VirtIO driver injection, Azure bare-metal node sizing and Nutanix Move wave planning.',
+        links: [
+          { label: 'NC2 Architecture', url: '/disciplines/nutanix-nc2-azure' },
+          { label: 'NC2 Assessment Tool', url: '/tools/nutanix-nc2-assessment' }
+        ]
+      }
+    ],
+    selectedOutcomes: [
+      {
+        text: '1,240 VMs, 0 hours downtime, 38% TCO reduction (Tier-1 bank)',
+        caseStudySlug: 'middle-east-gov-avs-framework',
+        sector: 'Tier-1 Bank'
+      },
+      {
+        text: '4,500 workloads, 0 min downtime, 24% Capex reduction (18-hospital network)',
+        caseStudySlug: 'gov-dr-failover-drills',
+        sector: '18-Hospital Network'
+      },
+      {
+        text: '820 VMs, 99.999% availability, $1.4M/year saved (global freight)',
+        caseStudySlug: 'avs-to-avs-cross-region',
+        sector: 'Global Freight'
+      },
+      {
+        text: '14+ Middle East Government entities migrated to Azure VMware Solution (AVS) with zero business-hour downtime',
+        caseStudySlug: 'middle-east-gov-avs-framework',
+        sector: 'Government Sovereign Cloud'
+      },
+      {
+        text: 'Zero-trust microsegmentation across 2,400 security tags using Aria Operations for Networks before cutover',
+        caseStudySlug: 'nsxt-microsegmentation-aria-networks',
+        sector: 'Core Financial Banking'
+      }
+    ],
+    engagementSteps: [
+      {
+        step: '01',
+        title: 'Assess',
+        summary: 'RVTools discovery, sizing, and readiness modeling across compute, memory, and storage boundaries.'
+      },
+      {
+        step: '02',
+        title: 'Design',
+        summary: 'Target architecture specification, NSX-T microsegmentation policy definition, and disaster-recovery planning.'
+      },
+      {
+        step: '03',
+        title: 'Cutover',
+        summary: 'HCX wave migration execution, non-disruptive validation, and operational cutover handover.'
+      }
+    ],
+    validatedCertifications: [
+      {
+        name: 'Nutanix Certified Professional - Cloud Integration - Azure (NCP-CI-Azure) 6.10',
+        issuer: 'Nutanix',
+        date: 'May 2026'
+      },
+      {
+        name: 'VMware Certified Advanced Professional - Data Center Virtualization Design 2023 (VCAP-DCV Design 2023)',
+        issuer: 'VMware by Broadcom',
+        date: 'Oct 2023'
+      },
+      {
+        name: 'VMware Certified Professional - Network Virtualization 2023 (VCP-NV 2023)',
+        issuer: 'VMware by Broadcom',
+        date: 'Feb 2023'
+      },
+      {
+        name: 'VMware Certified Professional - Data Center Virtualization 2023 (VCP-DCV 2023)',
+        issuer: 'VMware by Broadcom',
+        date: 'Jan 2023'
+      },
+      {
+        name: 'VMware Certified Specialist - Cloud Foundation 2023',
+        issuer: 'VMware by Broadcom',
+        date: 'Jan 2023'
+      },
+      {
+        name: 'Master Specialist - VMware Cloud on AWS 2023',
+        issuer: 'VMware by Broadcom',
+        date: 'Jan 2023'
+      }
+    ],
+    contactDetails: {
+      location: 'Pune & Global Advisory',
+      phone: '+91 7497624807',
+      email: 'wasim@zaboraa.com',
+      linkedInPersonal: 'https://www.linkedin.com/in/wasim-sayyed-8b857714b/',
+      linkedInCompany: 'https://www.linkedin.com/company/zaboraa/'
+    }
   },
   services: [
     {

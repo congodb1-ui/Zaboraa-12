@@ -240,6 +240,41 @@ export interface WatermarkConfig {
   opacity: number; // 0.1 to 1.0
 }
 
+export interface AboutPageConfig {
+  badgeText?: string;
+  heading?: string;
+  proofTiles: Array<{ value: string; label: string; subtitle?: string }>;
+  positioningLine?: string;
+  tenets?: Array<{ label: string; text: string }>;
+  specializations?: Array<{
+    title: string;
+    desc: string;
+    links: Array<{ label: string; url: string }>;
+  }>;
+  selectedOutcomes: Array<{
+    text: string;
+    caseStudySlug?: string;
+    sector?: string;
+  }>;
+  engagementSteps?: Array<{
+    step: string;
+    title: string;
+    summary: string;
+  }>;
+  validatedCertifications?: Array<{
+    name: string;
+    issuer: string;
+    date: string;
+  }>;
+  contactDetails?: {
+    location?: string;
+    phone?: string;
+    email?: string;
+    linkedInPersonal?: string;
+    linkedInCompany?: string;
+  };
+}
+
 export interface SiteConfig {
   brand: string;
   brandTagline: string;
@@ -270,6 +305,7 @@ export interface SiteConfig {
     }[];
     heroImage?: string;
   };
+  aboutPage?: AboutPageConfig;
   services: ServicePillar[];
   diagrams: ArchitectureDiagram[];
   videos: VideoItem[];

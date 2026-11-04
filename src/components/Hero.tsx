@@ -22,6 +22,42 @@ export const Hero: React.FC = () => {
     borderGlow: 'cyan'
   };
 
+  // Helper to format metric value with clean baseline alignment and responsive multi-platform sizing
+  const renderStatValue = (val: string) => {
+    const clean = (val || '').trim();
+    // Check if the value has bullet separators (like "AVS · NC2 · GCVE · VMC" or "AVS • NC2 • GCVE • VMC") or long text
+    const hasBullets = clean.includes('·') || clean.includes('•') || clean.includes('/');
+    if (hasBullets || clean.length > 8) {
+      const parts = clean.split(/[·•/]/).map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 4) {
+        return (
+          <div className="flex flex-col font-mono font-extrabold text-xs sm:text-sm lg:text-[13px] text-slate-900 dark:text-cyan-300 tracking-tight leading-tight">
+            <span className="whitespace-nowrap">{parts.slice(0, 2).join(' · ')}</span>
+            <span className="whitespace-nowrap">{parts.slice(2).join(' · ')}</span>
+          </div>
+        );
+      }
+      if (parts.length > 1) {
+        return (
+          <div className="flex flex-col font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-cyan-300 tracking-tight leading-tight">
+            {parts.join(' · ')}
+          </div>
+        );
+      }
+      return (
+        <div className="text-lg sm:text-xl font-bold text-slate-900 dark:text-cyan-300 font-mono tracking-tight leading-none">
+          {clean}
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-mono tabular-nums tracking-tight leading-none">
+        {clean}
+      </div>
+    );
+  };
+
   return (
     <section className="relative overflow-hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pt-12 pb-16 lg:pt-20 lg:pb-24">
       {/* Subtle Technical Grid Background */}
@@ -125,13 +161,15 @@ export const Hero: React.FC = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-1">
                 {hero.stats.map((stat, idx) => (
-                  <div key={idx} className="space-y-0.5">
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-mono tabular-nums">
-                      {stat.value}
+                  <div key={idx} className="flex flex-col justify-start">
+                    {/* Consistent-height value container so baselines & labels perfectly align */}
+                    <div className="h-10 sm:h-11 flex flex-col justify-end pb-0.5">
+                      {renderStatValue(stat.value)}
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+                    {/* Consistent label top alignment */}
+                    <div className="mt-1.5 text-xs text-slate-600 dark:text-slate-400 leading-snug font-medium min-h-[36px]">
                       {stat.label}
                     </div>
                   </div>
@@ -206,10 +244,10 @@ export const Hero: React.FC = () => {
 
                   {/* Verified Badge */}
                   <div
-                    className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-teal-600 dark:text-emerald-400 shadow-md"
+                    className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center"
                     title="Verified Principal VMware Architect"
                   >
-                    <CheckCircle2 className="w-4 h-4 fill-current text-white dark:text-slate-900" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                   </div>
                 </div>
 

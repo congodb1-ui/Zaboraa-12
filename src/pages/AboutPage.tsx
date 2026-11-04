@@ -16,9 +16,10 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { resolveMediaUrl } from '../data/mediaAssets';
+import { INITIAL_SITE_DATA } from '../data/initialData';
 
 export const AboutPage: React.FC = () => {
-  const { siteConfig, setIsBriefingModalOpen, isAdmin, setIsPhotoEditorOpen } = useCustomization();
+  const { siteConfig, setIsBriefingModalOpen, isAdmin, setIsPhotoEditorOpen, openAboutEditor } = useCustomization();
   const founder = siteConfig.founder;
 
   const resolvedPortrait = resolveMediaUrl(
@@ -26,124 +27,44 @@ export const AboutPage: React.FC = () => {
     '/assets/images/Wasim-Pic-02.png'
   );
 
-  const phoneDisplay = '+91 7497624807';
-  const locationDisplay = 'Pune & Global Advisory';
+  const about = siteConfig.aboutPage || INITIAL_SITE_DATA.aboutPage!;
+  const proofTiles = about.proofTiles ?? INITIAL_SITE_DATA.aboutPage!.proofTiles ?? [];
+  const selectedOutcomes = about.selectedOutcomes ?? INITIAL_SITE_DATA.aboutPage!.selectedOutcomes ?? [];
+  const specializations = about.specializations ?? INITIAL_SITE_DATA.aboutPage!.specializations ?? [];
+  const engagementSteps = about.engagementSteps ?? INITIAL_SITE_DATA.aboutPage!.engagementSteps ?? [];
+  const validatedCertifications = about.validatedCertifications ?? INITIAL_SITE_DATA.aboutPage!.validatedCertifications ?? [];
+  const contactDetails = about.contactDetails ?? INITIAL_SITE_DATA.aboutPage!.contactDetails ?? {};
+  const positioningLine = about.positioningLine ?? INITIAL_SITE_DATA.aboutPage!.positioningLine ?? '';
+  const tenets = about.tenets ?? INITIAL_SITE_DATA.aboutPage!.tenets ?? [];
 
-  const VALIDATED_CERTIFICATIONS = [
-    {
-      name: 'Nutanix Certified Professional - Cloud Integration - Azure (NCP-CI-Azure) 6.10',
-      issuer: 'Nutanix',
-      date: 'May 2026'
-    },
-    {
-      name: 'VMware Certified Advanced Professional - Data Center Virtualization Design 2023 (VCAP-DCV Design 2023)',
-      issuer: 'VMware by Broadcom',
-      date: 'Oct 2023'
-    },
-    {
-      name: 'VMware Certified Professional - Network Virtualization 2023 (VCP-NV 2023)',
-      issuer: 'VMware by Broadcom',
-      date: 'Feb 2023'
-    },
-    {
-      name: 'VMware Certified Professional - Data Center Virtualization 2023 (VCP-DCV 2023)',
-      issuer: 'VMware by Broadcom',
-      date: 'Jan 2023'
-    },
-    {
-      name: 'VMware Certified Specialist - Cloud Foundation 2023',
-      issuer: 'VMware by Broadcom',
-      date: 'Jan 2023'
-    },
-    {
-      name: 'Master Specialist - VMware Cloud on AWS 2023',
-      issuer: 'VMware by Broadcom',
-      date: 'Jan 2023'
-    }
-  ];
-
-  const PROOF_TILES = [
-    { value: '12+ Years', label: 'Enterprise Infrastructure' },
-    { value: '40+', label: 'Hyperscaler Migrations Executed' },
-    { value: '100%', label: 'Zero-Downtime Cutover Record' },
-    { value: '6', label: 'Free Engineering Tools' }
-  ];
-
-  const SPECIALIZATIONS = [
-    {
-      title: 'Hyperscaler Procurement & Sizing',
-      desc: 'Prevent cluster over-provisioning through decoupled external NFS storage architectures (ANF / FSx ONTAP).',
-      links: [
-        { label: 'AVS Architecture', url: '/disciplines/avs' },
-        { label: 'Node Sizing Tool', url: '/tools/sizing' }
-      ]
-    },
-    {
-      title: 'HCX Zero-Downtime Migration',
-      desc: 'Production wave sequencing, Network Extension L2 broadcast domain stretching, and MON traffic routing.',
-      links: [
-        { label: 'HCX Architecture', url: '/disciplines/hcx' },
-        { label: 'RVTools Analyzer', url: '/tools/rvtools-analyzer' }
-      ]
-    },
-    {
-      title: 'NSX-T Microsegmentation',
-      desc: 'Zero-trust distributed firewall rule discovery via Aria Operations for Networks before hyperscaler cutover.',
-      links: [
-        { label: 'NSX-T Security', url: '/disciplines/nsx' },
-        { label: 'Aria Networks Tool', url: '/tools/aria-networks' }
-      ]
-    },
-    {
-      title: 'Disaster Recovery Validation',
-      desc: 'SRM non-disruptive failover testing, recovery time objective (RTO) sequencing, and WAN delta modeling.',
-      links: [
-        { label: 'SRM Recovery', url: '/disciplines/srm' },
-        { label: 'DR Planner Tool', url: '/tools/dr-planner' }
-      ]
-    },
-    {
-      title: 'Nutanix NC2 on Azure Migration',
-      desc: 'AHV compatibility, VirtIO driver injection, Azure bare-metal node sizing and Nutanix Move wave planning.',
-      links: [
-        { label: 'NC2 Architecture', url: '/disciplines/nutanix-nc2-azure' },
-        { label: 'NC2 Assessment Tool', url: '/tools/nutanix-nc2-assessment' }
-      ]
-    }
-  ];
-
-  const SELECTED_OUTCOMES = [
-    '1,240 VMs, 0 hours downtime, 38% TCO reduction (Tier-1 bank)',
-    '4,500 workloads, 0 min downtime, 24% Capex reduction (18-hospital network)',
-    '820 VMs, 99.999% availability, $1.4M/year saved (global freight)'
-  ];
-
-  const ENGAGEMENT_STEPS = [
-    {
-      step: '01',
-      title: 'Assess',
-      summary: 'RVTools discovery, sizing, and readiness modeling across compute, memory, and storage boundaries.'
-    },
-    {
-      step: '02',
-      title: 'Design',
-      summary: 'Target architecture specification, NSX-T microsegmentation policy definition, and disaster-recovery planning.'
-    },
-    {
-      step: '03',
-      title: 'Cutover',
-      summary: 'HCX wave migration execution, non-disruptive validation, and operational cutover handover.'
-    }
-  ];
+  const phoneDisplay = contactDetails.phone || founder.phone || '+91 7497624807';
+  const locationDisplay = contactDetails.location || founder.location || 'Pune & Global Advisory';
+  const emailDisplay = contactDetails.email || founder.email || 'wasim@zaboraa.com';
+  const linkedInPersonal = contactDetails.linkedInPersonal || 'https://www.linkedin.com/in/wasim-sayyed-8b857714b/';
+  const linkedInCompany = contactDetails.linkedInCompany || 'https://www.linkedin.com/company/zaboraa/';
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-16">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-slate-400">
-        <Link to="/" className="hover:text-cyan-400 transition-colors">Home</Link>
-        <span aria-hidden="true">/</span>
-        <span className="text-cyan-300">About Principal Architect</span>
-      </nav>
+      {/* Breadcrumb & Admin Edit Quick Action */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-slate-400">
+          <Link to="/" className="hover:text-cyan-400 transition-colors">Home</Link>
+          <span aria-hidden="true">/</span>
+          <span className="text-cyan-300">About Principal Architect</span>
+        </nav>
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={openAboutEditor}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 transition-all shadow-md cursor-pointer ml-auto"
+            title="Open Edit Site drawer to customize the About Me page"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Edit About Page Content</span>
+          </button>
+        )}
+      </div>
 
       {/* Main Profile Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -184,7 +105,7 @@ export const AboutPage: React.FC = () => {
                 className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-teal-600 dark:text-emerald-400 shadow-md"
                 title="Verified Principal VMware & Nutanix Architect"
               >
-                <CheckCircle2 className="w-4 h-4 fill-current text-white dark:text-slate-900" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
               </div>
             </div>
 
@@ -259,14 +180,14 @@ export const AboutPage: React.FC = () => {
             )}
           </div>
 
-          {/* Certifications Box (exactly 6 credentials, newest first, nothing else) */}
+          {/* Certifications Box */}
           <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
               <Award className="w-4 h-4" />
-              <span>Validated Certifications & Credentials (6)</span>
+              <span>Validated Certifications & Credentials ({validatedCertifications.length})</span>
             </h3>
             <ol className="space-y-2.5">
-              {VALIDATED_CERTIFICATIONS.map((cert, idx) => (
+              {validatedCertifications.map((cert, idx) => (
                 <li
                   key={idx}
                   className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 space-y-1"
@@ -294,54 +215,44 @@ export const AboutPage: React.FC = () => {
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-xs font-mono text-cyan-300">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>PRINCIPAL ARCHITECTURAL DESK</span>
+              <span>{about.badgeText || 'PRINCIPAL ARCHITECTURAL DESK'}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-              Enterprise Cloud Architecture & Advisory
+              {about.heading || 'Enterprise Cloud Architecture & Advisory'}
             </h1>
           </div>
 
           {/* 1. Proof Strip: 4 compact stat tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {PROOF_TILES.map((tile, idx) => (
+            {proofTiles.map((tile, idx) => (
               <div
                 key={idx}
-                className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1"
+                className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1 flex flex-col justify-between"
               >
-                <div className="text-xl sm:text-2xl font-black text-cyan-300 font-mono tracking-tight">
+                <div className="text-xl sm:text-2xl font-black text-cyan-300 font-mono tracking-tight leading-none">
                   {tile.value}
                 </div>
-                <div className="text-xs text-slate-400 font-mono leading-tight">
+                <div className="text-xs text-slate-400 font-mono leading-tight mt-1">
                   {tile.label}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Bio Rewrite: Positioning Line + 3 Core Tenets */}
+          {/* Bio Rewrite: Positioning Line + Core Tenets */}
           <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
             <p className="text-base sm:text-lg font-medium text-white leading-relaxed">
-              Founder-led VMware and Nutanix cloud migration and disaster-recovery advisory across Azure AVS, NC2, GCVE and VMC.
+              {positioningLine}
             </p>
             <ul className="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-slate-800/80 pt-3">
-              <li className="flex items-start gap-2.5">
-                <span className="font-mono text-cyan-400 font-bold shrink-0 mt-0.5">•</span>
-                <span>
-                  <strong className="text-white">What I own:</strong> Target architecture, risk, RTO/RPO, cutover decisions.
-                </span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="font-mono text-cyan-400 font-bold shrink-0 mt-0.5">•</span>
-                <span>
-                  <strong className="text-white">How it is delivered:</strong> A vetted network of VMware, Nutanix, networking and cloud specialists under one delivery framework.
-                </span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <span className="font-mono text-cyan-400 font-bold shrink-0 mt-0.5">•</span>
-                <span>
-                  <strong className="text-white">How it is protected:</strong> NDA and a single quality standard.
-                </span>
-              </li>
+              {tenets.map((tenet, tIdx) => (
+                <li key={tIdx} className="flex items-start gap-2.5">
+                  <span className="font-mono text-cyan-400 font-bold shrink-0 mt-0.5">•</span>
+                  <span>
+                    <strong className="text-white">{tenet.label}:</strong> {tenet.text}
+                  </span>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -352,15 +263,15 @@ export const AboutPage: React.FC = () => {
                 Advisory Specializations
               </h2>
               <span className="text-xs font-mono text-cyan-400">
-                5 Practice Areas
+                {specializations.length} Practice Areas
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {SPECIALIZATIONS.map((pil, idx) => (
+              {specializations.map((pil, idx) => (
                 <div
                   key={idx}
                   className={`p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3 ${
-                    idx === 4 ? 'sm:col-span-2' : ''
+                    idx === specializations.length - 1 && specializations.length % 2 === 1 ? 'sm:col-span-2' : ''
                   }`}
                 >
                   <div className="space-y-1.5">
@@ -374,7 +285,7 @@ export const AboutPage: React.FC = () => {
                   </div>
                   <div className="pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
                     <span className="text-[11px] font-mono text-slate-500">See it in action:</span>
-                    {pil.links.map((link, lIdx) => (
+                    {(pil.links || []).map((link, lIdx) => (
                       <Link
                         key={lIdx}
                         to={link.url}
@@ -389,7 +300,7 @@ export const AboutPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Selected Outcomes Row */}
+            {/* Selected Outcomes Row (Reflects Actual Verified Case Studies) */}
             <div className="p-4 sm:p-5 rounded-xl bg-slate-950 border border-cyan-500/30 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
@@ -404,23 +315,36 @@ export const AboutPage: React.FC = () => {
                 </Link>
               </div>
               <ul className="space-y-1.5 text-xs font-mono text-slate-300">
-                {SELECTED_OUTCOMES.map((outcome, oIdx) => (
-                  <li key={oIdx} className="flex items-start gap-2">
-                    <span className="text-cyan-400">→</span>
-                    <span>{outcome}</span>
-                  </li>
-                ))}
+                {selectedOutcomes.map((outcome, oIdx) => {
+                  const text = typeof outcome === 'string' ? outcome : outcome.text;
+                  const slug = typeof outcome === 'object' ? outcome.caseStudySlug : undefined;
+                  return (
+                    <li key={oIdx} className="flex items-start gap-2 group">
+                      <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
+                      {slug ? (
+                        <Link
+                          to={`/case-studies/${slug}`}
+                          className="hover:text-cyan-300 transition-colors hover:underline"
+                        >
+                          {text}
+                        </Link>
+                      ) : (
+                        <span>{text}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
 
-          {/* 3. How Engagements Work: 3 Steps */}
+          {/* 3. How Engagements Work: Steps */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider text-slate-400">
               How Engagements Work
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {ENGAGEMENT_STEPS.map((step, sIdx) => (
+              {engagementSteps.map((step, sIdx) => (
                 <div
                   key={sIdx}
                   className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2"

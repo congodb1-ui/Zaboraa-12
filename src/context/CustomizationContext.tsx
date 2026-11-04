@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { externalizeImages } from '../services/siteAssets';
 import { isDummyVideoUrl } from '../utils/videoUtils';
 
-const STORAGE_KEY = 'zaboraa_site_config_v10';
+const STORAGE_KEY = 'zaboraa_site_config_v11';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
 
 function cleanOldStorageKeys() {
@@ -16,7 +16,7 @@ function cleanOldStorageKeys() {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (key.startsWith('zaboraa_site_config_') || key.startsWith('zaboraa_config_'))) {
-        if (key !== STORAGE_KEY && key !== 'zaboraa_site_config_v9') {
+        if (key !== STORAGE_KEY && key !== 'zaboraa_site_config_v10') {
           keysToRemove.push(key);
         }
       }

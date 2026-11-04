@@ -625,10 +625,10 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     headline: 'Minimal Downtime VMware Cloud & Hyperscaler Migration Authority',
     subheadline: 'Architecting mission-critical enterprise cloud evacuations, sovereign VMware software-defined datacenters, and automated disaster recovery across Azure (AVS), AWS (VMC), and Google Cloud (GCVE).',
     stats: [
-      { value: '14+', label: 'Middle East Government Entities' },
-      { value: '12+', label: 'Years Enterprise Infrastructure' },
-      { value: 'AVS · NC2 · GCVE · VMC', label: 'Hyperscaler Platforms' },
-      { value: '6x', label: 'Verified Cloud Certifications' }
+      { value: '13+', label: 'Years Enterprise Infrastructure' },
+      { value: '25+', label: 'Hyperscaler Migrations Executed' },
+      { value: '8×', label: 'Verified Cloud Certifications' },
+      { value: '100%', label: 'Runbook-Driven Cutovers' }
     ],
     heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.jpg'
   },

@@ -7,24 +7,29 @@ describe('Hero Engineering Metrics & Alignment Suite', () => {
     expect(stats).toHaveLength(4);
 
     expect(stats[0]).toEqual({
-      value: '14+',
-      label: 'Middle East Government Entities'
-    });
-
-    expect(stats[1]).toEqual({
-      value: '12+',
+      value: '13+',
       label: 'Years Enterprise Infrastructure'
     });
 
+    expect(stats[1]).toEqual({
+      value: '25+',
+      label: 'Hyperscaler Migrations Executed'
+    });
+
     expect(stats[2]).toEqual({
-      value: 'AVS · NC2 · GCVE · VMC',
-      label: 'Hyperscaler Platforms'
+      value: '8×',
+      label: 'Verified Cloud Certifications'
     });
 
     expect(stats[3]).toEqual({
-      value: '6x',
-      label: 'Verified Cloud Certifications'
+      value: '100%',
+      label: 'Runbook-Driven Cutovers'
     });
+
+    // Failing case check: ensure obsolete multi-platform text is no longer present
+    const values = stats.map(s => s.value);
+    expect(values).not.toContain('AVS · NC2 · GCVE · VMC');
+    expect(values).not.toContain('14+');
   });
 
   it('correctly parses multi-platform bullet strings into balanced pairs', () => {

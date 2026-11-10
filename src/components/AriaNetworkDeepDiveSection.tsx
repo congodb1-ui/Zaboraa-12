@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { resolveMediaUrl } from '../data/mediaAssets';
 import {
   Network,
   Shield,
@@ -816,11 +817,15 @@ resource "nsxt_firewall_section" "dfw_rule_${rule.id}" {
             >
               <div className="relative h-48 bg-slate-950 overflow-hidden">
                 <img
-                  src={diagram.url}
+                  src={resolveMediaUrl(diagram.url, '/assets/images/hero_cloud_datacenter_1791450064361.webp')}
                   alt={diagram.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/images/hero_cloud_datacenter_1791450064361.webp';
+                    const target = e.currentTarget;
+                    const fallback = '/assets/images/hero_cloud_datacenter_1791450064361.webp';
+                    if (target.src && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
                   }}
                 />
                 <div className="absolute top-3 left-3">
@@ -866,9 +871,16 @@ resource "nsxt_firewall_section" "dfw_rule_${rule.id}" {
             </div>
             <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 max-h-[80vh] flex items-center justify-center">
               <img
-                src={fullscreenDiagram.url}
+                src={resolveMediaUrl(fullscreenDiagram.url, '/assets/images/hero_cloud_datacenter_1791450064361.webp')}
                 alt={fullscreenDiagram.title}
                 className="max-h-[75vh] w-auto object-contain"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  const fallback = '/assets/images/hero_cloud_datacenter_1791450064361.webp';
+                  if (target.src && !target.src.endsWith(fallback)) {
+                    target.src = fallback;
+                  }
+                }}
               />
             </div>
           </div>

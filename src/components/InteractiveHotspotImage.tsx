@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DiagramHotspot, getHotspotsForDesign } from '../data/diagramHotspotsData';
 import { ComponentInspectorModal } from './ComponentInspectorModal';
 import { useCustomization } from '../context/CustomizationContext';
+import { resolveMediaUrl, ISOMETRIC_BLUEPRINT_3D_FALLBACK } from '../data/mediaAssets';
 import {
   Maximize2,
   Minimize2,
@@ -45,7 +46,7 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
   // Diagram-level hotspot interaction state
   const [selectedHotspot, setSelectedHotspot] = useState<DiagramHotspot | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = useState<DiagramHotspot | null>(null);
-  const [currentSrc, setCurrentSrc] = useState<string>(imageUrl);
+  const [currentSrc, setCurrentSrc] = useState<string>(() => resolveMediaUrl(imageUrl, ISOMETRIC_BLUEPRINT_3D_FALLBACK));
   
   // Full-screen distraction-free state
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
@@ -53,7 +54,7 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
 
   // When diagram or subsection changes, reset image source and zoom
   useEffect(() => {
-    setCurrentSrc(imageUrl);
+    setCurrentSrc(resolveMediaUrl(imageUrl, ISOMETRIC_BLUEPRINT_3D_FALLBACK));
     setHoveredHotspot(null);
     setSelectedHotspot(null);
     setZoomLevel(1);
@@ -231,10 +232,8 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
           alt={title}
           referrerPolicy="no-referrer"
           onError={() => {
-            if (currentSrc.startsWith('/src/assets/images/')) {
-              setCurrentSrc(currentSrc.replace('/src/assets/images/', '/assets/images/'));
-            } else if (currentSrc.startsWith('/assets/images/')) {
-              setCurrentSrc('/src' + currentSrc);
+            if (currentSrc !== ISOMETRIC_BLUEPRINT_3D_FALLBACK) {
+              setCurrentSrc(ISOMETRIC_BLUEPRINT_3D_FALLBACK);
             }
           }}
           className="w-full h-full object-contain bg-slate-950 transition-transform duration-300 group-hover:scale-[1.01]"
@@ -404,10 +403,8 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
                 alt={title}
                 referrerPolicy="no-referrer"
                 onError={() => {
-                  if (currentSrc.startsWith('/src/assets/images/')) {
-                    setCurrentSrc(currentSrc.replace('/src/assets/images/', '/assets/images/'));
-                  } else if (currentSrc.startsWith('/assets/images/')) {
-                    setCurrentSrc('/src' + currentSrc);
+                  if (currentSrc !== ISOMETRIC_BLUEPRINT_3D_FALLBACK) {
+                    setCurrentSrc(ISOMETRIC_BLUEPRINT_3D_FALLBACK);
                   }
                 }}
                 className="w-full h-full object-contain mx-auto"

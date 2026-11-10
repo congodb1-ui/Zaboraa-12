@@ -134,10 +134,9 @@ export const PhotoEditorModal: React.FC = () => {
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     const target = e.currentTarget;
-                    if (target.src.includes('/src/assets/images/')) {
-                      target.src = target.src.replace('/src/assets/images/', '/assets/images/');
-                    } else if (target.src.includes('/assets/images/')) {
-                      target.src = target.src.replace('/assets/images/', '/src/assets/images/');
+                    const fallback = '/assets/images/Wasim-Pic-02.webp';
+                    if (target.src && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
                     }
                   }}
                   style={{

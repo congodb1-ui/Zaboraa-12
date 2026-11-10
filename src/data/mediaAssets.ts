@@ -2,6 +2,7 @@
 // Resolves image and asset paths with fallback to bundled local assets.
 
 export const ISOMETRIC_BLUEPRINT_3D_FALLBACK = '/assets/images/blueprint_3d_isometric_1791610246387.webp';
+export const FOUNDER_PORTRAIT_FALLBACK = '/assets/images/Wasim-Pic-02.webp';
 
 export const GOOGLE_DRIVE_CONFIG = {
   folderId: '1sFG8NLUcajo8DuCs7jq9ChYK-rksx7Io',
@@ -17,7 +18,7 @@ export const GOOGLE_DRIVE_CONFIG = {
 export function resolveMediaUrl(pathOrId: string | undefined, fallbackLocalPath: string = '/assets/images/hero_cloud_datacenter_1791450064361.webp'): string {
   if (!pathOrId || pathOrId.trim() === '') return fallbackLocalPath;
 
-  const trimmed = pathOrId.trim();
+  let trimmed = pathOrId.trim();
 
   // Data URLs (e.g. from local file uploads FileReader readAsDataURL)
   if (trimmed.startsWith('data:image/') || trimmed.startsWith('blob:')) {
@@ -30,6 +31,14 @@ export function resolveMediaUrl(pathOrId: string | undefined, fallbackLocalPath:
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
 
+  // Google Drive standard share link to direct image URL
+  if (trimmed.includes('drive.google.com/file/d/')) {
+    const match = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+  }
+
   // Full external URL (HTTP/HTTPS)
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
@@ -37,23 +46,31 @@ export function resolveMediaUrl(pathOrId: string | undefined, fallbackLocalPath:
 
   // Public directory paths normalization (in Vite, public/ files are served directly at /)
   if (trimmed.startsWith('/public/assets/images/')) {
-    return trimmed.replace('/public/assets/images/', '/assets/images/');
-  }
-  if (trimmed.startsWith('public/assets/images/')) {
-    return trimmed.replace('public/assets/images/', '/assets/images/');
+    trimmed = trimmed.replace('/public/assets/images/', '/assets/images/');
+  } else if (trimmed.startsWith('public/assets/images/')) {
+    trimmed = trimmed.replace('public/assets/images/', '/assets/images/');
   }
 
   // Src directory paths normalization
   if (trimmed.startsWith('/src/assets/images/')) {
-    return trimmed.replace('/src/assets/images/', '/assets/images/');
-  }
-  if (trimmed.startsWith('src/assets/images/')) {
-    return trimmed.replace('src/assets/images/', '/assets/images/');
+    trimmed = trimmed.replace('/src/assets/images/', '/assets/images/');
+  } else if (trimmed.startsWith('src/assets/images/')) {
+    trimmed = trimmed.replace('src/assets/images/', '/assets/images/');
   }
 
   // Missing leading slash on assets path
   if (trimmed.startsWith('assets/images/')) {
-    return '/' + trimmed;
+    trimmed = '/' + trimmed;
+  }
+
+  // Bare image filename normalization without directory
+  if (!trimmed.includes('/') && /\.(webp|png|jpg|jpeg|svg|avif)$/i.test(trimmed)) {
+    trimmed = '/assets/images/' + trimmed;
+  }
+
+  // Correct common misnamed extensions for known webp files
+  if (trimmed.endsWith('cloud_3d_blueprint_enterprise_1792147431615.jpg')) {
+    trimmed = '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp';
   }
 
   return trimmed;

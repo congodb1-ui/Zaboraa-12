@@ -249,6 +249,9 @@ export const CommercializationModal: React.FC<CommercializationModalProps> = ({
                   <img
                     src={user.photoURL}
                     alt={user.displayName || 'Architect'}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
                     className="w-11 h-11 rounded-full border border-cyan-500/60 object-cover"
                   />
                 ) : (

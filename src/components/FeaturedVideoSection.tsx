@@ -127,10 +127,9 @@ export const FeaturedVideoSection: React.FC = () => {
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget;
-                      if (target.src.includes('/src/assets/images/')) {
-                        target.src = target.src.replace('/src/assets/images/', '/assets/images/');
-                      } else if (target.src.includes('/assets/images/')) {
-                        target.src = target.src.replace('/assets/images/', '/src/assets/images/');
+                      const fallback = '/assets/images/hero_cloud_datacenter_1791450064361.webp';
+                      if (target.src && !target.src.endsWith(fallback)) {
+                        target.src = fallback;
                       }
                     }}
                     className="w-full h-full object-cover absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-500"

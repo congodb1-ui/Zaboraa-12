@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const MODEL = 'gemini-3.1-flash-lite-image';
 const FALLBACK_URL =
-  '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg';
+  '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp';
 
 async function generateBlueprint(apiKey: string, prompt: string) {
   const ai = new GoogleGenAI({

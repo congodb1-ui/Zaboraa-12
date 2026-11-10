@@ -5,6 +5,7 @@ import { ZaboraaLogoMark } from './ZaboraaLogo';
 import { AdminParameterControlStudio } from './AdminParameterControlStudio';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 import { CASE_STUDIES } from '../data/caseStudies';
+import { resolveMediaUrl } from '../data/mediaAssets';
 import {
   X,
   Sliders,
@@ -2049,14 +2050,13 @@ export const CustomizerDrawer: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg overflow-hidden border border-cyan-500/50 bg-slate-800 shrink-0">
                     <img
-                      src={siteConfig.founder.portraitImage || '/assets/images/wasim_sayyed_executive_1791473154875.webp'}
+                      src={resolveMediaUrl(siteConfig.founder.portraitImage, '/assets/images/Wasim-Pic-02.webp')}
                       alt="Wasim Portrait"
                       onError={(e) => {
                         const target = e.currentTarget;
-                        if (target.src.includes('/src/assets/images/')) {
-                          target.src = target.src.replace('/src/assets/images/', '/assets/images/');
-                        } else if (target.src.includes('/assets/images/')) {
-                          target.src = target.src.replace('/assets/images/', '/src/assets/images/');
+                        const fallback = '/assets/images/Wasim-Pic-02.webp';
+                        if (target.src && !target.src.endsWith(fallback)) {
+                          target.src = fallback;
                         }
                       }}
                       className="w-full h-full object-cover"

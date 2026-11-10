@@ -1,23 +1,38 @@
 /**
- * Submits the 8 new and updated URLs (Case Studies Hub + 7 Case Studies)
- * to search engines via the IndexNow protocol (api.indexnow.org).
+ * Submits all indexable URLs from ROUTE_MANIFEST to search engines
+ * via the IndexNow protocol (api.indexnow.org).
  */
+import esbuild from 'esbuild';
 
 const KEY = 'zaboraa84920485902482048f029a17382';
 const HOST = 'zaboraa.com';
 
-const URL_LIST = [
-  'https://zaboraa.com/case-studies',
-  'https://zaboraa.com/case-studies/middle-east-gov-avs-framework',
-  'https://zaboraa.com/case-studies/avs-to-avs-cross-region',
-  'https://zaboraa.com/case-studies/gov-dr-failover-drills',
-  'https://zaboraa.com/case-studies/private-gcve-vmc-migration',
-  'https://zaboraa.com/case-studies/nsxt-microsegmentation-aria-networks',
-  'https://zaboraa.com/case-studies/aria-operations-networks-deployment',
-  'https://zaboraa.com/case-studies/aria-automation-blueprints-vcenter'
-];
+const routesBundle = esbuild.buildSync({
+  entryPoints: ['src/seo/routes.ts'],
+  bundle: true,
+  write: false,
+  format: 'esm'
+});
+
+const routesModuleUri = `data:text/javascript;base64,${Buffer.from(routesBundle.outputFiles[0].text).toString('base64')}`;
+const { ROUTE_MANIFEST } = await import(routesModuleUri);
+
+// Filter out noindex routes and construct full URLs
+const URL_LIST = ROUTE_MANIFEST
+  .filter((route) => !route.noindex)
+  .map((route) => `https://${HOST}${route.path === '/' ? '' : route.path}`);
 
 async function submitIndexNow() {
+  const isDryRun = process.argv.includes('--dry-run');
+
+  console.log(`[IndexNow] Found ${URL_LIST.length} indexable URLs from ROUTE_MANIFEST.`);
+  if (isDryRun) {
+    console.log('[IndexNow Dry Run] URLs to submit:');
+    URL_LIST.forEach((url) => console.log(` - ${url}`));
+    console.log('[IndexNow Dry Run] Completed without making network request.');
+    return;
+  }
+
   const payload = {
     host: HOST,
     key: KEY,

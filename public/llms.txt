@@ -1,10 +1,10 @@
 # Zaboraa
 
-> Zaboraa is a founder-led enterprise VMware cloud architecture advisory based in Pune, Maharashtra, India, specialising in VMware-to-hyperscaler migration (Azure VMware Solution, Google Cloud VMware Engine, VMware Cloud on AWS, Nutanix NC2 on Azure), NSX-T zero-trust microsegmentation, HCX migration frameworks, and disaster recovery. It also publishes six free, browser-based engineering tools (no sign-up required) for sizing, migration readiness, and DR planning. Founded by Wasim Sayyed, Principal VMware Architect, with 13 years of VMware infrastructure architecture experience.
+> Zaboraa is a founder-led enterprise VMware cloud architecture advisory based in Pune, Maharashtra, India, specialising in VMware-to-hyperscaler migration (Azure VMware Solution, Google Cloud VMware Engine, VMware Cloud on AWS, Nutanix NC2 on Azure), NSX-T zero-trust microsegmentation, HCX migration frameworks, and disaster recovery. It also publishes six free, browser-based engineering tools (no sign-up required) for sizing, migration readiness, and DR planning. Founded by Wasim Sayyed, Principal VMware Architect, with 13+ years of VMware infrastructure architecture experience.
 
 Note: Zaboraa is NOT a consumer AI image/audio/text generator site. It has no pricing plans, credits, or billing. Advisory engagements start with a confidential technical briefing.
 
-The site is a client-side application. Full plain-text content is available in /llms-full.txt.
+Every public page on zaboraa.com is prerendered as full semantic static HTML for search and AI crawlers with zero client-side JavaScript execution required. Comprehensive plain-text documentation of all architecture disciplines, tools, and case studies is published at https://zaboraa.com/llms-full.txt.
 
 ## Free engineering tools (no login required)
 - [Node & Storage Sizing Estimator](https://zaboraa.com/tools/sizing): Host count and usable storage for AVS, VMC, GCVE, and Nutanix NC2, including node savings from external NFS (Azure NetApp Files, Amazon FSx for NetApp ONTAP). Client-side calculation with Excel export.
@@ -40,7 +40,7 @@ The site is a client-side application. Full plain-text content is available in /
 - [About the founder](https://zaboraa.com/about): Background of Principal VMware Architect Wasim Sayyed.
 
 ## Founder
-Wasim Sayyed, Founder and Principal VMware Architect. 13 years in VMware infrastructure architecture. Based in Pune, Maharashtra, India. LinkedIn: https://www.linkedin.com/in/wasim-sayyed-8b857714b/
+Wasim Sayyed, Founder and Principal VMware Architect. 13+ years in VMware infrastructure architecture. Based in Pune, Maharashtra, India. LinkedIn: https://www.linkedin.com/in/wasim-sayyed-8b857714b/
 
 ## Contact
 - Website: https://zaboraa.com

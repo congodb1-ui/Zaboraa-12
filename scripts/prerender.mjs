@@ -353,14 +353,14 @@ ${faqsText}
 
 const llmsFullText = `# Zaboraa — full plain-text reference
 
-Zaboraa (https://zaboraa.com) is a founder-led enterprise VMware architecture advisory based in Pune, Maharashtra, India. Tagline: Minimal Downtime VMware Cloud and Hyperscaler Migration Authority. Led by Principal VMware Architect Wasim Sayyed, who brings 13 years of enterprise VMware infrastructure architecture experience.
+Zaboraa (https://zaboraa.com) is a founder-led enterprise VMware architecture advisory based in Pune, Maharashtra, India. Tagline: Minimal Downtime VMware Cloud and Hyperscaler Migration Authority. Led by Principal VMware Architect Wasim Sayyed, who brings 13+ years of enterprise VMware infrastructure architecture experience.
 
 Advisory engagements serve CIOs, cloud directors, infrastructure architects, and migration leads at regulated, high-uptime public sector and enterprise organizations moving VMware datacenters to Azure VMware Solution (AVS), Google Cloud VMware Engine (GCVE), VMware Cloud on AWS (VMC), or Nutanix NC2 on Azure.
 
 Primary call to action: Book Briefing (confidential technical consultation). Secondary: utilize the free browser-based tools at https://zaboraa.com/tools. There is no consumer software tier, pricing page, credits system, or billing.
 
 ## Founder
-Wasim Sayyed, Founder and Principal VMware Architect. 13 years in VMware infrastructure architecture. Based in Pune, Maharashtra, India. Specialist in sovereign cloud migrations, Azure VMware Solution, Google Cloud VMware Engine, and VMware Cloud on AWS.
+Wasim Sayyed, Founder and Principal VMware Architect. 13+ years in VMware infrastructure architecture. Based in Pune, Maharashtra, India. Specialist in sovereign cloud migrations, Azure VMware Solution, Google Cloud VMware Engine, and VMware Cloud on AWS.
 
 ## Advisory specialisations
 - Hyperscaler procurement and sizing: avoid bare-metal cluster over-provisioning by decoupling storage to external NFS datastores (Azure NetApp Files, Amazon FSx for NetApp ONTAP, Google Cloud NetApp Volumes / Filestore).

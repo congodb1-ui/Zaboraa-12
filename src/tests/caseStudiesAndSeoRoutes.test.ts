@@ -95,8 +95,8 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
   });
 
   describe('2. SEO Route Manifest & Canonical Hygiene', () => {
-    it('manifest defines exactly 30 routes for Prompt 3', () => {
-      expect(ROUTE_MANIFEST).toHaveLength(30);
+    it('manifest defines exactly 53 routes (Prompt 3 + Phase 4 detail routes)', () => {
+      expect(ROUTE_MANIFEST).toHaveLength(53);
     });
 
     it('all routes have unique lowercase paths starting with slash', () => {
@@ -162,10 +162,10 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       ]);
     });
 
-    it('adminService.getSeoMetadata returns all 30 routes including all 7 case studies', async () => {
+    it('adminService.getSeoMetadata returns all 53 routes including all 7 case studies, 18 KB runbooks, and 5 tutorials', async () => {
       const { adminService } = await import('../services/adminService');
       const seoPages = await adminService.getSeoMetadata();
-      expect(seoPages.length).toBe(30);
+      expect(seoPages.length).toBe(53);
 
       const paths = seoPages.map(p => p.page_path);
       expect(paths).toContain('/case-studies');
@@ -179,17 +179,19 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(paths).not.toContain('/cases');
     });
 
-    it('adminService.generateSitemapXml produces clean sitemap with 29 URLs (excluding noindex) and no priority/changefreq', async () => {
+    it('adminService.generateSitemapXml produces clean sitemap with 52 URLs (excluding noindex) and no priority/changefreq', async () => {
       const { adminService } = await import('../services/adminService');
       const seoPages = await adminService.getSeoMetadata();
       const xml = adminService.generateSitemapXml(seoPages);
 
       expect(xml).toContain('https://zaboraa.com/case-studies/middle-east-gov-avs-framework');
       expect(xml).toContain('https://zaboraa.com/case-studies/nsxt-microsegmentation-aria-networks');
+      expect(xml).toContain('https://zaboraa.com/resources/kb/kb-ntx-1001');
+      expect(xml).toContain('https://zaboraa.com/resources/tutorials/avs-expressroute-fastpath-implementation-guide');
       expect(xml).not.toContain('https://zaboraa.com/resources/videos');
       expect(xml).not.toContain('<priority>');
       expect(xml).not.toContain('<changefreq>');
-      expect(xml.split('<url>').length - 1).toBe(29);
+      expect(xml.split('<url>').length - 1).toBe(52);
     });
 
     it('handles legacy case studies with undefined facts safely without throwing scale error', () => {

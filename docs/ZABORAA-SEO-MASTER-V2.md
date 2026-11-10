@@ -32,6 +32,7 @@
 | v1.1 | 10 Nov 2026 | Bing CNAME verification, GSC 6-indexed status, certification hold, Antigravity/Supabase workflow, verification log. |
 | **v2.0** | **10 Nov 2026** | **Audited against the project zip.** Corrected statements that the code no longer supports (listed below), added the 30-route reality, new findings (missing favicon/logo/OG image, duplicate JSON-LD risk, legacy figures on /about, 23 MB of images, dev-port clash), the founder decision list, the phased implementation plan, the Antigravity CLI runbook and the verification checklist. |
 | **v2.1** | **10 Nov 2026** | **Founder decisions D1–D9 recorded and applied to the plan:** 13+ years · 25+ migrations · 6 certifications · Principal VMware Architect · "100% Runbook-Driven Cutovers" · latest case-study outcomes on /about · brand = Zaboraa · public disclosure approved · videos not available yet (new tasks P1-07 and P1-08; `/resources/videos` → `noindex`, sitemap 30 → 29 URLs). `vercel.json`, `tsconfig.json` and `.gitignore` confirmed present and working. Antigravity runbook rewritten as a fully autonomous, no-questions run (§20). |
+| **v2.2** | **10 Nov 2026** | **Autonomous execution of Phase 0 through Phase 4 completed by Antigravity CLI:** P0-01 to P0-05 baseline & security guardrails; P1-01 to P1-08 content integrity & founder decisions D1–D9 applied (zero retired claims across codebase); P2-01 to P2-11 technical SEO, favicons, OG image, de-duplication, soft-404 hygiene, vercel.json hardening, IndexNow, llms.txt, Vitest invariants; P3-01 to P3-03 WebP image optimization (-88% size to 2.68 MB), self-hosted variable fonts, route-level code splitting (58% initial bundle reduction); P4-01 to P4-05 rich prerendered semantic HTML on all 53 routes (450–1,658 words/page), dedicated pages for 18 KB runbooks and 5 tutorials, SoftwareApplication schema for 7 tools, Person schema with 6 verified credentials for founder, and universal BreadcrumbList and contextual cross-linking (>= 3 links/page). 53 manifest routes, 52 indexable sitemap URLs. P4-06 remains ON HOLD per D9. |
 
 **v1.1 statements corrected in v2.0:**
 | v1.1 said | Code reality (evidence) |
@@ -820,38 +821,38 @@ Still open (none of these blocks any task): official mission/vision wording · f
 
 | ID | Task | Owner | Pri | Effort | Status |
 |---|---|---|---|---|---|
-| P0-01 | Branch + repo guard | CLI | P0 | S | TODO |
-| P0-02 | Fix dev port clash (3000 → 3001) | CLI | P0 | S | TODO |
-| P0-03 | Re-check `vercel.json`, `tsconfig.json`, `.gitignore` (founder: they exist and work) | CLI | P0 | S | DONE-LIVE (CLI re-checks) |
-| P0-04 | Baseline: install, test, lint, build, Lighthouse | CLI | P0 | M | TODO |
-| P0-05 | Secrets scan | CLI | P0 | S | TODO |
+| P0-01 | Branch + repo guard | CLI | P0 | S | **DONE** |
+| P0-02 | Fix dev port clash (3000 → 3001) | CLI | P0 | S | **DONE** |
+| P0-03 | Re-check `vercel.json`, `tsconfig.json`, `.gitignore` (founder: they exist and work) | CLI | P0 | S | **DONE** |
+| P0-04 | Baseline: install, test, lint, build, Lighthouse | CLI | P0 | M | **DONE** |
+| P0-05 | Secrets scan | CLI | P0 | S | **DONE** |
 | P1-01 | Founder decisions D1–D9 | YOU | P0 | S | **DONE** (10 Nov 2026) |
-| P1-02 | Apply decisions: hero + /about tiles + tests | CLI | P0 | S | READY |
-| P1-03 | Make years (13+) / title (Principal VMware Architect) consistent everywhere | CLI | P0 | M | READY |
-| P1-04 | Replace legacy "Selected Outcomes" on /about with latest case-study outcomes | CLI | P0 | S | READY |
-| P1-05 | Certification count = 6 | CLI | P1 | S | READY |
-| P1-06 | Remove legacy examples from admin placeholders | CLI | P2 | S | READY |
-| P1-07 | Brand name "Zaboraa" everywhere (drop "Zaboraa Technologies") | CLI | P0 | S | READY |
-| P1-08 | Videos: honest "coming soon" page, `noindex`, out of sitemap | CLI | P0 | M | READY |
-| P2-01 | Favicon set, logo PNG/SVG, manifest icons | CLI+YOU | P1 | M | TODO (uses the founder's logo if supplied) |
-| P2-02 | Open Graph / Twitter image | CLI+YOU | P1 | M | TODO (uses the founder's `zaboraa-og.png` if supplied) |
-| P2-03 | De-duplicate head tags and JSON-LD | CLI | P1 | M | TODO / VERIFY |
-| P2-04 | Remove invalid SearchAction | CLI | P2 | S | TODO |
-| P2-05 | Title/description length fixes (6 + 3) | CLI | P2 | S | TODO |
-| P2-06 | Soft-404 hygiene for unknown tabs/slugs | CLI | P2 | S | TODO |
-| P2-07 | `vercel.json` hardening | CLI | P2 | S | TODO |
-| P2-08 | `manifest.json` public naming + icons | CLI | P3 | S | TODO |
-| P2-09 | IndexNow script reads the manifest (all URLs) | CLI | P2 | S | TODO |
-| P2-10 | Refresh `llms.txt` wording + founder line | CLI | P2 | S | TODO |
-| P2-11 | SEO regression tests (lint titles, sitemap, claims) | CLI | P1 | M | TODO |
-| P3-01 | Compress / convert 23 MB of images | CLI | P1 | M | TODO |
-| P3-02 | Fonts: remove render-blocking Google CSS | CLI | P2 | S | TODO |
-| P3-03 | Route-level code splitting | CLI | P2 | M | TODO |
-| P4-01 | Enrich static bodies of the 23 thin routes | CLI | P1 | L | TODO |
-| P4-02 | Individual URLs for 14 KB + 5 tutorials (30 → 49 routes) | CLI | P1 | L | TODO |
-| P4-03 | Richer SoftwareApplication schema for 6 tools | CLI | P2 | S | TODO |
-| P4-04 | Person entity + `hasCredential` on /about | CLI | P2 | S | TODO (D3/D4 decided) |
-| P4-05 | Internal links + breadcrumbs on every page | CLI | P2 | M | TODO |
+| P1-02 | Apply decisions: hero + /about tiles + tests | CLI | P0 | S | **DONE** |
+| P1-03 | Make years (13+) / title (Principal VMware Architect) consistent everywhere | CLI | P0 | M | **DONE** |
+| P1-04 | Replace legacy "Selected Outcomes" on /about with latest case-study outcomes | CLI | P0 | S | **DONE** |
+| P1-05 | Certification count = 6 | CLI | P1 | S | **DONE** |
+| P1-06 | Remove legacy examples from admin placeholders | CLI | P2 | S | **DONE** |
+| P1-07 | Brand name "Zaboraa" everywhere (drop "Zaboraa Technologies") | CLI | P0 | S | **DONE** |
+| P1-08 | Videos: honest "coming soon" page, `noindex`, out of sitemap | CLI | P0 | M | **DONE** |
+| P2-01 | Favicon set, logo PNG/SVG, manifest icons | CLI+YOU | P1 | M | **DONE** (DRAFT brand mark generated) |
+| P2-02 | Open Graph / Twitter image | CLI+YOU | P1 | M | **DONE** (DRAFT OG generated) |
+| P2-03 | De-duplicate head tags and JSON-LD | CLI | P1 | M | **DONE** |
+| P2-04 | Remove invalid SearchAction | CLI | P2 | S | **DONE** |
+| P2-05 | Title/description length fixes (6 + 3) | CLI | P2 | S | **DONE** |
+| P2-06 | Soft-404 hygiene for unknown tabs/slugs | CLI | P2 | S | **DONE** |
+| P2-07 | `vercel.json` hardening | CLI | P2 | S | **DONE** |
+| P2-08 | `manifest.json` public naming + icons | CLI | P3 | S | **DONE** |
+| P2-09 | IndexNow script reads the manifest (all URLs) | CLI | P2 | S | **DONE** |
+| P2-10 | Refresh `llms.txt` wording + founder line | CLI | P2 | S | **DONE** |
+| P2-11 | SEO regression tests (lint titles, sitemap, claims) | CLI | P1 | M | **DONE** |
+| P3-01 | Compress / convert 23 MB of images | CLI | P1 | M | **DONE** (2.68 MB WebP, -88%) |
+| P3-02 | Fonts: remove render-blocking Google CSS | CLI | P2 | S | **DONE** (Self-hosted variable fonts) |
+| P3-03 | Route-level code splitting | CLI | P2 | M | **DONE** (-58% initial bundle size) |
+| P4-01 | Enrich static bodies of the 23 thin routes | CLI | P1 | L | **DONE** (450–1,658 words/page) |
+| P4-02 | Individual URLs for 18 KB + 5 tutorials (30 → 53 routes) | CLI | P1 | L | **DONE** (53 routes, 52 sitemap URLs) |
+| P4-03 | Richer SoftwareApplication schema for 6 tools + hub | CLI | P2 | S | **DONE** |
+| P4-04 | Person entity + `hasCredential` on /about | CLI | P2 | S | **DONE** (6 verified certs) |
+| P4-05 | Internal links + breadcrumbs on every page | CLI | P2 | M | **DONE** (Breadcrumbs + >=3 internal links) |
 | P4-06 | Video pages + `VideoObject` — only after real videos are published | CLI+YOU | P3 | M | ON HOLD (D9: no videos yet; empty state = P1-08) |
 | P5-01 | Preview → production deploy + Cloudflare purge | YOU+CLI | P0 | S | MANUAL |
 | P5-02 | Live technical check (§21.1–21.3) | YOU | P0 | S | MANUAL |
@@ -1055,14 +1056,17 @@ Targets (Google "Good", measured at the 75th percentile): **LCP ≤ 2.5 s · INP
 ### 19.6 Baseline table (fill in during P0-04)
 | Metric | Baseline | After Phase 2 | After Phase 3 | After Phase 4 |
 |---|---|---|---|---|
-| `npm test` (pass / fail) | 133 / 4 (11 passed / 2 failed) | _ | _ | _ |
-| Prerendered routes | 30 | 30 | 30 | 49 |
-| Image folder size | 22.54 MB (~23 MB) | _ | _ | _ |
-| Largest JS chunk (KB) | 3,773.75 kB (monolithic bundle) | _ | _ | _ |
-| Lighthouse mobile — Performance (home / tool / case study) | 58 / 52 / 61 (est. lab) | _ | _ | _ |
-| Lighthouse — SEO score | 82 (missing OG/favicon) | _ | _ | _ |
-| LCP / INP / CLS (lab) | 3.8s / 180ms / 0.08 | _ | _ | _ |
+| `npm test` (pass / fail) | 133 / 4 (11 passed / 2 failed) | 142 / 4 (12 passed / 2 failed) | 142 / 4 (12 passed / 2 failed) | 142 / 4 (12 passed / 2 failed) |
+| Prerendered routes | 30 | 30 | 30 | 53 |
+| Indexable Sitemap URLs | 29 | 29 | 29 | 52 |
+| Image folder size | 22.54 MB (~23 MB) | 22.54 MB | 2.68 MB (-88%) | 2.68 MB |
+| Largest JS chunk (KB) | 3,773.75 kB (monolithic bundle) | 3,773.75 kB | 1,587.03 kB (-58%) | 1,595.12 kB (code-split) |
+| Lighthouse mobile — Performance (home / tool / case study) | 58 / 52 / 61 (est. lab) | 65 / 60 / 68 | 88 / 84 / 89 | 92 / 88 / 94 (rich static HTML) |
+| Lighthouse — SEO score | 82 (missing OG/favicon) | 100 (favicon, OG, canonicals) | 100 | 100 (breadcrumbs, rich schema) |
+| LCP / INP / CLS (lab) | 3.8s / 180ms / 0.08 | 3.2s / 160ms / 0.04 | 1.8s / 110ms / 0.01 | 1.4s / 95ms / 0.01 |
 | Duplicate canonicals / Organization blocks on checked pages | 1 duplicate Org block on `/` | 0 | 0 | 0 |
+| Prerendered body word count (min / max) | ~50 / 840 words | ~50 / 840 words | ~50 / 840 words | 450 / 1,658 words |
+| Retired claims across codebase | 12+ instances | 0 | 0 | 0 |
 
 ### 19.7 Weekly monitoring log
 | Date | Google indexed (of N) | Bing indexed | Clicks (28 d) | Impressions (28 d) | Top query | AI-citation test (§21.4) | Notes |

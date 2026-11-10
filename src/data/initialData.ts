@@ -81,7 +81,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
             'Ultra Performance Tier delivering 64 MiB/s per allocated TB with sub-millisecond latency',
             'Dedicated delegated subnet in Hub VNet cross-connected via ExpressRoute UltraPerformance gateway',
             'Direct NFSv3 mount across all cluster ESXi hosts with multi-pathing resilience',
-            'Reduces overall cloud infrastructure TCO by up to 38% compared to buying additional nodes'
+            'Significantly reduces overall cloud infrastructure spend compared to provisioning additional bare-metal nodes'
           ],
           components: [
             { name: 'ANF Capacity Pool', role: 'NFS Storage Target', details: 'Ultra/Premium tier provisioned with zone-redundant snapshots and cross-region replication.' },

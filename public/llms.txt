@@ -36,8 +36,37 @@ Every public page on zaboraa.com is prerendered as full semantic static HTML for
 ## Guidance & Architecture Resources
 - [Case Studies Hub](https://zaboraa.com/case-studies): Full catalog of enterprise migrations, DR validation, and automation frameworks.
 - [6-phase migration roadmap](https://zaboraa.com/roadmap): RVTools discovery through HCX cutover and post-migration optimization.
-- [Resources hub](https://zaboraa.com/resources): [Knowledge base](https://zaboraa.com/resources/kb) operational runbooks and [tutorials](https://zaboraa.com/resources/tutorials).
+- [Resources hub](https://zaboraa.com/resources): Architecture guides, tutorials, and operational runbooks.
+- [Knowledge base](https://zaboraa.com/resources/kb): 18 operational troubleshooting runbooks across AVS, NC2, GCVE, VMC, NSX-T, HCX, SRM, and Aria.
+- [Tutorials](https://zaboraa.com/resources/tutorials): 5 deep-dive technical implementation guides with step-by-step code.
 - [About the founder](https://zaboraa.com/about): Background of Principal VMware Architect Wasim Sayyed.
+
+## Operational Knowledge Base Runbooks
+- [KB-NTX-1001: VMware to Nutanix AHV Migration - VirtIO Driver Injection Failure](https://zaboraa.com/resources/kb/kb-ntx-1001)
+- [KB-NTX-1002: Nutanix Move Network Configuration and Firewall Traversal](https://zaboraa.com/resources/kb/kb-ntx-1002)
+- [KB-NTX-1003: Nutanix AHV Multi-Writer Disk Flag Conversion for Clustered Applications](https://zaboraa.com/resources/kb/kb-ntx-1003)
+- [KB-NC2-2001: Nutanix NC2 on Azure - Bare-Metal Node Provisioning and Cluster Deployment](https://zaboraa.com/resources/kb/kb-nc2-2001)
+- [KB-NC2-2002: Nutanix NC2 on Azure - Prism Central High Availability Deployment](https://zaboraa.com/resources/kb/kb-nc2-2002)
+- [KB-NC2-2003: Nutanix NC2 on Azure - ExpressRoute Integration and Cloud VNet Peering](https://zaboraa.com/resources/kb/kb-nc2-2003)
+- [KB-NC2-2004: Nutanix NC2 on Azure - Flow Microsegmentation Zero-Trust Policy Configuration](https://zaboraa.com/resources/kb/kb-nc2-2004)
+- [KB-NTX-1004: Nutanix AHV vDisk Performance Optimization and Multi-Queue SCSI Tuning](https://zaboraa.com/resources/kb/kb-ntx-1004)
+- [KB-NTX-1005: Nutanix AHV vGPU Migration - NVIDIA Virtual GPU Workload Preparation](https://zaboraa.com/resources/kb/kb-ntx-1005)
+- [KB-NTX-1006: VMware vSphere to Nutanix AHV UEFI Secure Boot VM Migration](https://zaboraa.com/resources/kb/kb-ntx-1006)
+- [KB-AVS-8921: AVS ExpressRoute FastPath BGP Flapping and MTU Fragmentation](https://zaboraa.com/resources/kb/kb-avs-8921)
+- [KB-AVS-8922: Azure NetApp Files NFS Datastore Mount Failures on AVS ESXi](https://zaboraa.com/resources/kb/kb-avs-8922)
+- [KB-GCVE-4201: GCVE Private Services Access Peering and Split-Brain DNS Resolution](https://zaboraa.com/resources/kb/kb-gcve-4201)
+- [KB-VMC-3101: VMC on AWS Connected VPC Cross-ENI Routing Asymmetry and Latency](https://zaboraa.com/resources/kb/kb-vmc-3101)
+- [KB-NSX-6501: Migrating Non-NSX VLAN Workloads to NSX Distributed Firewall](https://zaboraa.com/resources/kb/kb-nsx-6501)
+- [KB-HCX-5301: HCX Mobility Optimized Networking (MON) Asymmetric Return Traffic](https://zaboraa.com/resources/kb/kb-hcx-5301)
+- [KB-SRM-7101: Site Recovery Manager Non-Disruptive Test Bubble Network Isolation](https://zaboraa.com/resources/kb/kb-srm-7101)
+- [KB-ARIA-4401: IPFIX Flow Collection Dropouts on vSphere Distributed Switch (vDS)](https://zaboraa.com/resources/kb/kb-aria-4401)
+
+## Implementation Tutorials
+- [AVS ExpressRoute FastPath Implementation Guide](https://zaboraa.com/resources/tutorials/avs-expressroute-fastpath-implementation-guide)
+- [HCX L2 Network Extension Troubleshooting Runbook](https://zaboraa.com/resources/tutorials/hcx-l2-network-extension-troubleshooting-runbook)
+- [NSX-T Microsegmentation Zero-Trust Playbook](https://zaboraa.com/resources/tutorials/nsxt-microsegmentation-zero-trust-playbook)
+- [VMC on AWS External NFS Datastore Architecture with Amazon FSx](https://zaboraa.com/resources/tutorials/vmc-aws-external-nfs-fsx-netapp-ontap-architecture)
+- [GCVE to BigQuery Lakehouse Pipeline Architecture](https://zaboraa.com/resources/tutorials/gcve-bigquery-lakehouse-pipeline-architecture)
 
 ## Founder
 Wasim Sayyed, Founder and Principal VMware Architect. 13+ years in VMware infrastructure architecture. Based in Pune, Maharashtra, India. LinkedIn: https://www.linkedin.com/in/wasim-sayyed-8b857714b/

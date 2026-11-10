@@ -676,11 +676,156 @@ A: Aria Automation projects map developer and database teams to dedicated comput
 A: In Aria Automation 8, declarative infrastructure-as-code definitions previously called blueprints are designated as cloud templates. They define virtual machine specifications, customization specs, network connections, and Day 2 operational actions in human-readable YAML.
 
 
-## Knowledge base topics (https://zaboraa.com/resources/kb)
-AVS ExpressRoute FastPath BGP flapping and MTU fragmentation; mounting Azure NetApp Files NFS datastores on AVS; GCVE Private Services Access peering and DNS; VMC Connected VPC ENI routing asymmetry; migrating non-NSX workloads to NSX DFW; HCX MON asymmetric return traffic; SRM test-failover isolation; IPFIX on vSphere Distributed Switch for Aria.
+## Operational Knowledge Base Runbooks (https://zaboraa.com/resources/kb)
 
-## Tutorials (https://zaboraa.com/resources/tutorials)
-AVS ExpressRoute FastPath and Global Reach; HCX Network Extension L2 troubleshooting runbook; NSX-T zero-trust east-west microsegmentation; external NFS datastores on VMC with Amazon FSx for NetApp ONTAP; GCVE to BigQuery analytics pipeline.
+### KB-NTX-1001: Layer 2 Extension from VMware to Nutanix: Keeping the Same IP During Migration
+- URL: https://zaboraa.com/resources/kb/kb-ntx-1001
+- Category: Network & Routing | Component: Nutanix Flow Virtual Networking | Severity: Advisory
+- Impact Scope: Applies to subnets extended between a local Nutanix cluster and a non-Nutanix datacenter terminating on a third-party VTEP gateway. Each extended subnet on the same network gateway requires a unique VxLAN Network Identifier. A non-HA VTEP gateway outage disrupts extension traffic until the gateway restarts on another host, though HA-enabled active and backup gateways operate transparently; confirm for the current version.
+- Root Cause: Layer 2 network extension allows workloads to retain their network identity across availability zones when routed underlay connectivity is in place. Because extension between a Nutanix availability zone and a non-Nutanix datacenter operates exclusively over VTEP, the remote peer requires a third-party VTEP gateway. VTEP-based extension is unencrypted and point-to-multipoint, so the decision to apply encryption across the underlying network belongs to the transport underlay design.
+- Architect Note: [AUTHOR TO CONFIRM] The third-party VTEP gateway appliance model on the source side and the explicit rollback sequence must be confirmed against the vendor documentation for the deployment.
+
+### KB-NTX-1002: Same IP on Migration: Nutanix Move IP Retention vs Layer 2 Extension
+- URL: https://zaboraa.com/resources/kb/kb-ntx-1002
+- Category: Workload Mobility | Component: Nutanix AHV & Move | Severity: Advisory
+- Impact Scope: Applies to virtual machines migrating to Nutanix AHV from supported hypervisors using Move or Flow Virtual Networking. Move does not support all hypervisor sources or non-AHV targets, so heterogeneous source and target combinations require distinct migration methods. For multi-NIC virtual machines in Move, source IP configuration is applied correctly if MAC retention is selected, otherwise it maps one NIC at a time on a best-effort basis.
+- Root Cause: Nutanix Move provides migration plan options to retain source IP configurations via guest preparation scripts and retain source MAC addresses. Layer 2 network extension extends the broadcast domain across availability zones over an existing Layer 3 underlay so virtual machines retain their IP address, MAC address, and default gateway concurrently. Design implication: Move IP retention preserves static guest configurations upon cutover onto a target network, whereas Layer 2 extension maintains continuous broadcast connectivity to the original default gateway while workloads reside on both sides during phased cutover.
+- Architect Note: [AUTHOR TO CONFIRM] Confirm the same options in the ESXi-to-AHV plan for the Move version in use.
+
+### KB-NTX-1003: VMware ESXi to Nutanix AHV with Nutanix Move: Planning Checklist
+- URL: https://zaboraa.com/resources/kb/kb-ntx-1003
+- Category: Workload Mobility | Component: Nutanix AHV & Move | Severity: Advisory
+- Impact Scope: Applies to virtual machines migrating from VMware ESXi to Nutanix AHV targets. Move does not support all hypervisor sources or non-AHV targets, and unsupported source/target combinations require alternative migration methods. Confirm against the Nutanix documentation for the version in use regarding specific source version compatibility.
+- Root Cause: Nutanix recommends Move for migrating virtual machines from ESXi, Hyper-V, Azure, or AWS sources to Nutanix AHV. Move is deployed as a standalone virtual machine that presents an HTML5 management interface for managing migration plans. Move automates guest VM preparation, including VirtIO driver installation, so workloads can initialize after the hypervisor change.
+- Architect Note: [AUTHOR TO CONFIRM] Confirm the same options in the ESXi-to-AHV plan for the Move version in use, including driver injection and guest credential requirements.
+
+### KB-NC2-2001: NC2 on Azure Architecture Basics
+- URL: https://zaboraa.com/resources/kb/kb-nc2-2001
+- Category: SDDC Lifecycle | Component: Nutanix NC2 on Azure | Severity: Advisory
+- Impact Scope: Applies to all NC2 on Azure cluster deployments and associated Azure subscription virtual networks. Every node in a cluster must use the same bare-metal SKU, including any nodes added during cluster expansion. Flow Gateway virtual machines sit in the Prism Central VNet for ExpressRoute or Virtual WAN, or in a dedicated Flow Gateway VNet for active-active VPN connectivity.
+- Root Cause: NC2 on Azure runs Prism Central, Prism Element, Flow, AOS storage, and AHV directly on Azure bare-metal hosts. A cluster has a minimum of 3 and a maximum of 28 bare-metal nodes, managed by a Prism Central instance located in the same region and Azure subscription. Flow Virtual Networking builds overlay networks that abstract the Azure network, supporting over 500 subnets within one VNet.
+
+### KB-NC2-2002: NC2 on Azure Licensing Model: NCI License Type, Pay-As-You-Go and Capacity Reservations
+- URL: https://zaboraa.com/resources/kb/kb-nc2-2002
+- Category: SDDC Lifecycle | Component: Nutanix NC2 on Azure | Severity: Advisory
+- Impact Scope: Applies to licensing configuration during initial cluster deployment on NC2 on Azure. The licensing portfolio choice determines the tier structure and capacity reservation mechanics available to the cluster. Confirm against the Nutanix documentation for the version in use.
+- Root Cause: At cluster creation, administrators can select either new portfolio licensing (NCI, EUC) or legacy portfolio licensing (AOS, VDI). When selecting NCI portfolio licensing, the license type and add-ons are chosen as the pay-as-you-go usage tier, configured together with NCI license capacity reservations. Confirm against the Nutanix documentation for the version in use for specific tier features.
+- Architect Note: [AUTHOR TO CONFIRM] Confirm how existing on-premises software licenses are transferred or applied to NC2 against current Nutanix licensing documentation.
+
+### KB-NC2-2003: NC2 on Azure Cluster Sizing Constraints
+- URL: https://zaboraa.com/resources/kb/kb-nc2-2003
+- Category: SDDC Lifecycle | Component: Nutanix NC2 on Azure | Severity: Advisory
+- Impact Scope: Applies to bare-metal host sizing and lifecycle scaling operations for all NC2 on Azure clusters. Cluster scaling must remain within the 3 to 28 node boundary, and mixing heterogeneous bare-metal host types within a single cluster is not supported. Confirm SKU and regional availability against the Microsoft Learn requirements page.
+- Root Cause: NC2 on Azure enforces strict cluster node minimum and maximum thresholds: an NC2 cluster requires a minimum of 3 and supports a maximum of 28 bare-metal nodes. Every node in an NC2 cluster must use the identical bare-metal SKU, including any nodes added later during cluster expansion. Sizing assessments should model required compute and storage capacity before cluster provisioning.
+
+### KB-NC2-2004: Migrating to NC2 on Azure: Paths and Network Design
+- URL: https://zaboraa.com/resources/kb/kb-nc2-2004
+- Category: Workload Mobility | Component: Nutanix NC2 on Azure | Severity: Advisory
+- Impact Scope: Applies to network and workload migration architectures connecting on-premises datacenters or AVS to NC2 on Azure. Underlay transit requires ExpressRoute or VPN connectivity, and Flow Gateway VMs provide access to the Azure native network. Bare-metal SKU and regional availability are governed by published Microsoft Learn specifications.
+- Root Cause: Workloads can migrate to NC2 on Azure using Nutanix Move or through Layer 2 stretched subnets configured over routed hybrid underlays. Underlay reachability between on-premises and NC2 is established over VPN or ExpressRoute connections. Move automates VM preparation and VirtIO driver installation, supporting migrations from Azure VMware Solution to NC2 on Azure and on-premises AHV.
+- Architect Note: [AUTHOR TO CONFIRM] Confirm support and network prerequisites for migrating on-premises ESXi workloads directly to NC2 on Azure as a target.
+
+### KB-NTX-1004: Nutanix-to-Nutanix Migration with Nutanix Disaster Recovery
+- URL: https://zaboraa.com/resources/kb/kb-ntx-1004
+- Category: Disaster Recovery | Component: Nutanix Disaster Recovery | Severity: Advisory
+- Impact Scope: Applies to protection policies and recovery plans configured between Nutanix clusters managed by Prism Central. Asynchronous RPO is 1 hour or more, NearSync RPO ranges from 1 to 15 minutes, and synchronous replication achieves zero RPO. Replication behavior and schedule support are version-dependent, so confirm against the Nutanix documentation for the version in use.
+- Root Cause: Nutanix Disaster Recovery provides native replication schedules that vary depending on cluster topology and solution type. Between on-premises availability zones, replication supports asynchronous, NearSync, and synchronous schedules. Between on-premises clusters and NC2, replication supports asynchronous schedules of 1 hour or more, whereas between two NC2 availability zones, both asynchronous and synchronous schedules are supported.
+- Architect Note: [AUTHOR TO CONFIRM] Planned failover execution procedures and Nutanix Move AHV-to-AHV migration capabilities must be confirmed against current documentation.
+
+### KB-NTX-1005: Layer 2 Subnet Extension Between Nutanix Clusters: VPN or VTEP
+- URL: https://zaboraa.com/resources/kb/kb-ntx-1005
+- Category: Network & Routing | Component: Nutanix Flow Virtual Networking | Severity: Advisory
+- Impact Scope: Applies to Layer 2 subnet extensions connecting pairs of Nutanix availability zones managed by Prism Central. Extension over VPN does not support third-party VPN solutions and requires version 5.0 or higher. VTEP gateway services must be set up on local and remote availability zones as either standalone gateways or HA-enabled active and backup pairs.
+- Root Cause: Between two Nutanix availability zones, Layer 2 subnet extension can be established over VPN or VTEP. Extension over VPN is point-to-point and secure, supporting only the Nutanix VPN solution at both ends and requiring VPN gateway version 5.0 or higher. VTEP-based extension is unencrypted and point-to-multipoint; when connectivity between sites already provides encryption, VTEP is the preferred method because it reduces networking overhead.
+
+### KB-NTX-1006: Moving Workloads from Nutanix AHV to VMware ESXi: Supported Methods and Limits
+- URL: https://zaboraa.com/resources/kb/kb-ntx-1006
+- Category: Workload Mobility | Component: Nutanix AHV & Move | Severity: Advisory
+- Impact Scope: Applies strictly to virtual machines moving between Nutanix clusters running ESXi and AHV. Nutanix Guest Tools (NGT) must be installed so required drivers are available on the virtual machines. ESXi delta disks are not supported, virtual machines with SATA or PCI devices are not supported, and VM Mobility includes network mapping between AHV and ESXi networks.
+- Root Cause: AOS VM Mobility replicates Windows and Linux virtual machines bidirectionally between a Nutanix ESXi cluster and a Nutanix AHV cluster. A Nutanix cluster can be converted from ESXi to AHV, or converted from AHV to ESXi only if it was previously converted from ESXi. Nutanix Move does not support all hypervisor sources or non-AHV targets, and for targets outside of Nutanix clusters the supported migration method must be confirmed.
+- Architect Note: [AUTHOR TO CONFIRM] For targets outside of Nutanix-managed clusters, supported reverse migration methods must be confirmed against vendor documentation. Static IP address preservation in cross-hypervisor disaster recovery workflows is reported as unsupported in community references and requires author validation.
+
+### KB-AVS-8921: Resolving ExpressRoute FastPath BGP Route Flapping & MTU 1500/9000 Fragmentation between Cisco ASR and AVS T0
+- URL: https://zaboraa.com/resources/kb/kb-avs-8921
+- Category: Network & Routing | Component: Azure VMware Solution | Severity: Critical
+- Impact Scope: Affects all hybrid cross-premises virtual machine communications, HCX migration streams, and direct database replication between on-prem and AVS.
+- Root Cause: ExpressRoute FastPath bypasses the Azure VNet Gateway CPU, sending packets directly from MSEE to the AVS ESXi host. If TCP MSS Clamping is not enabled on the on-premises border router, jumbo frames are fragmented by intermediate QinQ encapsulation, causing packet drops. Concurrently, BFD timers set below 300ms on high-jitter circuits cause false BGP dead-timer expirations.
+
+### KB-AVS-8922: Mounting External Azure NetApp Files (ANF) NFS Datastores on AVS: Volume Export Policies, Kerberos Security, and MTU 9000 Tuning
+- URL: https://zaboraa.com/resources/kb/kb-avs-8922
+- Category: Storage Decoupling | Component: Azure VMware Solution | Severity: High
+- Impact Scope: Blocks scaling out external storage pools; prevents decoupling compute node purchases from capacity growth.
+- Root Cause: Azure NetApp Files NFS datastores require explicit delegation to the Microsoft.NetApp/volumes subnet and an ExpressRoute Gateway connection with UltraPerformance SKU. If the ANF Export Policy does not whitelist each individual AVS ESXi management IP (/32) or the entire /22 AVS private cloud network block, NFSv3 RPC calls are silently rejected. Additionally, root squash must be disabled (root access = enabled) for ESXi kernel file operations.
+
+### KB-GCVE-4201: Private Services Access (PSA) Peering Troubleshooting: Resolving IP Overlap & Cloud DNS Private Zone Resolution from GCVE to Google VPC
+- URL: https://zaboraa.com/resources/kb/kb-gcve-4201
+- Category: Flow & Discovery | Component: Google Cloud VMware Engine | Severity: Critical
+- Impact Scope: Prevents workloads on GCVE from modernizing with Google Cloud native AI, BigQuery, Vertex AI, and Cloud SQL services.
+- Root Cause: GCVE private clouds communicate with customer VPCs using Google VPC Network Peering over Private Services Access (PSA). By default, NSX-T DNS Forwarder points to corporate on-premises DNS. If a Cloud DNS Inbound Server Policy is not created and paired with NSX-T conditional forwarding rules, queries for internal GCP zones fail. Furthermore, route exchange filters must be explicitly set to "Import Custom Routes" on the PSA peering configuration.
+
+### KB-VMC-3101: Debugging Connected VPC Elastic Network Interface (ENI) Subnet Routing Asymmetry and Cross-Account Security Group Denies
+- URL: https://zaboraa.com/resources/kb/kb-vmc-3101
+- Category: Network & Routing | Component: VMware Cloud on AWS | Severity: High
+- Impact Scope: Disrupts low-latency cross-vpc microservices, S3 gateway endpoints, and RDS database communication between VMC workloads and AWS native services.
+- Root Cause: When an SDDC is linked to a customer AWS account, VMware provisions 17 cross-account ENIs (one active per cluster host). If the Connected VPC subnet route table contains a broader summary route (e.g. 10.0.0.0/8 pointing to a Transit Gateway or Virtual Private Gateway), the AWS VPC local route priority is disrupted. In addition, the AWS Security Group assigned to the Connected VPC ENIs must permit ingress from the VMC SDDC segment CIDRs.
+
+### KB-NSX-6501: Production Runbook: Migrating Non-NSX vSphere Workloads to NSX Distributed Firewall (DFW) without Service Disruption
+- URL: https://zaboraa.com/resources/kb/kb-nsx-6501
+- Category: Microsegmentation | Component: VMware NSX-T | Severity: Critical
+- Impact Scope: Enterprise-wide zero-trust transformation and compliance posture; applies to all on-premises and hyperscaler VMware SDDCs.
+- Root Cause: Legacy non-NSX VLAN environments suffer from zero flow visibility. Workloads accumulate undocumented dependencies (e.g. legacy backup ports, NTP, AD replication, custom RPC endpoints) over years. Attempting to enforce DFW rules without an empirical 30-day flow discovery baseline inevitably breaks production traffic.
+
+### KB-HCX-5301: Troubleshooting VMware HCX Mobility Optimized Networking (MON) Default Gateway Asymmetric Return Traffic in Extended L2 VLANs
+- URL: https://zaboraa.com/resources/kb/kb-hcx-5301
+- Category: Workload Mobility | Component: VMware HCX | Severity: High
+- Impact Scope: Affects migrated database and application servers operating on stretched Layer-2 subnets with HCX MON enabled.
+- Root Cause: HCX Mobility Optimized Networking routes local traffic directly through the Cloud Tier-1 Gateway by injecting a /32 host route into the cloud routing table. However, if on-premises static routes or BGP route injection are not properly configured, on-premises clients send traffic via the on-prem default gateway (stretched L2 network extension), while the migrated VM sends response traffic through the Cloud Tier-0 gateway, creating an asymmetric routing loop that stateful firewalls discard.
+
+### KB-SRM-7101: SRM Non-Disruptive Test Failover Bubble Network Isolation: Preventing Duplicate IP Conflicts and Active Directory Tombstone Corruption
+- URL: https://zaboraa.com/resources/kb/kb-srm-7101
+- Category: Disaster Recovery | Component: VMware Site Recovery Manager | Severity: Critical
+- Impact Scope: Endangers production operational stability during routine business continuity compliance audits and DR drills.
+- Root Cause: In VMware Site Recovery Manager (SRM), test network mapping defines where test virtual machines are connected during recovery plan validation. If an operator configures the test network to map to a live production port group or an NSX overlay segment with physical routing uplinks, test VMs boot with identical IP and MAC addresses as running production machines. The test DC attempts to replicate over the WAN, causing severe directory synchronization corruption.
+
+### KB-ARIA-4401: Configuring IPFIX on vSphere Distributed Switch (VDS) for Aria Operations for Networks: Sampling Rate, Collector IP, and Port Group Validation
+- URL: https://zaboraa.com/resources/kb/kb-aria-4401
+- Category: Flow & Discovery | Component: VMware Aria Operations for Networks | Severity: Operational
+- Impact Scope: Disables flow-based discovery, machine-learning application mapping, and NSX DFW microsegmentation rule modeling.
+- Root Cause: vSphere Distributed Switch (VDS) NetFlow/IPFIX export must be enabled at both the switch level and individual distributed virtual port groups. If the IPFIX sampling rate is set to 1 (1:1 full line rate) on high-density clusters, ESXi hypervisor kernel buffer overflows drop packets. Setting an appropriate sampling rate (e.g. 1 in 100 or 1 in 200 for 10GbE/25GbE environments) while configuring the active flow timeout to 60 seconds resolves buffer exhaustion.
+
+
+## Technical Implementation Tutorials (https://zaboraa.com/resources/tutorials)
+
+### Step-by-Step: Azure VMware Solution (AVS) ExpressRoute FastPath & Global Reach Architecture
+- URL: https://zaboraa.com/resources/tutorials/avs-expressroute-fastpath-implementation-guide
+- Category: Cloud Migration | Difficulty: Enterprise Architect | Read Time: 12 min read
+- Author: Wasim Sayyed, Founder & Principal VMware Architect
+- Summary: A production deployment playbook for connecting an enterprise datacenter to Azure VMware Solution using ExpressRoute FastPath and Global Reach to achieve sub-2ms latency and bypass gateway bottleneck.
+
+### HCX Network Extension & L2 Broadcast Domain Troubleshooting Runbook
+- URL: https://zaboraa.com/resources/tutorials/hcx-l2-network-extension-troubleshooting-runbook
+- Category: HCX Mobility | Difficulty: Enterprise Architect | Read Time: 15 min read
+- Author: Wasim Sayyed, Founder & Principal VMware Architect
+- Summary: Production diagnostic runbook for troubleshooting VMware HCX Network Extension (NE) appliances, asymmetric routing loops, MTU blackholes, and ARP resolution failures during live workload cutover.
+
+### NSX-T Microsegmentation: Implementing Zero-Trust East-West Security in Production
+- URL: https://zaboraa.com/resources/tutorials/nsxt-microsegmentation-zero-trust-playbook
+- Category: NSX-T & SDN | Difficulty: Production Operator | Read Time: 18 min read
+- Author: Wasim Sayyed, Founder & Principal VMware Architect
+- Summary: A deep-dive architectural article examining how to transition from legacy perimeter security to kernel-embedded NSX-T Distributed Firewall microsegmentation with zero business disruption.
+
+### Architecting Elastic External NFS Datastores on VMC with Amazon FSx for NetApp ONTAP
+- URL: https://zaboraa.com/resources/tutorials/vmc-aws-external-nfs-fsx-netapp-ontap-architecture
+- Category: Storage & Backup | Difficulty: Enterprise Architect | Read Time: 14 min read
+- Author: Wasim Sayyed, Founder & Principal VMware Architect
+- Summary: How to scale VMware Cloud on AWS storage capacity independently from compute nodes using multi-AZ Amazon FSx for NetApp ONTAP mounted via high-speed Connected VPC ENIs.
+
+### Building a Low-Latency Analytics Pipeline from GCVE Databases to Google BigQuery
+- URL: https://zaboraa.com/resources/tutorials/gcve-bigquery-lakehouse-pipeline-architecture
+- Category: Cloud Migration | Difficulty: Foundational | Read Time: 11 min read
+- Author: Wasim Sayyed, Founder & Principal VMware Architect
+- Summary: Streamline transactional database change-data-capture from SQL servers hosted on Google Cloud VMware Engine into BigQuery using Private Services Access and Datastream.
+
 
 ## Migration roadmap (https://zaboraa.com/roadmap)
 Six phases: RVTools discovery, HCX fleet provisioning, live L2 extension, wave migration, non-disruptive cutover, post-migration optimisation.

@@ -36,6 +36,8 @@ const DRPlannerPage = lazy(() => import('./pages/tools/DRPlannerPage').then(m =>
 const DesignGeneratorPage = lazy(() => import('./pages/tools/DesignGeneratorPage').then(m => ({ default: m.DesignGeneratorPage })));
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage').then(m => ({ default: m.ResourcesPage })));
+const KBDetailPage = lazy(() => import('./pages/KBDetailPage').then(m => ({ default: m.KBDetailPage })));
+const TutorialDetailPage = lazy(() => import('./pages/TutorialDetailPage').then(m => ({ default: m.TutorialDetailPage })));
 const CaseStudiesPage = lazy(() => import('./pages/CaseStudiesPage').then(m => ({ default: m.CaseStudiesPage })));
 const CaseStudyDetailPage = lazy(() => import('./pages/CaseStudyDetailPage').then(m => ({ default: m.CaseStudyDetailPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
@@ -225,6 +227,8 @@ export default function App() {
                     <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
                     <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
                     <Route path="/roadmap" element={<RoadmapPage />} />
+                    <Route path="/resources/kb/:id" element={<KBDetailPage />} />
+                    <Route path="/resources/tutorials/:slug" element={<TutorialDetailPage />} />
                     <Route path="/resources" element={<ResourcesPage />} />
                     <Route path="/resources/:tab" element={<ResourcesPage />} />
                     <Route path="/case-studies" element={<CaseStudiesPage />} />

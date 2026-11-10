@@ -228,6 +228,15 @@ for (const route of ROUTE_MANIFEST) {
     pageHtml = pageHtml.replace('</head>', `  <meta name="twitter:title" content="${escapeAttr(route.title)}" />\n  <meta name="twitter:description" content="${escapeAttr(route.description)}" />\n</head>`);
   }
 
+  // 4b. Emit noindex robots tag for noindex routes (D9: videos coming soon)
+  if (route.noindex) {
+    if (pageHtml.includes('name="robots"')) {
+      pageHtml = pageHtml.replace(/<meta\s+name="robots"\s+content="[\s\S]*?"\s*\/?>/i, '<meta name="robots" content="noindex, follow" />');
+    } else {
+      pageHtml = pageHtml.replace('</head>', '  <meta name="robots" content="noindex, follow" />\n</head>');
+    }
+  }
+
   // 5. Inject JSON-LD
   const jsonLdScripts = (route.jsonld || []).map(schema => {
     return `  <script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n  </script>`;
@@ -273,8 +282,9 @@ for (const route of ROUTE_MANIFEST) {
 
 console.log(`[Prerender Success] Successfully prerendered ${generatedCount} static HTML routes with independent canonicals, JSON-LD, and static body text.`);
 
-// --- PART C: Generate sitemap.xml at build from route manifest (30 URLs total) ---
-const sitemapUrls = ROUTE_MANIFEST.map(r => {
+// --- PART C: Generate sitemap.xml at build from route manifest (omits noindex routes, 29 URLs) ---
+const sitemapRoutes = ROUTE_MANIFEST.filter(r => !r.noindex);
+const sitemapUrls = sitemapRoutes.map(r => {
   const loc = `https://zaboraa.com${r.path === '/' ? '' : r.path}`;
   const lastmod = r.lastmod || '2026-11-03';
   return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
@@ -291,7 +301,7 @@ const publicDir = path.resolve('public');
 if (fs.existsSync(publicDir)) {
   fs.writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemapXml, 'utf-8');
 }
-console.log(`[Sitemap Success] Generated sitemap.xml with ${ROUTE_MANIFEST.length} URLs (omitted priority and changefreq).`);
+console.log(`[Sitemap Success] Generated sitemap.xml with ${sitemapRoutes.length} URLs (omitted priority and changefreq).`);
 
 // --- PART C: Generate llms-full.txt at build from caseStudies.ts so it cannot drift ---
 const caseStudiesFullMarkdown = CASE_STUDIES.map((study, idx) => {
@@ -371,9 +381,6 @@ AVS ExpressRoute FastPath BGP flapping and MTU fragmentation; mounting Azure Net
 
 ## Tutorials (https://zaboraa.com/resources/tutorials)
 AVS ExpressRoute FastPath and Global Reach; HCX Network Extension L2 troubleshooting runbook; NSX-T zero-trust east-west microsegmentation; external NFS datastores on VMC with Amazon FSx for NetApp ONTAP; GCVE to BigQuery analytics pipeline.
-
-## Video masterclasses (https://zaboraa.com/resources/videos)
-HCX Bulk vs Replication-Assisted vMotion; ANF datastores for AVS (cost and IOPS); NSX-T Distributed Firewall microsegmentation; GCVE Private Services Access and analytics.
 
 ## Migration roadmap (https://zaboraa.com/roadmap)
 Six phases: RVTools discovery, HCX fleet provisioning, live L2 extension, wave migration, non-disruptive cutover, post-migration optimisation.

@@ -36,7 +36,7 @@ The site is a client-side application. Full plain-text content is available in /
 ## Guidance & Architecture Resources
 - [Case Studies Hub](https://zaboraa.com/case-studies): Full catalog of enterprise migrations, DR validation, and automation frameworks.
 - [6-phase migration roadmap](https://zaboraa.com/roadmap): RVTools discovery through HCX cutover and post-migration optimization.
-- [Resources hub](https://zaboraa.com/resources): [Knowledge base](https://zaboraa.com/resources/kb) operational runbooks, [tutorials](https://zaboraa.com/resources/tutorials), and [video masterclasses](https://zaboraa.com/resources/videos).
+- [Resources hub](https://zaboraa.com/resources): [Knowledge base](https://zaboraa.com/resources/kb) operational runbooks and [tutorials](https://zaboraa.com/resources/tutorials).
 - [About the founder](https://zaboraa.com/about): Background of Principal VMware Architect Wasim Sayyed.
 
 ## Founder

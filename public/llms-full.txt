@@ -682,9 +682,6 @@ AVS ExpressRoute FastPath BGP flapping and MTU fragmentation; mounting Azure Net
 ## Tutorials (https://zaboraa.com/resources/tutorials)
 AVS ExpressRoute FastPath and Global Reach; HCX Network Extension L2 troubleshooting runbook; NSX-T zero-trust east-west microsegmentation; external NFS datastores on VMC with Amazon FSx for NetApp ONTAP; GCVE to BigQuery analytics pipeline.
 
-## Video masterclasses (https://zaboraa.com/resources/videos)
-HCX Bulk vs Replication-Assisted vMotion; ANF datastores for AVS (cost and IOPS); NSX-T Distributed Firewall microsegmentation; GCVE Private Services Access and analytics.
-
 ## Migration roadmap (https://zaboraa.com/roadmap)
 Six phases: RVTools discovery, HCX fleet provisioning, live L2 extension, wave migration, non-disruptive cutover, post-migration optimisation.
 

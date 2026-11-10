@@ -42,7 +42,7 @@ export const ResourcesPage: React.FC = () => {
             Knowledge Hub & Engineering Resources
           </h1>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            Battle-tested runbooks, architectural blueprints, software guides, downloadable whitepaper bundles, and video masterclasses curated by Lead Principal Architect Wasim Sayyed.
+            Battle-tested runbooks, architectural blueprints, software guides, downloadable whitepaper bundles, and technical walkthroughs curated by Lead Principal Architect Wasim Sayyed.
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export const ResourcesPage: React.FC = () => {
           }`}
         >
           <Film className="w-3.5 h-3.5" />
-          <span>Video Masterclasses</span>
+          <span>Videos</span>
         </button>
       </div>
 

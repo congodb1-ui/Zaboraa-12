@@ -1111,7 +1111,7 @@ class AdminService {
           ? ['VMware Migration', 'Disaster Recovery', 'Sovereign Cloud', 'Wasim Sayyed']
           : ['VMware Cloud', 'Azure AVS', 'AWS VMC', 'Google GCVE', 'Wasim Sayyed'],
         structured_data_type: structuredType,
-        indexable: true,
+        indexable: !route.noindex,
         audit_score: 98,
         audit_findings: [],
         updated_at: `${route.lastmod}T00:00:00Z`

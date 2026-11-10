@@ -179,16 +179,17 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(paths).not.toContain('/cases');
     });
 
-    it('adminService.generateSitemapXml produces clean sitemap with 30 URLs and no priority/changefreq', async () => {
+    it('adminService.generateSitemapXml produces clean sitemap with 29 URLs (excluding noindex) and no priority/changefreq', async () => {
       const { adminService } = await import('../services/adminService');
       const seoPages = await adminService.getSeoMetadata();
       const xml = adminService.generateSitemapXml(seoPages);
 
       expect(xml).toContain('https://zaboraa.com/case-studies/middle-east-gov-avs-framework');
       expect(xml).toContain('https://zaboraa.com/case-studies/nsxt-microsegmentation-aria-networks');
+      expect(xml).not.toContain('https://zaboraa.com/resources/videos');
       expect(xml).not.toContain('<priority>');
       expect(xml).not.toContain('<changefreq>');
-      expect(xml.split('<url>').length - 1).toBe(30);
+      expect(xml.split('<url>').length - 1).toBe(29);
     });
 
     it('handles legacy case studies with undefined facts safely without throwing scale error', () => {

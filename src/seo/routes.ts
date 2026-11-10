@@ -6,6 +6,7 @@ export interface RouteSeoEntry {
   summary: string;
   lastmod: string;
   jsonld: Record<string, unknown>[];
+  noindex?: boolean;
 }
 
 const BASE_ORGANIZATION_JSONLD = {
@@ -346,7 +347,7 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   {
     path: '/resources',
     title: 'Architecture Resources, Diagrams & Playbooks — Zaboraa',
-    description: 'Curated technical library: 4K vector architecture topologies, step-by-step migration playbooks, and video masterclasses.',
+    description: 'Curated technical library: 4K vector architecture topologies, step-by-step migration playbooks, and engineering runbooks.',
     h1: 'Enterprise Architecture Resources & Playbooks',
     summary: 'Explore reference architectures, configuration guides, and architectural diagrams covering hyperscaler VMware environments. Includes playbooks for ExpressRoute FastPath, HCX Network Extension, and zero-trust NSX-T distributed firewall designs.',
     lastmod: '2026-11-03',
@@ -367,11 +368,12 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   },
   {
     path: '/resources/videos',
-    title: 'Video Masterclasses & Technical Walkthroughs — Zaboraa',
-    description: 'Technical video briefings on AVS storage decoupling, HCX live migration mechanics, and NSX-T zero-trust microsegmentation.',
-    h1: 'Enterprise Architecture Video Masterclasses',
-    summary: 'Watch deep-dive technical sessions walking through real-world cloud evacuations, storage decoupling economics, and live cutover procedures. Learn directly from Lead Principal Architect Wasim Sayyed.',
-    lastmod: '2026-11-03',
+    title: 'Architecture Video Briefings (Coming Soon) — Zaboraa',
+    description: 'Technical architecture video briefings are currently in production and will be released soon.',
+    h1: 'Enterprise Architecture Technical Videos',
+    summary: 'Technical video briefings are currently in production and will be added soon. Explore our step-by-step tutorials, knowledge base articles, and free browser-based engineering tools in the interim.',
+    lastmod: '2026-11-10',
+    noindex: true,
     jsonld: [
       BASE_ORGANIZATION_JSONLD
     ]

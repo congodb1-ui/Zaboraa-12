@@ -74,8 +74,25 @@ export const VideoHub: React.FC = () => {
 
         {/* Video Grid or Empty State */}
         {filteredVideos.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-12 text-center text-slate-400">
-            <p className="text-sm font-medium">Video tutorials coming soon - Check back later</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-12 text-center text-slate-400 max-w-2xl mx-auto space-y-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-400 mb-1">
+              <Film className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Video masterclasses are in production and will be added soon</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              In the interim, explore our deep architectural runbooks, step-by-step migration procedures, and browser-based engineering tools.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <a href="/resources/tutorials" className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 text-xs font-semibold transition-colors">
+                Explore Step-by-Step Tutorials
+              </a>
+              <a href="/resources/kb" className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors">
+                Knowledge Base Runbooks
+              </a>
+              <a href="/tools" className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors">
+                Architecture Tools
+              </a>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

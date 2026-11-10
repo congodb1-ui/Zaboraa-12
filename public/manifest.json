@@ -1,16 +1,27 @@
 {
   "name": "Zaboraa — Enterprise Cloud Architecture",
-  "short_name": "Zaboraa Admin",
-  "description": "Founder-led VMware cloud architecture, sizing, and offline administrative continuity console.",
+  "short_name": "Zaboraa",
+  "description": "Founder-led VMware cloud architecture, sizing, and enterprise multi-cloud migration solutions.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
   "icons": [
     {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/images/zaboraa-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
       "src": "/assets/images/zaboraa-logo-standalone.svg",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 }

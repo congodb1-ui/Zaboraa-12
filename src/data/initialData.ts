@@ -627,7 +627,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     stats: [
       { value: '13+', label: 'Years Enterprise Infrastructure' },
       { value: '25+', label: 'Hyperscaler Migrations Executed' },
-      { value: '8×', label: 'Verified Cloud Certifications' },
+      { value: '6×', label: 'Verified Cloud Certifications' },
       { value: '100%', label: 'Runbook-Driven Cutovers' }
     ],
     heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.jpg'
@@ -636,9 +636,9 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     badgeText: 'PRINCIPAL ARCHITECTURAL DESK',
     heading: 'Enterprise Cloud Architecture & Advisory',
     proofTiles: [
-      { value: '12+ Years', label: 'Enterprise Infrastructure' },
-      { value: '40+', label: 'Hyperscaler Migrations Executed' },
-      { value: '100%', label: 'Zero-Downtime Cutover Record' },
+      { value: '13+ Years', label: 'Enterprise Infrastructure' },
+      { value: '25+', label: 'Hyperscaler Migrations Executed' },
+      { value: '100%', label: 'Runbook-Driven Cutovers' },
       { value: '6', label: 'Free Engineering Tools' }
     ],
     positioningLine: 'Founder-led VMware and Nutanix cloud migration and disaster-recovery advisory across Azure AVS, NC2, GCVE and VMC.',

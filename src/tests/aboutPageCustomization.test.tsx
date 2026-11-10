@@ -9,8 +9,8 @@ describe('About Me Page & Admin Customization Suite', () => {
     expect(about?.proofTiles).toHaveLength(4);
 
     const values = about?.proofTiles.map(p => p.value);
-    expect(values?.some(v => v.includes('12+'))).toBe(true);
-    expect(values).toContain('40+');
+    expect(values?.some(v => v.includes('13+'))).toBe(true);
+    expect(values).toContain('25+');
     expect(values).toContain('100%');
     expect(values).toContain('6');
 
@@ -18,7 +18,7 @@ describe('About Me Page & Admin Customization Suite', () => {
     const labels = about?.proofTiles.map(p => p.label);
     expect(labels?.some(l => l.includes('Enterprise Infrastructure'))).toBe(true);
     expect(labels).toContain('Hyperscaler Migrations Executed');
-    expect(labels).toContain('Zero-Downtime Cutover Record');
+    expect(labels).toContain('Runbook-Driven Cutovers');
     expect(labels).toContain('Free Engineering Tools');
   });
 

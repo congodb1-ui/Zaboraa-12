@@ -17,7 +17,7 @@ describe('Hero Engineering Metrics & Alignment Suite', () => {
     });
 
     expect(stats[2]).toEqual({
-      value: '8×',
+      value: '6×',
       label: 'Verified Cloud Certifications'
     });
 

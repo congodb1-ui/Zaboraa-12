@@ -68,7 +68,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
     {
       id: 'img-wasim-exec',
       name: 'wasim_sayyed_executive.jpg',
-      url: '/assets/images/wasim_sayyed_executive_1791473154875.jpg',
+      url: '/assets/images/wasim_sayyed_executive_1791473154875.webp',
       sizeBytes: 184500,
       mimeType: 'image/jpeg',
       uploadedAt: '2026-03-01T10:00:00Z',
@@ -79,7 +79,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
     {
       id: 'img-cloud-3d-blueprint',
       name: 'cloud_3d_blueprint_enterprise.jpg',
-      url: '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg',
+      url: '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp',
       sizeBytes: 420800,
       mimeType: 'image/jpeg',
       uploadedAt: '2026-03-05T12:00:00Z',
@@ -90,7 +90,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
     {
       id: 'img-avs-anf',
       name: 'avs_anf_storage_architecture.jpg',
-      url: '/assets/images/avs_anf_storage_architecture_1791548263395.jpg',
+      url: '/assets/images/avs_anf_storage_architecture_1791548263395.webp',
       sizeBytes: 312400,
       mimeType: 'image/jpeg',
       uploadedAt: '2026-03-08T09:00:00Z',
@@ -101,7 +101,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
     {
       id: 'img-hcx-mon',
       name: 'hcx_mon_traffic_routing_architecture.jpg',
-      url: '/assets/images/hcx_mon_traffic_routing_architecture_1791548489298.jpg',
+      url: '/assets/images/hcx_mon_traffic_routing_architecture_1791548489298.webp',
       sizeBytes: 298100,
       mimeType: 'image/jpeg',
       uploadedAt: '2026-03-10T14:00:00Z',
@@ -112,7 +112,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
     {
       id: 'img-nutanix-nc2',
       name: 'nutanix_nc2_azure_architecture.jpg',
-      url: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+      url: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.webp',
       sizeBytes: 345000,
       mimeType: 'image/jpeg',
       uploadedAt: '2026-03-14T11:00:00Z',
@@ -123,7 +123,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
     {
       id: 'img-aria-dfw',
       name: 'aria_dfw_microseg_migration_planner.jpg',
-      url: '/assets/images/aria_dfw_microseg_migration_planner_1791552031328.jpg',
+      url: '/assets/images/aria_dfw_microseg_migration_planner_1791552031328.webp',
       sizeBytes: 285000,
       mimeType: 'image/jpeg',
       uploadedAt: '2026-03-16T15:00:00Z',
@@ -148,7 +148,7 @@ export const AdminMediaView: React.FC<AdminMediaViewProps> = ({
               image_name: 'enterprise_multicloud_3d_blueprint.png',
               image_type: 'blueprint_3d',
               storage_path: 'system/cloud_3d_blueprint_enterprise.jpg',
-              storage_url: '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg',
+              storage_url: '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp',
               user_id: 'admin-master-root',
               user_email: 'wasim.sayyed@zaboraa-cloud.com',
               user_name: 'Wasim Sayyed (Lead Architect)',

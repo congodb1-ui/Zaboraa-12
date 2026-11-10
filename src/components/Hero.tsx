@@ -208,6 +208,10 @@ export const Hero: React.FC = () => {
                         <img
                           src={founder.portraitImage}
                           alt={founder.name}
+                          width={256}
+                          height={256}
+                          loading="eager"
+                          fetchPriority="high"
                           referrerPolicy="no-referrer"
                           onError={(e) => {
                             const target = e.currentTarget;

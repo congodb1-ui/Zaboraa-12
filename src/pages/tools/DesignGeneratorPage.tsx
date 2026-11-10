@@ -1080,7 +1080,7 @@ export const DesignGeneratorPage: React.FC = () => {
   const [generationStep, setGenerationStep] = useState<string>('');
   const [generationProgress, setGenerationProgress] = useState<number>(0);
   const [aiBlueprintResult, setAiBlueprintResult] = useState<AIBlueprintResult | null>({
-    imageUrl: '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg',
+    imageUrl: '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp',
     isFallback: false,
     model: 'Enterprise 3D Cloud Blueprint Engine',
     prompt: 'Production 3D Cloud Architecture Blueprint'
@@ -2292,7 +2292,7 @@ export const DesignGeneratorPage: React.FC = () => {
 
       const finalImageUrl = data.success && data.imageBase64
         ? `data:image/jpeg;base64,${data.imageBase64}`
-        : (data.fallbackUrl || '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg');
+        : (data.fallbackUrl || '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp');
 
       if (data.success && data.imageBase64) {
         setAiBlueprintResult({
@@ -2357,7 +2357,7 @@ export const DesignGeneratorPage: React.FC = () => {
       }, 400);
     } catch (err: any) {
       // In case of network error, gracefully fallback
-      const fallbackUrl = '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.jpg';
+      const fallbackUrl = '/assets/images/cloud_3d_blueprint_enterprise_1792147431615.webp';
       setGenerationProgress(100);
       setAiBlueprintResult({
         imageUrl: fallbackUrl,

@@ -58,7 +58,7 @@ export const CreateDesignModal: React.FC<CreateDesignModalProps> = ({
       setTitle('');
       setBadge('Architecture Blueprint');
       setDescription('');
-      setImageUrl(platform?.imageUrl || '/assets/images/avs_architecture_showcase_1791541766807.jpg');
+      setImageUrl(platform?.imageUrl || '/assets/images/avs_architecture_showcase_1791541766807.webp');
       setSpecs([
         'Sub-millisecond line-rate latency across interconnected endpoints',
         'Automatic failover convergence with redundant secondary path',
@@ -192,13 +192,13 @@ export const CreateDesignModal: React.FC<CreateDesignModalProps> = ({
   };
 
   const presetImages = [
-    { label: 'HCX Service Mesh', url: '/assets/images/hcx_architecture_showcase_1791544913309.jpg' },
-    { label: 'SRM Replication & Test Bubble', url: '/assets/images/srm_architecture_showcase_1791544923913.jpg' },
-    { label: 'AVS FastPath Architecture', url: '/assets/images/avs_architecture_showcase_1791541766807.jpg' },
-    { label: 'GCVE PSA SDDC', url: '/assets/images/gcve_architecture_showcase_1791541780539.jpg' },
-    { label: 'VMC Multi-AZ Stretched', url: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.jpg' },
-    { label: 'NSX Zero-Trust DFW', url: '/assets/images/nsx_microsegmentation_showcase_1791541799407.jpg' },
-    { label: 'Cloud Mesh Infrastructure', url: '/assets/images/architecture_avs_mesh_1791450083586.jpg' }
+    { label: 'HCX Service Mesh', url: '/assets/images/hcx_architecture_showcase_1791544913309.webp' },
+    { label: 'SRM Replication & Test Bubble', url: '/assets/images/srm_architecture_showcase_1791544923913.webp' },
+    { label: 'AVS FastPath Architecture', url: '/assets/images/avs_architecture_showcase_1791541766807.webp' },
+    { label: 'GCVE PSA SDDC', url: '/assets/images/gcve_architecture_showcase_1791541780539.webp' },
+    { label: 'VMC Multi-AZ Stretched', url: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.webp' },
+    { label: 'NSX Zero-Trust DFW', url: '/assets/images/nsx_microsegmentation_showcase_1791541799407.webp' },
+    { label: 'Cloud Mesh Infrastructure', url: '/assets/images/architecture_avs_mesh_1791450083586.webp' }
   ];
 
 return (

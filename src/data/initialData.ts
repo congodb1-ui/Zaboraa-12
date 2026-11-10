@@ -44,7 +44,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Enterprise AVS',
       description: 'Full-lifecycle private cloud engineering with native Azure peering, ExpressRoute FastPath routing, Azure NetApp Files (ANF) external NFS datastore decoupling, and zero-downtime HCX bulk migrations.',
       mediaType: 'image',
-      imageUrl: '/assets/images/avs_architecture_showcase_1791541766807.jpg',
+      imageUrl: '/assets/images/avs_architecture_showcase_1791541766807.webp',
       keyDeliverables: [
         'ExpressRoute FastPath routing directly bypassing gateway CPU limits and bottlenecks',
         'Azure NetApp Files (ANF) NFS datastores decoupling storage volume growth from host licensing',
@@ -57,7 +57,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'avs-design-1',
           title: 'ExpressRoute FastPath & Hub-Spoke VNet Transit',
           badge: 'FastPath Ingress',
-          imageUrl: '/assets/images/avs_architecture_showcase_1791541766807.jpg',
+          imageUrl: '/assets/images/avs_architecture_showcase_1791541766807.webp',
           description: 'High-speed transit topology routing directly from Microsoft Enterprise Edge (MSEE) routers to AVS ESXi nodes, bypassing Virtual Network Gateway CPU limits to achieve wire-rate throughput and sub-millisecond latencies for on-premises hybrid interconnectivity.',
           detailedSpecs: [
             '10 Gbps / 100 Gbps ExpressRoute Direct with FastPath enabled on GatewaySubnet',
@@ -75,7 +75,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'avs-design-2',
           title: 'Azure NetApp Files (ANF) Decoupled Storage Pool',
           badge: 'Decoupled Datastore',
-          imageUrl: '/assets/images/avs_anf_storage_architecture_1791548263395.jpg',
+          imageUrl: '/assets/images/avs_anf_storage_architecture_1791548263395.webp',
           description: 'Architecting supplementary external NFSv3 datastores via Azure NetApp Files to independently scale storage capacity for data-heavy workloads without purchasing redundant and costly compute nodes.',
           detailedSpecs: [
             'Ultra Performance Tier delivering 64 MiB/s per allocated TB with sub-millisecond latency',
@@ -92,7 +92,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'avs-design-3',
           title: 'Multi-AZ Stretched SDDC & Global Route Resilience',
           badge: '99.99% Availability',
-          imageUrl: '/assets/images/avs_stretched_cluster_architecture_1791548282136.jpg',
+          imageUrl: '/assets/images/avs_stretched_cluster_architecture_1791548282136.webp',
           description: 'Dual Availability Zone stretched cluster architecture featuring synchronous vSAN storage mirroring across AZs with an automated witness site, providing zero-RPO disaster avoidance.',
           detailedSpecs: [
             'Sub-2ms RTT latency boundary enforced across primary and secondary Azure AZs',
@@ -114,7 +114,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Nutanix NC2 on Azure',
       description: 'Enterprise architecture discipline and migration methodology for transitioning VMware vSphere SDDC workloads to Nutanix Cloud Clusters (NC2) on Microsoft Azure bare-metal infrastructure. Combines Nutanix AHV hypervisor, Distributed Storage Fabric (DSF), Flow Virtual Networking, and Nutanix Move cross-hypervisor migration.',
       mediaType: 'image',
-      imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+      imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.webp',
       keyDeliverables: [
         'Dedicated Azure bare-metal node architecture (AN36, AN36P, AN64, AN100) running native Nutanix AHV and CVM storage fabric',
         'Direct Azure Virtual Network (VNet) flow integration without overlay encapsulation or nested virtualization penalties',
@@ -127,7 +127,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nc2-design-1',
           title: 'Azure Bare-Metal Node Architecture & Flow Virtual Networking',
           badge: 'Bare-Metal & Flow VNet',
-          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.webp',
           description: 'Deploying Nutanix AOS and AHV directly on Azure bare-metal nodes with native Azure Virtual Network (VNet) fabric integration, eliminating nested virtualization performance penalties while preserving sub-millisecond inter-VM latency.',
           detailedSpecs: [
             'Azure Bare-Metal Node SKUs: AN36 (36c/72t, 768GB RAM), AN36P (1.5TB RAM), AN64 (64c/128t, 1.5TB RAM), AN100 (104c/208t, 2TB RAM)',
@@ -145,7 +145,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nc2-design-2',
           title: 'Nutanix Move Automated Cross-Hypervisor Migration Pipeline (vSphere to AHV)',
           badge: 'Nutanix Move ESXi to AHV',
-          imageUrl: '/assets/images/nutanix_move_migration_1791690428522.jpg',
+          imageUrl: '/assets/images/nutanix_move_migration_1791690428522.webp',
           description: 'End-to-end automated cross-hypervisor migration engine capturing block-level changed data tracking from VMware ESXi / vCenter and streaming non-disruptive deltas into Nutanix AHV on Azure, injecting VirtIO drivers and converting disk controllers automatically.',
           detailedSpecs: [
             'Agentless changed block tracking (CBT) synchronization replicating terabytes of VMDK storage in the background',
@@ -163,7 +163,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nc2-design-3',
           title: 'Distributed Storage Fabric (DSF), Resiliency & Multi-Region BCDR',
           badge: 'DSF RF2/RF3 & Leap DR',
-          imageUrl: '/assets/images/nutanix_dsf_storage_bcdr_1791690439733.jpg',
+          imageUrl: '/assets/images/nutanix_dsf_storage_bcdr_1791690439733.webp',
           description: 'Enterprise hyperconverged storage architecture with Replication Factor 2 (RF2) and Replication Factor 3 (RF3), inline deduplication, compression, erasure coding (EC-X), and automated disaster recovery orchestration with Nutanix Leap.',
           detailedSpecs: [
             'Distributed Storage Fabric (DSF) pooling all local Azure bare-metal NVMe SSDs into a single resilient datastore namespace',
@@ -186,7 +186,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Dedicated GCP SDDC',
       description: 'Dedicated GCVE private clouds with Private Services Access (PSA) peering, secure VPC connectivity, and direct BigQuery / Vertex AI analytics pipelines without traversing internet gateways.',
       mediaType: 'image',
-      imageUrl: '/assets/images/gcve_architecture_showcase_1791541780539.jpg',
+      imageUrl: '/assets/images/gcve_architecture_showcase_1791541780539.webp',
       keyDeliverables: [
         'Dedicated bare-metal SDDC clusters in 99.99% availability zones with ve1-standard-72 nodes',
         'Private Services Access (PSA) peering directly connecting GCVE overlay segments to Google VPC',
@@ -199,7 +199,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'gcve-design-1',
           title: 'Private Services Access (PSA) & Cloud Interconnect Peering',
           badge: 'PSA Peering',
-          imageUrl: '/assets/images/gcve_architecture_showcase_1791541780539.jpg',
+          imageUrl: '/assets/images/gcve_architecture_showcase_1791541780539.webp',
           description: 'Seamless network integration connecting GCVE bare-metal private clouds directly to customer Google Cloud VPCs over Google network backbone, sharing routes dynamically with on-premises Cloud Interconnect.',
           detailedSpecs: [
             '100 Gbps Google Cloud private backbone transit with zero ingress/egress peering fees',
@@ -216,7 +216,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'gcve-design-2',
           title: 'Google Cloud NetApp Volumes (GCNV) Scale-Out Tier',
           badge: 'Managed NFS Pool',
-          imageUrl: '/assets/images/gcve_gcnv_storage_architecture_1791548301833.jpg',
+          imageUrl: '/assets/images/gcve_gcnv_storage_architecture_1791548301833.webp',
           description: 'Fully managed enterprise file storage service integrated with GCVE to mount supplemental NFSv3 datastores, unlocking elastic storage scale for file shares, databases, and backup targets.',
           detailedSpecs: [
             'Extreme performance tier delivering up to 128 MiB/s per TB throughput',
@@ -232,7 +232,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'gcve-design-3',
           title: 'Native BigQuery & Vertex AI Analytics Pipeline',
           badge: 'AI/ML Acceleration',
-          imageUrl: '/assets/images/gcve_bigquery_ai_architecture_1791548325241.jpg',
+          imageUrl: '/assets/images/gcve_bigquery_ai_architecture_1791548325241.webp',
           description: 'Direct high-bandwidth data extraction pipeline between production VMware databases running on GCVE and Google BigQuery data warehouse for real-time generative AI and predictive analytics.',
           detailedSpecs: [
             'Private Google Access endpoints enabling direct REST API calls without internet gateways',
@@ -253,7 +253,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Zero-RPO Resilience',
       description: 'Resilient multi-availability zone stretched clusters providing synchronous vSAN replication and automated DRS failover, seamless Connected VPC cross-linking, and elastic Amazon FSx for NetApp ONTAP storage.',
       mediaType: 'image',
-      imageUrl: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.jpg',
+      imageUrl: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.webp',
       keyDeliverables: [
         'Multi-AZ Stretched Clusters providing zero-RPO failover across AWS availability zones',
         'Connected VPC cross-account Elastic Network Interface (ENI) delivering line-rate private throughput',
@@ -266,7 +266,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'vmc-design-1',
           title: 'Multi-AZ Stretched Cluster & Synchronous vSAN Mirror',
           badge: 'Zero-RPO Stretched',
-          imageUrl: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.jpg',
+          imageUrl: '/assets/images/vmc_aws_migration_dr_showcase_1791541789539.webp',
           description: 'Synchronous zero-RPO enterprise cluster stretching ESXi hosts across dual AWS Availability Zones with an automated managed witness node in a third AZ, eliminating downtime during physical DC outages.',
           detailedSpecs: [
             'Dual-site synchronous write mirroring across AZ-1 and AZ-2 over low-latency AWS fiber links',
@@ -283,7 +283,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'vmc-design-2',
           title: 'Connected VPC Line-Rate ENI & Amazon FSx for ONTAP',
           badge: '25Gbps ENI Cross-Link',
-          imageUrl: '/assets/images/vmc_fsx_ontap_eni_architecture_1791548351696.jpg',
+          imageUrl: '/assets/images/vmc_fsx_ontap_eni_architecture_1791548351696.webp',
           description: 'Native 25 Gbps Elastic Network Interface linking VMC on AWS directly into customer AWS VPCs with zero data egress charges, augmented by scalable Amazon FSx for NetApp ONTAP NFS datastores.',
           detailedSpecs: [
             'Zero data transfer egress fees between VMC SDDC and Connected VPC in same AZ',
@@ -300,7 +300,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'vmc-design-3',
           title: 'Transit Gateway (TGW) & Direct Connect Multi-Region Transit',
           badge: 'Global Transit',
-          imageUrl: '/assets/images/vmc_tgw_transit_architecture_1791548381597.jpg',
+          imageUrl: '/assets/images/vmc_tgw_transit_architecture_1791548381597.webp',
           description: 'Global enterprise transit architecture integrating AWS Transit Gateway (TGW), AWS Direct Connect Gateway (DXGW), and VMware Transit Connect for multi-SDDC and multi-region connectivity.',
           detailedSpecs: [
             'Direct Connect Gateway peering with dual 10 Gbps dedicated circuits from enterprise premises',
@@ -322,7 +322,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Kernel-Level Zero-Trust',
       description: 'Kernel-embedded Distributed Firewall (DFW) enforcing zero-trust microsegmentation at each virtual NIC before packets reach physical wires. Tier-0/Tier-1 Active-Active edge routing with ECMP, Avi Vantage load balancing, and automated security tag orchestration.',
       mediaType: 'image',
-      imageUrl: '/assets/images/nsx_microsegmentation_showcase_1791541799407.jpg',
+      imageUrl: '/assets/images/nsx_microsegmentation_showcase_1791541799407.webp',
       keyDeliverables: [
         'Distributed Firewall (DFW) kernel-level East-West inspection independent of physical subnets',
         'Tier-0 Active-Active edge routing with ECMP multi-pathing and BGP route convergence',
@@ -335,7 +335,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nsx-design-1',
           title: 'Kernel-Embedded Distributed Firewall & East-West Zero-Trust',
           badge: 'DFW Microsegmentation',
-          imageUrl: '/assets/images/nsx_microsegmentation_showcase_1791541799407.jpg',
+          imageUrl: '/assets/images/nsx_microsegmentation_showcase_1791541799407.webp',
           description: 'Granular hypervisor-level security model inspecting every East-West packet right at the virtual machine vNIC filter, completely preventing lateral malware propagation between compromised servers.',
           detailedSpecs: [
             'Zero physical wire latency with firewall policy enforced directly in the ESXi VMkernel',
@@ -352,7 +352,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nsx-design-2',
           title: 'Tier-0 / Tier-1 Gateway Active-Active ECMP Multi-Pathing',
           badge: 'Active-Active ECMP',
-          imageUrl: '/assets/images/nsx_tier0_tier1_ecmp_architecture_1791548415803.jpg',
+          imageUrl: '/assets/images/nsx_tier0_tier1_ecmp_architecture_1791548415803.webp',
           description: 'Scalable routing hierarchy separating North-South provider edge routing (Tier-0) from multi-tenant application boundaries (Tier-1), utilizing Equal-Cost Multi-Pathing (ECMP) across Edge nodes.',
           detailedSpecs: [
             '4-Way or 8-Way ECMP active-active edge routing scaling North-South throughput up to 100 Gbps+',
@@ -369,7 +369,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nsx-design-3',
           title: 'VMware Avi Vantage (NSX ALB) Software-Defined ADC',
           badge: 'Elastic Load Balancing',
-          imageUrl: '/assets/images/nsx_avi_vantage_alb_architecture_1791548451127.jpg',
+          imageUrl: '/assets/images/nsx_avi_vantage_alb_architecture_1791548451127.webp',
           description: 'Next-generation software-defined application delivery controller providing elastic layer 4-7 load balancing, intelligent auto-scaling, web application firewall (WAF), and real-time telemetry analytics.',
           detailedSpecs: [
             'Decoupled control and data planes: Avi Controller coordinates distributed Service Engines (SEs)',
@@ -391,7 +391,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Interconnect Service Mesh',
       description: 'Enterprise workload mobility platform interconnecting on-premises vSphere datacenters to Hyperscaler SDDCs. Features automated HCX Service Mesh fleet orchestration, Layer-2 Network Extension with Mobility Optimized Networking (MON) to prevent gateway hair-pinning, and Replication-Assisted vMotion (RAV) for zero-downtime transactional database migrations.',
       mediaType: 'image',
-      imageUrl: '/assets/images/hcx_architecture_showcase_1791544913309.jpg',
+      imageUrl: '/assets/images/hcx_architecture_showcase_1791544913309.webp',
       keyDeliverables: [
         'HCX Interconnect (IX) and WAN Optimization (WO) appliances with deduplication and LZ-compression',
         'High-Availability Layer-2 Network Extension (NE) pairs stretching up to 8 broadcast domains per appliance',
@@ -404,7 +404,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'hcx-design-1',
           title: 'HCX Interconnect Service Mesh & Multi-Appliance Fleet',
           badge: 'Service Mesh Fleet',
-          imageUrl: '/assets/images/hcx_architecture_showcase_1791544913309.jpg',
+          imageUrl: '/assets/images/hcx_architecture_showcase_1791544913309.webp',
           description: 'Automated point-to-point transport architecture deploying encrypted IPsec interconnect tunnels between on-premises HCX Connector and cloud HCX Cloud Gateway, orchestrating IX, WO, and NE appliances across WAN uplinks.',
           detailedSpecs: [
             'Dedicated Interconnect (HCX-IX) appliance managing migration data stream encryption over AES-GCM',
@@ -422,7 +422,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'hcx-design-2',
           title: 'Mobility Optimized Networking (MON) & Local Egress Path',
           badge: 'MON Local Egress',
-          imageUrl: '/assets/images/hcx_mon_traffic_routing_architecture_1791548489298.jpg',
+          imageUrl: '/assets/images/hcx_mon_traffic_routing_architecture_1791548489298.webp',
           description: 'Intelligent routing policy engine that prevents the classic hairpinning (traffic tromboning) problem for migrated virtual machines by allowing cloud-resident workloads to use cloud default gateways while sharing the stretched subnet.',
           detailedSpecs: [
             'Eliminates Trombone Routing: Cloud-migrated VMs access cloud native resources without looping back through on-prem',
@@ -439,7 +439,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'hcx-design-3',
           title: 'Replication-Assisted vMotion (RAV) Zero-Downtime Migration Pipeline',
           badge: 'Zero-Downtime RAV',
-          imageUrl: '/assets/images/hcx_rav_live_migration_architecture_1791548527583.jpg',
+          imageUrl: '/assets/images/hcx_rav_live_migration_architecture_1791548527583.webp',
           description: 'Next-generation migration engine combining the scale of bulk replication with the zero-downtime cutover of live vMotion, enabling hundreds of transactional database VMs to migrate in scheduled waves.',
           detailedSpecs: [
             'Background seed replication copies multi-terabyte virtual disks while the workload continues running in production',
@@ -461,7 +461,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Orchestrated DR Engine',
       description: 'Automated business continuity and disaster recovery orchestration across hybrid cloud environments. Enables non-disruptive disaster recovery testing using isolated Test Bubble sandbox networks, bidirectional protection groups, automated IP re-addressing, and policy-driven failover/failback workflows for mission-critical enterprise applications.',
       mediaType: 'image',
-      imageUrl: '/assets/images/srm_architecture_showcase_1791544923913.jpg',
+      imageUrl: '/assets/images/srm_architecture_showcase_1791544923913.webp',
       keyDeliverables: [
         'SRM Server appliances paired with vSphere Replication (vRA) for granular 5-minute RPO protection',
         'Non-disruptive Test Failover into isolated Test Bubble networks without interrupting production replication',
@@ -474,7 +474,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'srm-design-1',
           title: 'SRM Server Appliance & vSphere Replication Architecture',
           badge: 'Core DR Appliance',
-          imageUrl: '/assets/images/srm_architecture_showcase_1791544923913.jpg',
+          imageUrl: '/assets/images/srm_architecture_showcase_1791544923913.webp',
           description: 'Orchestrated disaster recovery architecture deploying paired SRM Server Linux appliances and vSphere Replication Appliances (vRA) between primary production datacenter and cloud recovery SDDC.',
           detailedSpecs: [
             'RPO thresholds customizable from 5 minutes down to seconds depending on replication mode',
@@ -492,7 +492,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'srm-design-2',
           title: 'Array-Based Replication (SRA) vs Host-Based vSphere Replication',
           badge: 'HW SAN vs Host vRA',
-          imageUrl: '/assets/images/srm_sra_array_replication_architecture_1791548690759.jpg',
+          imageUrl: '/assets/images/srm_sra_array_replication_architecture_1791548690759.webp',
           description: 'High-performance storage replication comparison showing hardware SAN synchronous/asynchronous LUN replication managed via vendor Storage Replication Adapters (SRA) versus hypervisor-level per-VM block replication.',
           detailedSpecs: [
             'Hardware SRA offloads 100% of replication compute load to physical SAN/NAS storage processors',
@@ -509,7 +509,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'srm-design-3',
           title: 'Non-Disruptive Test Failover & Sandbox Network Bubble',
           badge: 'Test Bubble Sandbox',
-          imageUrl: '/assets/images/srm_test_bubble_failover_architecture_1791548733914.jpg',
+          imageUrl: '/assets/images/srm_test_bubble_failover_architecture_1791548733914.webp',
           description: 'Isolated test execution capability that creates temporary snapshot replicas of protected VMs in an air-gapped private sandbox network, verifying full recovery runbooks without impacting production or replication.',
           detailedSpecs: [
             'Zero production downtime: Active replication continues uninterrupted while test runs in parallel',
@@ -531,7 +531,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       badge: 'Zero-Trust SDN Analytics',
       description: 'Comprehensive flow-based discovery, automated application tier clustering, migration wave planning, and intelligent Distributed Firewall (DFW) policy modeling to seamlessly transition unprotected legacy non-NSX workloads into zero-trust NSX microsegmentation.',
       mediaType: 'image',
-      imageUrl: '/assets/images/aria_network_microseg_showcase_1791551934452.jpg',
+      imageUrl: '/assets/images/aria_network_microseg_showcase_1791551934452.webp',
       keyDeliverables: [
         'Real-time flow-based discovery via IPFIX telemetry directly streaming from vSphere Distributed Switches (VDS)',
         'Machine-learning application dependency mapping and automated Web/App/Database tier clustering',
@@ -544,7 +544,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'aria-design-1',
           title: 'Flow-Based Discovery & IPFIX Telemetry Ingestion Fabric',
           badge: 'Flow Telemetry',
-          imageUrl: '/assets/images/aria_flow_discovery_analytics_1791552004516.jpg',
+          imageUrl: '/assets/images/aria_flow_discovery_analytics_1791552004516.webp',
           description: 'High-speed flow collection architecture collecting 100% of network traffic from vSphere Distributed Switches (VDS), physical leaf switches, and cloud interconnects to establish a real-time baseline of East-West and North-South communications.',
           detailedSpecs: [
             'IPFIX collector cluster ingesting up to 50,000 flows/sec with sub-second processing latency',
@@ -562,7 +562,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'aria-design-2',
           title: 'Automated Application Discovery & Multi-Tier Clustering',
           badge: 'App Dependency Mapping',
-          imageUrl: '/assets/images/aria_network_microseg_showcase_1791551934452.jpg',
+          imageUrl: '/assets/images/aria_network_microseg_showcase_1791551934452.webp',
           description: 'Leveraging machine-learning heuristics, security tags, VM naming schemas, and real-time TCP socket affinity to automatically assemble individual VMs into coherent multi-tier business application boundaries.',
           detailedSpecs: [
             'Dynamic clustering algorithms group hundreds of unorganized virtual machines into strict 3-tier topologies',
@@ -579,7 +579,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'aria-design-3',
           title: 'NSX DFW Microsegmentation Modeling & Migration Wave Planner',
           badge: 'DFW Zero-Trust & Wave Plan',
-          imageUrl: '/assets/images/aria_dfw_microseg_migration_planner_1791552031328.jpg',
+          imageUrl: '/assets/images/aria_dfw_microseg_migration_planner_1791552031328.webp',
           description: 'Translating observed network flows into recommended NSX Distributed Firewall (DFW) security rules, eliminating blind spots when moving from legacy flat non-NSX vSphere VLANs into zero-trust NSX microsegmentation.',
           detailedSpecs: [
             'Automated conversion of 30+ days of observed traffic flows into published NSX DFW L4 & L7 App-ID rules',
@@ -611,7 +611,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     phone: '+91 7497624807',
     email: 'wasim@zaboraa.com',
     location: 'Pune & Global Advisory',
-    portraitImage: '/assets/images/Wasim-Pic-02.png',
+    portraitImage: '/assets/images/Wasim-Pic-02.webp',
     photoStyle: {
       zoom: 1.0,
       brightness: 100,
@@ -630,7 +630,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
       { value: '6×', label: 'Verified Cloud Certifications' },
       { value: '100%', label: 'Runbook-Driven Cutovers' }
     ],
-    heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.jpg'
+    heroImage: '/assets/images/hero_cloud_datacenter_1791450064361.webp'
   },
   aboutPage: {
     badgeText: 'PRINCIPAL ARCHITECTURAL DESK',

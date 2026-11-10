@@ -1,7 +1,7 @@
 // Centralized Media Assets Configuration
 // Resolves image and asset paths with fallback to bundled local assets.
 
-export const ISOMETRIC_BLUEPRINT_3D_FALLBACK = '/assets/images/blueprint_3d_isometric_1791610246387.jpg';
+export const ISOMETRIC_BLUEPRINT_3D_FALLBACK = '/assets/images/blueprint_3d_isometric_1791610246387.webp';
 
 export const GOOGLE_DRIVE_CONFIG = {
   folderId: '1sFG8NLUcajo8DuCs7jq9ChYK-rksx7Io',
@@ -14,7 +14,7 @@ export const GOOGLE_DRIVE_CONFIG = {
  * If given a Google Drive file ID (e.g. "gdrive:1abcXYZ..."), returns direct Google Drive URL.
  * If given an existing local path or URL, returns that URL, or falls back to local assets if unavailable.
  */
-export function resolveMediaUrl(pathOrId: string | undefined, fallbackLocalPath: string = '/assets/images/hero_cloud_datacenter_1791450064361.jpg'): string {
+export function resolveMediaUrl(pathOrId: string | undefined, fallbackLocalPath: string = '/assets/images/hero_cloud_datacenter_1791450064361.webp'): string {
   if (!pathOrId || pathOrId.trim() === '') return fallbackLocalPath;
 
   const trimmed = pathOrId.trim();

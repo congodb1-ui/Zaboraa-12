@@ -611,7 +611,7 @@ class AdminService {
         status: 'active',
         subscription_tier: 'enterprise',
         full_name: 'Wasim Sayyed',
-        avatar_url: '/assets/images/wasim_headshot_framer.png',
+        avatar_url: '/assets/images/wasim_headshot_framer.webp',
         admin_notes: 'Principal Multi-Cloud Architect & Founder',
         created_at: '2026-01-01T00:00:00.000Z'
       },

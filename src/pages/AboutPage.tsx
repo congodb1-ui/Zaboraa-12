@@ -24,7 +24,7 @@ export const AboutPage: React.FC = () => {
 
   const resolvedPortrait = resolveMediaUrl(
     founder.portraitImage,
-    '/assets/images/Wasim-Pic-02.png'
+    '/assets/images/Wasim-Pic-02.webp'
   );
 
   const about = siteConfig.aboutPage || INITIAL_SITE_DATA.aboutPage!;
@@ -85,10 +85,13 @@ export const AboutPage: React.FC = () => {
                   <img
                     src={resolvedPortrait}
                     alt={founder.name}
+                    width={256}
+                    height={256}
+                    loading="lazy"
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-300 group-hover/avatar:scale-105"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/assets/images/Wasim-Pic-02.png';
+                      (e.target as HTMLImageElement).src = '/assets/images/Wasim-Pic-02.webp';
                     }}
                   />
                   {/* Hover / Click Overlay to Change Photo - Only visible for Admin */}

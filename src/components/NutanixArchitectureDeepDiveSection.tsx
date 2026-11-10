@@ -224,7 +224,7 @@ export const NutanixArchitectureDeepDiveSection: React.FC = () => {
         {/* Visual Architecture Image with Hotspots and Animation */}
         <div className="space-y-3">
           <InteractiveHotspotImage
-            imageUrl="/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg"
+            imageUrl="/assets/images/nutanix_nc2_azure_architecture_1791687138119.webp"
             designId="nc2-design-1"
             title="Azure Bare-Metal Hardware & Flow Virtual Networking Topology"
             subtitle="AN36 / AN64 / AN100 SKUs with Native Azure VNet Flow Fabric"
@@ -375,7 +375,7 @@ export const NutanixArchitectureDeepDiveSection: React.FC = () => {
         {/* Visual Architecture Image with Hotspots and Animation */}
         <div className="space-y-3">
           <InteractiveHotspotImage
-            imageUrl="/assets/images/nutanix_move_migration_1791690428522.jpg"
+            imageUrl="/assets/images/nutanix_move_migration_1791690428522.webp"
             designId="nc2-design-2"
             title="Nutanix Move Cross-Hypervisor Migration Pipeline (vSphere to AHV)"
             subtitle="Agentless CBT Delta Streaming, VirtIO Driver Injection & L2 Subnet Stretch"
@@ -518,7 +518,7 @@ export const NutanixArchitectureDeepDiveSection: React.FC = () => {
         {/* Visual Architecture Image with Hotspots and Animation */}
         <div className="space-y-3">
           <InteractiveHotspotImage
-            imageUrl="/assets/images/nutanix_dsf_storage_bcdr_1791690439733.jpg"
+            imageUrl="/assets/images/nutanix_dsf_storage_bcdr_1791690439733.webp"
             designId="nc2-design-3"
             title="Distributed Storage Fabric (DSF) & Multi-Region BCDR on Azure"
             subtitle="RF2 / RF3 Failure Domains, Inline Deduplication & Nutanix Leap Disaster Recovery"

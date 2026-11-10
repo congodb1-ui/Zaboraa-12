@@ -183,7 +183,7 @@ export const PlatformEditorModal: React.FC = () => {
       title: 'New Architecture Module',
       badge: 'Architecture Spec',
       description: 'Comprehensive design specifications and deployment topology for production enterprise clouds.',
-      imageUrl: '/assets/images/blueprint_3d_isometric_1791610246387.jpg',
+      imageUrl: '/assets/images/blueprint_3d_isometric_1791610246387.webp',
       detailedSpecs: [
         'Dedicated low-latency network interconnect',
         'Automated high-availability failover topology',

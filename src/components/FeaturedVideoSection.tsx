@@ -122,7 +122,7 @@ export const FeaturedVideoSection: React.FC = () => {
                 >
                   {/* Backdrop artwork */}
                   <img
-                    src="/assets/images/architecture_avs_mesh_1791450083586.jpg"
+                    src="/assets/images/architecture_avs_mesh_1791450083586.webp"
                     alt={featuredVideo.title}
                     referrerPolicy="no-referrer"
                     onError={(e) => {

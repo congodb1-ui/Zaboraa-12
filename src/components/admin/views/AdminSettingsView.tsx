@@ -804,7 +804,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({ currentUse
                   type="text"
                   value={brandLogoUrl}
                   onChange={(e) => setBrandLogoUrl(e.target.value)}
-                  placeholder="https://... or /assets/images/logo.png"
+                  placeholder="https://... or /assets/images/logo.webp"
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
                 />
               </div>

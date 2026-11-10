@@ -2049,7 +2049,7 @@ export const CustomizerDrawer: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg overflow-hidden border border-cyan-500/50 bg-slate-800 shrink-0">
                     <img
-                      src={siteConfig.founder.portraitImage || '/assets/images/wasim_sayyed_executive_1791473154875.jpg'}
+                      src={siteConfig.founder.portraitImage || '/assets/images/wasim_sayyed_executive_1791473154875.webp'}
                       alt="Wasim Portrait"
                       onError={(e) => {
                         const target = e.currentTarget;

@@ -8,3 +8,4 @@ This document records all autonomous engineering and architectural decisions mad
 | P0-02 | Changed dev script port in `package.json` to 3001 (`--port=3001`) | Resolves port clash with Zabura-FX on port 3000. |
 | P0-03 | Re-checked `vercel.json`, `tsconfig.json`, `.gitignore` | All 3 verified present; `.gitignore` covers `.env*`, `node_modules`, `dist`; §9.4 synced with active `vercel.json`. |
 | P0-04 | Recorded baseline metrics across tests, lint, build, bundle chunks, and assets | Baseline: 133/4 tests passing, 0 lint errors, 30 prerendered routes, 3.77 MB monolithic JS bundle, 22.54 MB images in `src/assets/images`. |
+| P0-05 | Executed codebase secrets scan | Zero server secrets found in browser code; confirmed `firebase-applet-config.json` is public client config only; no `service_role` or private keys exposed. |

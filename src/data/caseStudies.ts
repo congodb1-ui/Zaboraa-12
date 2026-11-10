@@ -68,8 +68,8 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: 'middle-east-gov-avs-framework',
     title: 'Middle East Government AVS Migration Framework',
-    metaTitle: 'VMware to Azure VMware Solution: Government Migration Framework',
-    metaDescription: 'How a repeatable HCX RAV/Bulk framework moved VMware estates of 50-300 VMs to Azure VMware Solution for Middle East government entities: reIP, Oracle and latency.',
+    metaTitle: 'VMware to Azure VMware Solution: Government Framework',
+    metaDescription: 'How a repeatable HCX RAV/Bulk framework moved 50-300 VMs to Azure VMware Solution for Middle East government entities: reIP, Oracle RAC, and network latency.',
     h1: 'Standardised VMware to Azure VMware Solution Migration for Middle East Government Entities',
     sector: 'Middle East Government Entities',
     platforms: ['Azure VMware Solution (AVS)', 'VMware HCX', 'Azure NetApp Files'],
@@ -244,7 +244,7 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: 'avs-to-avs-cross-region',
     title: 'Azure VMware Solution Cross-Region Migration',
-    metaTitle: 'AVS to AVS Cross-Region Migration with HCX: Government Case Study',
+    metaTitle: 'AVS to AVS Cross-Region Migration: Government Case Study',
     metaDescription: 'How an AVS-to-AVS migration between Azure regions used HCX RAV and Bulk for a government entity while maintaining 5-15 min RPO and dual DR continuity.',
     h1: 'Azure VMware Solution Cross-Region Migration for a Middle East Government Entity',
     sector: 'Middle East Government Entities',
@@ -397,7 +397,7 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: 'gov-dr-failover-drills',
     title: 'Government Disaster Recovery Validation & 6-Monthly Drills',
-    metaTitle: 'AVS Disaster Recovery: RPO 5-15 Min, RTO 1-2 Hr, 6-Month DR Drills',
+    metaTitle: 'AVS Disaster Recovery: 5-15 Min RPO & Semi-Annual Drills',
     metaDescription: 'Disaster recovery architecture on Azure VMware Solution: achieving 5-15 min RPO, 1-2 hr RTO, and validating failover and failback with 6-monthly drills.',
     h1: 'Disaster Recovery Validation on Azure VMware Solution: Failover, Failback and 6-Monthly Drills',
     sector: 'Middle East Government Entities',
@@ -699,8 +699,8 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: 'nsxt-microsegmentation-aria-networks',
     title: 'NSX-T Microsegmentation Planned with Aria Operations for Networks',
-    metaTitle: 'NSX-T Microsegmentation Planning with Aria Operations for Networks',
-    metaDescription: 'Flow-based NSX-T microsegmentation planning for government VMware estates using Aria Operations for Networks to eliminate stale rules and secure East-West traffic.',
+    metaTitle: 'NSX-T Microsegmentation with Aria Operations for Networks',
+    metaDescription: 'Flow-based NSX-T microsegmentation planning using Aria Operations for Networks to eliminate stale firewall rules and secure East-West traffic across vCenters.',
     h1: 'NSX-T Microsegmentation: Flow-Based Firewall Planning with Aria Operations for Networks',
     sector: 'Middle East Government Entities',
     platforms: ['NSX-T Distributed Firewall', 'VMware Aria Operations for Networks (vRNI)'],
@@ -827,7 +827,7 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: 'aria-operations-networks-deployment',
     title: 'Aria Operations & Aria for Networks Multi-vCenter Deployment',
-    metaTitle: 'Aria Operations and Aria for Networks Deployment: Capacity and Wave Planning',
+    metaTitle: 'Aria Operations & Networks: Capacity and Wave Planning',
     metaDescription: 'Deploying Aria Operations and Aria Operations for Networks for capacity forecasting, AVS host sizing, and flow-based migration wave planning across vCenters.',
     h1: 'Aria Operations and Aria Operations for Networks for Multi-vCenter Government Environments',
     sector: 'Middle East Government Entities',
@@ -955,8 +955,8 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: 'aria-automation-blueprints-vcenter',
     title: 'Aria Automation Cloud Templates & Multi-Team vCenter Isolation',
-    metaTitle: 'Aria Automation Cloud Templates: VM Self-Service with Team Isolation',
-    metaDescription: 'Aria Automation cloud templates for government IT: self-service VM catalog, approval governance, naming policies, and department isolation without vCenter access.',
+    metaTitle: 'Aria Automation Cloud Templates: Self-Service & Isolation',
+    metaDescription: 'Aria Automation cloud templates for government IT: self-service VM catalog, approval governance, naming policies, and project isolation without vCenter access.',
     h1: 'Aria Automation for Multi-Team Government IT: Cloud Templates, Approvals and vCenter Isolation',
     sector: 'Middle East Government Entities',
     platforms: ['VMware Aria Automation', 'VMware vCenter Server', 'VMware NSX-T'],

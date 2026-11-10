@@ -140,7 +140,7 @@ describe('Case Studies & SEO Route Manifest Test Suite', () => {
       expect(caseStudiesSeo?.h1).toBe('Case Studies: VMware Migrations, DR and Automation for Middle East Government Entities');
 
       const cs1Seo = getRouteSeo('/case-studies/middle-east-gov-avs-framework');
-      expect(cs1Seo?.title).toBe('VMware to Azure VMware Solution: Government Migration Framework');
+      expect(cs1Seo?.title).toBe('VMware to Azure VMware Solution: Government Framework');
 
       expect(getRouteSeo('/nonexistent-route')).toBeUndefined();
     });

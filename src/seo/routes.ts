@@ -364,7 +364,7 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   {
     path: '/resources/videos',
     title: 'Architecture Video Briefings (Coming Soon) — Zaboraa',
-    description: 'Technical architecture video briefings are currently in production and will be released soon.',
+    description: 'Technical architecture video briefings and migration masterclasses are currently in production. Explore our interactive tools, KB runbooks, and tutorials.',
     h1: 'Enterprise Architecture Technical Videos',
     summary: 'Technical video briefings are currently in production and will be added soon. Explore our step-by-step tutorials, knowledge base articles, and free browser-based engineering tools in the interim.',
     lastmod: '2026-11-10',
@@ -436,8 +436,8 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   // 25. Case Study 1
   {
     path: '/case-studies/middle-east-gov-avs-framework',
-    title: 'VMware to Azure VMware Solution: Government Migration Framework',
-    description: 'How a repeatable HCX RAV/Bulk framework moved VMware estates of 50-300 VMs to Azure VMware Solution for Middle East government entities: reIP, Oracle and latency.',
+    title: 'VMware to Azure VMware Solution: Government Framework',
+    description: 'How a repeatable HCX RAV/Bulk framework moved 50-300 VMs to Azure VMware Solution for Middle East government entities: reIP, Oracle RAC, and network latency.',
     h1: 'Standardised VMware to Azure VMware Solution Migration for Middle East Government Entities',
     summary: 'A repeatable HCX RAV and Bulk migration framework developed across 14+ Middle East government entities moving VMware estates of 50 to 300 virtual machines to Azure VMware Solution.',
     lastmod: '2026-11-03',
@@ -496,7 +496,7 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   // 26. Case Study 2: AVS to AVS Cross-Region
   {
     path: '/case-studies/avs-to-avs-cross-region',
-    title: 'AVS to AVS Cross-Region Migration with HCX: Government Case Study',
+    title: 'AVS to AVS Cross-Region Migration: Government Case Study',
     description: 'AVS-to-AVS migration between Azure regions for a government entity: HCX RAV and Bulk execution, 5-15 min RPO, and dual-DR continuity during cutover.',
     h1: 'Azure VMware Solution Cross-Region Migration for a Middle East Government Entity',
     summary: 'An inter-region Azure VMware Solution evacuation framework for a sovereign entity relocating an active AVS private cloud across national data boundaries with continuous DR replication.',
@@ -556,7 +556,7 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   // 27. Case Study 3: Government DR, Failover and 6-Monthly Drills
   {
     path: '/case-studies/gov-dr-failover-drills',
-    title: 'AVS Disaster Recovery: RPO 5-15 Min, RTO 1-2 Hr, 6-Month DR Drills',
+    title: 'AVS Disaster Recovery: 5-15 Min RPO & Semi-Annual Drills',
     description: 'Disaster recovery on Azure VMware Solution: achieving 5-15 min RPO, 1-2 hr RTO, with SRM, vSphere Replication, JetStream, and 6-monthly drills.',
     h1: 'Disaster Recovery Validation on Azure VMware Solution: Failover, Failback and 6-Monthly Drills',
     summary: 'A rigorous disaster recovery validation framework deployed across Middle East government entities on Azure VMware Solution, demonstrating 5-15 minute RPO, 1-2 hour RTO, and mandatory semi-annual failover/failback drills.',
@@ -676,8 +676,8 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   // 29. Case Study 5: NSX-T Microsegmentation Planned with Aria Operations for Networks
   {
     path: '/case-studies/nsxt-microsegmentation-aria-networks',
-    title: 'NSX-T Microsegmentation Planning with Aria Operations for Networks',
-    description: 'Flow-based NSX-T microsegmentation planning for government VMware estates using Aria Operations for Networks to eliminate stale rules and secure East-West traffic.',
+    title: 'NSX-T Microsegmentation with Aria Operations for Networks',
+    description: 'Flow-based NSX-T microsegmentation planning using Aria Operations for Networks to eliminate stale firewall rules and secure East-West traffic across vCenters.',
     h1: 'NSX-T Microsegmentation: Flow-Based Firewall Planning with Aria Operations for Networks',
     summary: 'A structured five-phase framework using VMware Aria Operations for Networks (vRNI) to analyze East-West network flow telemetry, eliminate stale legacy rules, and model zero-trust Distributed Firewall (DFW) security policies across Middle East government VMware estates.',
     lastmod: '2026-11-03',
@@ -736,7 +736,7 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   // 30. Case Study 6: Aria Operations and Aria Operations for Networks Deployment
   {
     path: '/case-studies/aria-operations-networks-deployment',
-    title: 'Aria Operations and Aria for Networks Deployment: Capacity and Wave Planning',
+    title: 'Aria Operations & Networks: Capacity and Wave Planning',
     description: 'Deploying Aria Operations and Aria Operations for Networks for capacity forecasting, AVS host sizing, and flow-based migration wave planning across vCenters.',
     h1: 'Aria Operations and Aria Operations for Networks for Multi-vCenter Government Environments',
     summary: 'Enterprise deployment of VMware Aria Operations and VMware Aria Operations for Networks across multi-vCenter government environments, establishing unified capacity forecasting, right-sizing analysis, and dependency-driven HCX migration wave planning.',
@@ -788,8 +788,8 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
   // 31. Case Study 7: Aria Automation, Cloud Templates & Multi-Team vCenter Isolation
   {
     path: '/case-studies/aria-automation-blueprints-vcenter',
-    title: 'Aria Automation Cloud Templates: VM Self-Service with Team Isolation',
-    description: 'Aria Automation cloud templates for government IT: self-service VM catalog, approval governance, naming policies, and department isolation without vCenter access.',
+    title: 'Aria Automation Cloud Templates: Self-Service & Isolation',
+    description: 'Aria Automation cloud templates for government IT: self-service VM catalog, approval governance, naming policies, and project isolation without vCenter access.',
     h1: 'Aria Automation for Multi-Team Government IT: Cloud Templates, Approvals and vCenter Isolation',
     summary: 'Standardized VMware Aria Automation deployment for sovereign public sector organizations, establishing self-service cloud templates, automated approval workflows, naming and tagging governance, and secure department isolation without delegating vCenter administrative privileges.',
     lastmod: '2026-11-03',

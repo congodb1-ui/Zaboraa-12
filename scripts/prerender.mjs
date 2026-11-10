@@ -228,6 +228,11 @@ for (const route of ROUTE_MANIFEST) {
     pageHtml = pageHtml.replace('</head>', `  <meta name="twitter:title" content="${escapeAttr(route.title)}" />\n  <meta name="twitter:description" content="${escapeAttr(route.description)}" />\n</head>`);
   }
 
+  // Ensure OG / Twitter image tags
+  if (!pageHtml.includes('property="og:image"')) {
+    pageHtml = pageHtml.replace('</head>', `  <meta property="og:image" content="https://zaboraa.com/og/zaboraa-og.png" />\n  <meta property="og:image:width" content="1200" />\n  <meta property="og:image:height" content="630" />\n  <meta property="og:image:alt" content="Zaboraa - Enterprise VMware Cloud Architecture by Wasim Sayyed" />\n  <meta name="twitter:image" content="https://zaboraa.com/og/zaboraa-og.png" />\n</head>`);
+  }
+
   // 4b. Emit noindex robots tag for noindex routes (D9: videos coming soon)
   if (route.noindex) {
     if (pageHtml.includes('name="robots"')) {

@@ -691,24 +691,19 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     ],
     selectedOutcomes: [
       {
-        text: '1,240 VMs, 0 hours downtime, 38% TCO reduction (Tier-1 bank)',
-        caseStudySlug: 'middle-east-gov-avs-framework',
-        sector: 'Tier-1 Bank'
-      },
-      {
-        text: '4,500 workloads, 0 min downtime, 24% Capex reduction (18-hospital network)',
+        text: '14+ sovereign entity program (DR active for majority); RPO 5–15 min, RTO 1–2 hr',
         caseStudySlug: 'gov-dr-failover-drills',
-        sector: '18-Hospital Network'
+        sector: 'Government Sovereign Disaster Recovery'
       },
       {
-        text: '820 VMs, 99.999% availability, $1.4M/year saved (global freight)',
-        caseStudySlug: 'avs-to-avs-cross-region',
-        sector: 'Global Freight'
-      },
-      {
-        text: '14+ Middle East Government entities migrated to Azure VMware Solution (AVS) with zero business-hour downtime',
+        text: 'Standardised AVS migration framework handling 50–100 VMs average per wave, up to 300 VMs',
         caseStudySlug: 'middle-east-gov-avs-framework',
         sector: 'Government Sovereign Cloud'
+      },
+      {
+        text: '6-monthly DR failover and failback drills verified with live non-disruptive test bubbles',
+        caseStudySlug: 'gov-dr-failover-drills',
+        sector: 'Critical Infrastructure DR'
       },
       {
         text: 'Zero-trust microsegmentation across 2,400 security tags using Aria Operations for Networks before cutover',

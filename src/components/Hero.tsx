@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
 import { Phone, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Award, Camera, Edit3, Cpu, Sparkles } from 'lucide-react';
+import { resolveMediaUrl, FOUNDER_PORTRAIT_FALLBACK } from '../data/mediaAssets';
 
 export const Hero: React.FC = () => {
   const {
@@ -204,37 +205,29 @@ export const Hero: React.FC = () => {
                   {/* Clean Double-Ring Circular Frame */}
                   <div className="relative w-56 h-56 sm:w-64 sm:h-64 rounded-full p-1 bg-white dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center transition-transform duration-300">
                     <div className="relative w-full h-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900">
-                      {founder.portraitImage ? (
-                        <img
-                          src={founder.portraitImage}
-                          alt={founder.name}
-                          width={256}
-                          height={256}
-                          loading="eager"
-                          fetchPriority="high"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            if (target.src.includes('/src/assets/images/')) {
-                              target.src = target.src.replace('/src/assets/images/', '/assets/images/');
-                            } else if (target.src.includes('/assets/images/')) {
-                              target.src = target.src.replace('/assets/images/', '/src/assets/images/');
-                            }
-                          }}
-                          style={{
-                            transform: photoStyle?.zoom && photoStyle.zoom !== 1 ? `scale(${photoStyle.zoom})` : undefined,
-                            filter: photoStyle?.brightness && photoStyle?.contrast && (photoStyle.brightness !== 100 || photoStyle.contrast !== 100)
-                              ? `brightness(${photoStyle.brightness}%) contrast(${photoStyle.contrast}%)`
-                              : undefined,
-                            objectPosition: photoStyle?.objectPosition || 'center'
-                          }}
-                          className="w-full h-full object-cover transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-500 font-mono text-4xl font-bold bg-slate-200 dark:bg-slate-800">
-                          WS
-                        </div>
-                      )}
+                      <img
+                        src={resolveMediaUrl(founder.portraitImage, FOUNDER_PORTRAIT_FALLBACK)}
+                        alt={founder.name}
+                        width={256}
+                        height={256}
+                        loading="eager"
+                        fetchPriority="high"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src && !target.src.endsWith(FOUNDER_PORTRAIT_FALLBACK)) {
+                            target.src = FOUNDER_PORTRAIT_FALLBACK;
+                          }
+                        }}
+                        style={{
+                          transform: photoStyle?.zoom && photoStyle.zoom !== 1 ? `scale(${photoStyle.zoom})` : undefined,
+                          filter: photoStyle?.brightness && photoStyle?.contrast && (photoStyle.brightness !== 100 || photoStyle.contrast !== 100)
+                            ? `brightness(${photoStyle.brightness}%) contrast(${photoStyle.contrast}%)`
+                            : undefined,
+                          objectPosition: photoStyle?.objectPosition || 'center'
+                        }}
+                        className="w-full h-full object-cover transition-transform duration-300"
+                      />
 
                       {/* Admin Overlay */}
                       {isAdmin && (

@@ -417,6 +417,9 @@ export const Navbar: React.FC = () => {
                   <img
                     src={authUser.photoURL}
                     alt={authUser.displayName || 'Avatar'}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
                     className="w-full h-full object-cover"
                   />
                 ) : (

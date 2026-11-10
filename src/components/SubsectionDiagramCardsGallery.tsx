@@ -155,11 +155,7 @@ export const SubsectionDiagramCardsGallery: React.FC<SubsectionDiagramCardsGalle
                   alt={design.title}
                   onError={(e) => {
                     const target = e.currentTarget;
-                    if (target.src.includes('/src/assets/images/')) {
-                      target.src = target.src.replace('/src/assets/images/', '/assets/images/');
-                    } else if (target.src.includes('/assets/images/')) {
-                      target.src = '/src' + target.src;
-                    } else {
+                    if (target.src && !target.src.endsWith(ISOMETRIC_BLUEPRINT_3D_FALLBACK)) {
                       target.src = ISOMETRIC_BLUEPRINT_3D_FALLBACK;
                     }
                   }}

@@ -233,11 +233,7 @@ export const DiagramLightboxModal: React.FC<DiagramLightboxModalProps> = ({
             draggable={false}
             referrerPolicy="no-referrer"
             onError={() => {
-              if (currentSrc.startsWith('/src/assets/images/')) {
-                setCurrentSrc(currentSrc.replace('/src/assets/images/', '/assets/images/'));
-              } else if (currentSrc.startsWith('/assets/images/')) {
-                setCurrentSrc('/src' + currentSrc);
-              } else {
+              if (currentSrc !== ISOMETRIC_BLUEPRINT_3D_FALLBACK) {
                 setCurrentSrc(ISOMETRIC_BLUEPRINT_3D_FALLBACK);
               }
             }}

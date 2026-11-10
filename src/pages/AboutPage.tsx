@@ -91,7 +91,10 @@ export const AboutPage: React.FC = () => {
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-300 group-hover/avatar:scale-105"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/assets/images/Wasim-Pic-02.webp';
+                      const target = e.currentTarget;
+                      if (target.src && !target.src.endsWith('/assets/images/Wasim-Pic-02.webp')) {
+                        target.src = '/assets/images/Wasim-Pic-02.webp';
+                      }
                     }}
                   />
                   {/* Hover / Click Overlay to Change Photo - Only visible for Admin */}

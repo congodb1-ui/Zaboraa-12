@@ -41,61 +41,8 @@ export const CaseStudiesPage: React.FC = () => {
     return true;
   });
 
-  const canonicalUrl = 'https://zaboraa.com/case-studies';
-
-  const jsonLdHub = {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    'name': 'Case Studies: VMware Migrations, DR and Automation for Middle East Government Entities',
-    'url': canonicalUrl,
-    'description': 'Real-world VMware migration and disaster recovery frameworks across Middle East government entities to Azure VMware Solution.',
-    'publisher': {
-      '@type': 'Organization',
-      'name': 'Zaboraa',
-      'url': 'https://zaboraa.com',
-      'logo': 'https://zaboraa.com/assets/images/zaboraa-logo.png'
-    }
-  };
-
-  const jsonLdBreadcrumbs = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    'itemListElement': [
-      {
-        '@type': 'ListItem',
-        'position': 1,
-        'name': 'Home',
-        'item': 'https://zaboraa.com'
-      },
-      {
-        '@type': 'ListItem',
-        'position': 2,
-        'name': 'Case Studies',
-        'item': canonicalUrl
-      }
-    ]
-  };
-
   return (
-    <>
-      {/* React 19 Native Head Hoisting */}
-      <title>Enterprise Case Studies & Architecture Outcomes — Zaboraa</title>
-      <meta
-        name="description"
-        content="VMware migration and DR case studies for Middle East government entities: Azure VMware Solution frameworks, HCX RAV/Bulk wave allocation, and ANF storage."
-      />
-      <link rel="canonical" href={canonicalUrl} />
-      <meta property="og:title" content="Enterprise Case Studies & Architecture Outcomes — Zaboraa" />
-      <meta property="og:description" content="VMware migration and DR case studies for Middle East government entities to Azure VMware Solution." />
-      <meta property="og:url" content={canonicalUrl} />
-      <meta property="og:type" content="website" />
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content="Enterprise Case Studies — Zaboraa" />
-      <meta name="twitter:description" content="VMware migration and DR case studies for Middle East government entities." />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdHub) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumbs) }} />
-
-      <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10">
+    <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10">
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <Link to="/" className="hover:text-cyan-400 transition-colors">Home</Link>
@@ -249,6 +196,5 @@ export const CaseStudiesPage: React.FC = () => {
           </button>
         </div>
       </div>
-    </>
   );
 };

@@ -499,9 +499,10 @@ Every route is prerendered to static HTML with its own head tags plus an H1 and 
 - **Canonical Tag in HTML:** `<link rel="canonical" href="https://zaboraa.com/" />`
 
 ### 9.4 vercel.json — Production Configuration
-> ✅ **Founder-confirmed (10 Nov 2026):** Verified present in repo and synchronized with live reality during P0-03.
+> ✅ **Founder-confirmed (10 Nov 2026):** Verified present in repo and synchronized with live reality during P0-03 and hardened during P2-07 (`trailingSlash: false`, immutable `/assets/(.*)` caching, and `text/plain; charset=utf-8` with 24h caching for `llms.txt`).
 ```json
 {
+  "trailingSlash": false,
   "headers": [
     {
       "source": "/(.*)",
@@ -512,6 +513,19 @@ Every route is prerendered to static HTML with its own head tags plus an H1 and 
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
       ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(llms|llms-full).txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
+      ]
     }
   ],
   "rewrites": [
@@ -521,6 +535,9 @@ Every route is prerendered to static HTML with its own head tags plus an H1 and 
 ```
 **Behavior:**
 - Serves static files with extensions (`.txt`, `.xml`, `.json`, `.ico`) as real files from `dist/`
+- Enforces canonical trailingSlash=false across all routes to prevent duplicate URL indexing
+- Immutable 1-year caching for Vite-hashed `/assets/(.*)` bundles
+- Correct `text/plain; charset=utf-8` header and 24h caching for GEO AI visibility files `llms.txt` and `llms-full.txt`
 - Rewrites only paths without dots (React routes) to `/index.html` for SPA routing
 - API routes `/api/*` served before rewrites (filesystem-first)
 - HSTS enabled with max-age=31536000 and includeSubDomains

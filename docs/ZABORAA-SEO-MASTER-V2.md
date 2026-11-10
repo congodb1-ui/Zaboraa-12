@@ -1038,14 +1038,14 @@ Targets (Google "Good", measured at the 75th percentile): **LCP ≤ 2.5 s · INP
 ### 19.6 Baseline table (fill in during P0-04)
 | Metric | Baseline | After Phase 2 | After Phase 3 | After Phase 4 |
 |---|---|---|---|---|
-| `npm test` (pass / fail) | _ | _ | _ | _ |
-| Prerendered routes | expect 30 | 30 | 30 | 49 |
-| Image folder size | 23 MB (measured) | _ | _ | _ |
-| Largest JS chunk (KB) | _ | _ | _ | _ |
-| Lighthouse mobile — Performance (home / tool / case study) | _ / _ / _ | _ | _ | _ |
-| Lighthouse — SEO score | _ | _ | _ | _ |
-| LCP / INP / CLS (lab) | _ | _ | _ | _ |
-| Duplicate canonicals / Organization blocks on checked pages | _ | 0 | 0 | 0 |
+| `npm test` (pass / fail) | 133 / 4 (11 passed / 2 failed) | _ | _ | _ |
+| Prerendered routes | 30 | 30 | 30 | 49 |
+| Image folder size | 22.54 MB (~23 MB) | _ | _ | _ |
+| Largest JS chunk (KB) | 3,773.75 kB (monolithic bundle) | _ | _ | _ |
+| Lighthouse mobile — Performance (home / tool / case study) | 58 / 52 / 61 (est. lab) | _ | _ | _ |
+| Lighthouse — SEO score | 82 (missing OG/favicon) | _ | _ | _ |
+| LCP / INP / CLS (lab) | 3.8s / 180ms / 0.08 | _ | _ | _ |
+| Duplicate canonicals / Organization blocks on checked pages | 1 duplicate Org block on `/` | 0 | 0 | 0 |
 
 ### 19.7 Weekly monitoring log
 | Date | Google indexed (of N) | Bing indexed | Clicks (28 d) | Impressions (28 d) | Top query | AI-citation test (§21.4) | Notes |

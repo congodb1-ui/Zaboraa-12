@@ -448,7 +448,7 @@ export const NodeSizingToolPage: React.FC = () => {
     const costB = monthlyCost(presetB, cloudBCalculations.nodesWithDecoupled);
     exportDualCloudComparisonExcel({
       projectName: 'Hyperscaler Multi-Cloud Architecture Evaluation',
-      architectName: 'Wasim Sayyed, Principal Cloud Architect',
+      architectName: 'Wasim Sayyed, Principal VMware Architect',
       pricingNote: PRICING_META.notice,
       cloudA: {
         name: preset.name,

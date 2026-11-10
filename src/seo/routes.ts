@@ -60,12 +60,7 @@ export const ROUTE_MANIFEST: RouteSeoEntry[] = [
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         'name': 'Zaboraa',
-        'url': 'https://zaboraa.com',
-        'potentialAction': {
-          '@type': 'SearchAction',
-          'target': 'https://zaboraa.com/tools?q={search_term_string}',
-          'query-input': 'required name=search_term_string'
-        }
+        'url': 'https://zaboraa.com'
       }
     ]
   },

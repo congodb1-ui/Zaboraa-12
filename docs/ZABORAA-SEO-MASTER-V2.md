@@ -499,25 +499,19 @@ Every route is prerendered to static HTML with its own head tags plus an H1 and 
 - **Canonical Tag in HTML:** `<link rel="canonical" href="https://zaboraa.com/" />`
 
 ### 9.4 vercel.json — Production Configuration
-> ✅ **Founder-confirmed (10 Nov 2026):** the real repo has a working `vercel.json` (it was only missing from the audit zip). The block below is the v1.1 copy — P0-03 replaces it with the real file.
+> ✅ **Founder-confirmed (10 Nov 2026):** Verified present in repo and synchronized with live reality during P0-03.
 ```json
 {
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
       ]
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "0 9 * * *"
     }
   ],
   "rewrites": [
@@ -529,7 +523,7 @@ Every route is prerendered to static HTML with its own head tags plus an H1 and 
 - Serves static files with extensions (`.txt`, `.xml`, `.json`, `.ico`) as real files from `dist/`
 - Rewrites only paths without dots (React routes) to `/index.html` for SPA routing
 - API routes `/api/*` served before rewrites (filesystem-first)
-- Cron job `/api/cron` runs daily at 09:00 UTC, protected by `CRON_SECRET`
+- HSTS enabled with max-age=31536000 and includeSubDomains
 
 ---
 

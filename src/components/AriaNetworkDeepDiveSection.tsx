@@ -367,21 +367,21 @@ resource "nsxt_firewall_section" "dfw_rule_${rule.id}" {
       id: 'diag-flow-discovery',
       title: 'Flow-Based Discovery & IPFIX Ingestion Telemetry Fabric',
       subtitle: 'Capturing wire-rate packets across vSphere Distributed Switches (VDS), physical switches, and cloud interconnects.',
-      url: '/assets/images/aria_flow_discovery_analytics_1791552004516.jpg',
+      url: '/assets/images/aria_flow_discovery_analytics_1791552004516.webp',
       badge: 'Flow Telemetry'
     },
     {
       id: 'diag-dfw-migration',
       title: 'NSX DFW Microsegmentation Modeling & Migration Wave Planner',
       subtitle: 'Translating observed flows into NSX Distributed Firewall rules and scheduling zero-downtime migration waves.',
-      url: '/assets/images/aria_dfw_microseg_migration_planner_1791552031328.jpg',
+      url: '/assets/images/aria_dfw_microseg_migration_planner_1791552031328.webp',
       badge: 'DFW Zero-Trust'
     },
     {
       id: 'diag-overview',
       title: 'Aria Operations for Networks End-to-End Enterprise Architecture',
       subtitle: 'Comprehensive view of discovery, dependency mapping, migration planning, and distributed firewall policy enforcement.',
-      url: '/assets/images/aria_network_microseg_showcase_1791551934452.jpg',
+      url: '/assets/images/aria_network_microseg_showcase_1791551934452.webp',
       badge: 'Full Architecture'
     }
   ];
@@ -820,7 +820,7 @@ resource "nsxt_firewall_section" "dfw_rule_${rule.id}" {
                   alt={diagram.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/images/hero_cloud_datacenter_1791450064361.jpg';
+                    (e.target as HTMLImageElement).src = '/assets/images/hero_cloud_datacenter_1791450064361.webp';
                   }}
                 />
                 <div className="absolute top-3 left-3">

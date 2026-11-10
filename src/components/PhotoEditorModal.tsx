@@ -18,7 +18,7 @@ export const PhotoEditorModal: React.FC = () => {
   const { siteConfig, isPhotoEditorOpen, setIsPhotoEditorOpen, updateFounderPhoto } = useCustomization();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const initialPhoto = siteConfig.founder.portraitImage || '/assets/images/wasim_pic_02.jpg';
+  const initialPhoto = siteConfig.founder.portraitImage || '/assets/images/wasim_pic_02.webp';
   const initialStyle: PhotoStyle = siteConfig.founder.photoStyle || {
     zoom: 1.05,
     brightness: 102,
@@ -74,7 +74,7 @@ export const PhotoEditorModal: React.FC = () => {
   };
 
   const handleReset = () => {
-    setCurrentImage('/assets/images/wasim_pic_02.jpg');
+    setCurrentImage('/assets/images/wasim_pic_02.webp');
     setZoom(1.05);
     setBrightness(102);
     setContrast(104);
@@ -186,7 +186,7 @@ export const PhotoEditorModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setCurrentImage('/assets/images/Wasim-Pic-02.png');
+                    setCurrentImage('/assets/images/Wasim-Pic-02.webp');
                     setPosition('center');
                     setZoom(1.0);
                     setBrightness(100);
@@ -201,7 +201,7 @@ export const PhotoEditorModal: React.FC = () => {
                 >
                   <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-800 shrink-0">
                     <img
-                      src="/assets/images/Wasim-Pic-02.png"
+                      src="/assets/images/Wasim-Pic-02.webp"
                       alt="Uploaded Executive Portrait"
                       className="w-full h-full object-cover object-center"
                     />
@@ -212,7 +212,7 @@ export const PhotoEditorModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setCurrentImage('/assets/images/wasim_headshot_framer.png');
+                    setCurrentImage('/assets/images/wasim_headshot_framer.webp');
                     setPosition('center');
                     setZoom(1.0);
                   }}
@@ -224,7 +224,7 @@ export const PhotoEditorModal: React.FC = () => {
                 >
                   <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-800 shrink-0">
                     <img
-                      src="/assets/images/wasim_headshot_framer.png"
+                      src="/assets/images/wasim_headshot_framer.webp"
                       alt="Wasim Original Headshot"
                       className="w-full h-full object-cover object-center"
                     />
@@ -235,7 +235,7 @@ export const PhotoEditorModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setCurrentImage('/assets/images/wasim_sayyed_executive_1791473154875.jpg');
+                    setCurrentImage('/assets/images/wasim_sayyed_executive_1791473154875.webp');
                     setPosition('top');
                   }}
                   className={`p-2 rounded-lg border text-left flex items-center gap-2 transition-all cursor-pointer ${
@@ -246,7 +246,7 @@ export const PhotoEditorModal: React.FC = () => {
                 >
                   <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-800 shrink-0">
                     <img
-                      src="/assets/images/wasim_sayyed_executive_1791473154875.jpg"
+                      src="/assets/images/wasim_sayyed_executive_1791473154875.webp"
                       alt="Executive Wasim"
                       className="w-full h-full object-cover object-top"
                     />
@@ -257,7 +257,7 @@ export const PhotoEditorModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setCurrentImage('/assets/images/hero_cloud_datacenter_1791450064361.jpg');
+                    setCurrentImage('/assets/images/hero_cloud_datacenter_1791450064361.webp');
                     setPosition('center');
                   }}
                   className={`p-2 rounded-lg border text-left flex items-center gap-2 transition-all ${
@@ -268,7 +268,7 @@ export const PhotoEditorModal: React.FC = () => {
                 >
                   <div className="w-7 h-7 rounded-md overflow-hidden bg-slate-800 shrink-0">
                     <img
-                      src="/assets/images/hero_cloud_datacenter_1791450064361.jpg"
+                      src="/assets/images/hero_cloud_datacenter_1791450064361.webp"
                       alt="Datacenter Avatar"
                       className="w-full h-full object-cover"
                     />

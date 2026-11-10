@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -20,26 +20,30 @@ import { TrackRecordEditorModal } from './components/TrackRecordEditorModal';
 import { FounderCredentialsModal } from './components/FounderCredentialsModal';
 import { HeroStatsModal } from './components/HeroStatsModal';
 import { UserWorkspaceDrawer } from './components/workspace/UserWorkspaceDrawer';
-import { AdminLayout } from './components/admin/AdminLayout';
-
-// Pages
-import { HomePage } from './pages/HomePage';
-import { DisciplineDetailPage } from './pages/DisciplineDetailPage';
-import { WorkbenchHubPage } from './pages/tools/WorkbenchHubPage';
-import { NodeSizingToolPage } from './pages/tools/NodeSizingToolPage';
-import { RVToolsAnalyzerPage } from './pages/tools/RVToolsAnalyzerPage';
-import { AriaNetworksToolPage } from './pages/tools/AriaNetworksToolPage';
-import { NutanixNC2AssessmentPage } from './pages/tools/NutanixNC2AssessmentPage';
-import { DRPlannerPage } from './pages/tools/DRPlannerPage';
-import { DesignGeneratorPage } from './pages/tools/DesignGeneratorPage';
-import { RoadmapPage } from './pages/RoadmapPage';
-import { ResourcesPage } from './pages/ResourcesPage';
-import { CaseStudiesPage } from './pages/CaseStudiesPage';
-import { CaseStudyDetailPage } from './pages/CaseStudyDetailPage';
-import { AboutPage } from './pages/AboutPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { AdminControlCenterPage } from './pages/admin/AdminControlCenterPage';
 import { RouteHead } from './components/seo/RouteHead';
+
+// Eager Home Page for instant initial render on /
+import { HomePage } from './pages/HomePage';
+
+// Lazy-loaded Route Pages & Admin Area (P3-03 Code Splitting)
+const DisciplineDetailPage = lazy(() => import('./pages/DisciplineDetailPage').then(m => ({ default: m.DisciplineDetailPage })));
+const WorkbenchHubPage = lazy(() => import('./pages/tools/WorkbenchHubPage').then(m => ({ default: m.WorkbenchHubPage })));
+const NodeSizingToolPage = lazy(() => import('./pages/tools/NodeSizingToolPage').then(m => ({ default: m.NodeSizingToolPage })));
+const RVToolsAnalyzerPage = lazy(() => import('./pages/tools/RVToolsAnalyzerPage').then(m => ({ default: m.RVToolsAnalyzerPage })));
+const AriaNetworksToolPage = lazy(() => import('./pages/tools/AriaNetworksToolPage').then(m => ({ default: m.AriaNetworksToolPage })));
+const NutanixNC2AssessmentPage = lazy(() => import('./pages/tools/NutanixNC2AssessmentPage').then(m => ({ default: m.NutanixNC2AssessmentPage })));
+const DRPlannerPage = lazy(() => import('./pages/tools/DRPlannerPage').then(m => ({ default: m.DRPlannerPage })));
+const DesignGeneratorPage = lazy(() => import('./pages/tools/DesignGeneratorPage').then(m => ({ default: m.DesignGeneratorPage })));
+const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
+const ResourcesPage = lazy(() => import('./pages/ResourcesPage').then(m => ({ default: m.ResourcesPage })));
+const KBDetailPage = lazy(() => import('./pages/KBDetailPage').then(m => ({ default: m.KBDetailPage })));
+const TutorialDetailPage = lazy(() => import('./pages/TutorialDetailPage').then(m => ({ default: m.TutorialDetailPage })));
+const CaseStudiesPage = lazy(() => import('./pages/CaseStudiesPage').then(m => ({ default: m.CaseStudiesPage })));
+const CaseStudyDetailPage = lazy(() => import('./pages/CaseStudyDetailPage').then(m => ({ default: m.CaseStudyDetailPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminControlCenterPage = lazy(() => import('./pages/admin/AdminControlCenterPage').then(m => ({ default: m.AdminControlCenterPage })));
 
 import {
   Sliders,
@@ -203,37 +207,47 @@ export default function App() {
           <CustomizationProvider>
             <BrowserRouter>
               <ScrollToTop />
-              <Routes>
-                {/* 1. Public Site Routes (Isolated from Admin Layout) */}
-                <Route element={<PublicLayout />}>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
-                  <Route path="/tools" element={<WorkbenchHubPage />} />
-                  <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
-                  <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
-                  <Route path="/tools/nutanix-nc2-assessment" element={<NutanixNC2AssessmentPage />} />
-                  <Route path="/tools/aria-networks" element={<AriaNetworksToolPage />} />
-                  <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
-                  <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
-                  <Route path="/roadmap" element={<RoadmapPage />} />
-                  <Route path="/resources" element={<ResourcesPage />} />
-                  <Route path="/resources/:tab" element={<ResourcesPage />} />
-                  <Route path="/case-studies" element={<CaseStudiesPage />} />
-                  <Route path="/case-studies/:slug" element={<CaseStudyDetailPage />} />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Route>
+              <Suspense
+                fallback={
+                  <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm font-mono">
+                    Loading module…
+                  </div>
+                }
+              >
+                <Routes>
+                  {/* 1. Public Site Routes (Isolated from Admin Layout) */}
+                  <Route element={<PublicLayout />}>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
+                    <Route path="/tools" element={<WorkbenchHubPage />} />
+                    <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
+                    <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
+                    <Route path="/tools/nutanix-nc2-assessment" element={<NutanixNC2AssessmentPage />} />
+                    <Route path="/tools/aria-networks" element={<AriaNetworksToolPage />} />
+                    <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
+                    <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
+                    <Route path="/roadmap" element={<RoadmapPage />} />
+                    <Route path="/resources/kb/:id" element={<KBDetailPage />} />
+                    <Route path="/resources/tutorials/:slug" element={<TutorialDetailPage />} />
+                    <Route path="/resources" element={<ResourcesPage />} />
+                    <Route path="/resources/:tab" element={<ResourcesPage />} />
+                    <Route path="/case-studies" element={<CaseStudiesPage />} />
+                    <Route path="/case-studies/:slug" element={<CaseStudyDetailPage />} />
+                    <Route path="/about" element={<AboutPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Route>
 
-                {/* 2. Dedicated Admin Console Routes (Completely Isolated Layout) */}
-                <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
-                  <Route index element={<AdminControlCenterPage />} />
-                  <Route path=":tab" element={<AdminControlCenterPage />} />
-                </Route>
-                <Route path="/console" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
-                  <Route index element={<AdminControlCenterPage />} />
-                  <Route path=":tab" element={<AdminControlCenterPage />} />
-                </Route>
-              </Routes>
+                  {/* 2. Dedicated Admin Console Routes (Completely Isolated Layout) */}
+                  <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+                    <Route index element={<AdminControlCenterPage />} />
+                    <Route path=":tab" element={<AdminControlCenterPage />} />
+                  </Route>
+                  <Route path="/console" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+                    <Route index element={<AdminControlCenterPage />} />
+                    <Route path=":tab" element={<AdminControlCenterPage />} />
+                  </Route>
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </CustomizationProvider>
         </WorkspaceProvider>

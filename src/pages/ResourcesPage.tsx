@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, useParams, Link } from 'react-router-dom';
 import { KnowledgeBaseSection } from '../components/KnowledgeBaseSection';
 import { TutorialsAndArticles } from '../components/TutorialsAndArticles';
 import { VideoHub } from '../components/VideoHub';
@@ -7,10 +7,18 @@ import { FeaturedVideoSection } from '../components/FeaturedVideoSection';
 import { NutanixArchitectureDeepDiveSection } from '../components/NutanixArchitectureDeepDiveSection';
 import { BookOpen, Film, Layers, FileText, Search, Sparkles, Cpu } from 'lucide-react';
 import { useCustomization } from '../context/CustomizationContext';
+import { NotFoundPage } from './NotFoundPage';
 
 export const ResourcesPage: React.FC = () => {
   const location = useLocation();
+  const { tab } = useParams<{ tab?: string }>();
   const { setIsSearchOpen } = useCustomization();
+
+  // Validate tab parameter to avoid soft-404 on arbitrary paths like /resources/nonsense
+  const VALID_TABS = ['nutanix-arch', 'nutanix', 'architecture', 'kb', 'tutorials', 'videos'];
+  if (tab && !VALID_TABS.includes(tab.toLowerCase())) {
+    return <NotFoundPage />;
+  }
 
   // Tab state derived from URL or local state
   const [activeTab, setActiveTab] = useState<'all' | 'nutanix-arch' | 'kb' | 'tutorials' | 'videos'>('all');
@@ -42,7 +50,7 @@ export const ResourcesPage: React.FC = () => {
             Knowledge Hub & Engineering Resources
           </h1>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            Battle-tested runbooks, architectural blueprints, software guides, downloadable whitepaper bundles, and video masterclasses curated by Lead Principal Architect Wasim Sayyed.
+            Battle-tested runbooks, architectural blueprints, software guides, downloadable whitepaper bundles, and technical walkthroughs curated by Lead Principal Architect Wasim Sayyed.
           </p>
         </div>
 
@@ -110,7 +118,7 @@ export const ResourcesPage: React.FC = () => {
           }`}
         >
           <Film className="w-3.5 h-3.5" />
-          <span>Video Masterclasses</span>
+          <span>Videos</span>
         </button>
       </div>
 

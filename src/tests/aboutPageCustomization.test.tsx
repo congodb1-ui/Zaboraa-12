@@ -9,8 +9,8 @@ describe('About Me Page & Admin Customization Suite', () => {
     expect(about?.proofTiles).toHaveLength(4);
 
     const values = about?.proofTiles.map(p => p.value);
-    expect(values?.some(v => v.includes('12+'))).toBe(true);
-    expect(values).toContain('40+');
+    expect(values?.some(v => v.includes('13+'))).toBe(true);
+    expect(values).toContain('25+');
     expect(values).toContain('100%');
     expect(values).toContain('6');
 
@@ -18,7 +18,7 @@ describe('About Me Page & Admin Customization Suite', () => {
     const labels = about?.proofTiles.map(p => p.label);
     expect(labels?.some(l => l.includes('Enterprise Infrastructure'))).toBe(true);
     expect(labels).toContain('Hyperscaler Migrations Executed');
-    expect(labels).toContain('Zero-Downtime Cutover Record');
+    expect(labels).toContain('Runbook-Driven Cutovers');
     expect(labels).toContain('Free Engineering Tools');
   });
 
@@ -41,17 +41,24 @@ describe('About Me Page & Admin Customization Suite', () => {
     expect(validSlugs.has(invalidSlug)).toBe(false);
   });
 
-  it('validates selected outcomes include requested tier-1 bank, hospital network, and global freight metrics', () => {
+  it('validates selected outcomes use approved case study outcomes and contain no legacy metrics', () => {
     const outcomes = INITIAL_SITE_DATA.aboutPage?.selectedOutcomes || [];
     const textBlobs = outcomes.map(o => o.text.toLowerCase());
 
-    const hasTier1Bank = textBlobs.some(t => t.includes('1,240 vms') && t.includes('tier-1 bank'));
-    const hasHospitalNetwork = textBlobs.some(t => t.includes('4,500 workloads') && t.includes('18-hospital network'));
-    const hasGlobalFreight = textBlobs.some(t => t.includes('820 vms') && t.includes('global freight'));
+    const hasSovereignDr = textBlobs.some(t => t.includes('14+ sovereign entity') && t.includes('rpo 5–15 min'));
+    const hasAvsFramework = textBlobs.some(t => t.includes('50–100 vms') || t.includes('standardised avs migration'));
+    const hasMicrosegmentation = textBlobs.some(t => t.includes('2,400 security tags'));
 
-    expect(hasTier1Bank).toBe(true);
-    expect(hasHospitalNetwork).toBe(true);
-    expect(hasGlobalFreight).toBe(true);
+    expect(hasSovereignDr).toBe(true);
+    expect(hasAvsFramework).toBe(true);
+    expect(hasMicrosegmentation).toBe(true);
+
+    // Verify absence of retired legacy metrics (D6 / §19.2b)
+    const combinedText = textBlobs.join(' ');
+    expect(combinedText).not.toContain('1,240');
+    expect(combinedText).not.toContain('4,500');
+    expect(combinedText).not.toContain('820');
+    expect(combinedText).not.toContain('$1.4m');
   });
 
   it('ensures tenets and contact details have valid enterprise defaults', () => {

@@ -18,6 +18,7 @@ import {
 import { resolveMediaUrl } from '../data/mediaAssets';
 import { InteractiveHotspotImage } from '../components/InteractiveHotspotImage';
 import { SubsectionDiagramCardsGallery } from '../components/SubsectionDiagramCardsGallery';
+import { NotFoundPage } from './NotFoundPage';
 
 export const DisciplineDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,57 +36,8 @@ export const DisciplineDetailPage: React.FC = () => {
 
   const [activeDesignIndex, setActiveDesignIndex] = useState<number>(0);
 
-  if (!platform) {
-    return (
-      <div className="py-20 px-4 max-w-4xl mx-auto text-center space-y-6">
-        <div className="text-rose-400 font-mono text-sm">404: DISCIPLINE NOT FOUND</div>
-        <h1 className="text-3xl font-bold text-white">Platform Architecture Not Found</h1>
-        <p className="text-slate-400 text-sm">
-          No architectural discipline was found matching the identifier "{id}". Explore our verified platforms below:
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-6">
-          {(siteConfig.platformShowcases || []).map(p => (
-            <Link
-              key={p.id}
-              to={`/disciplines/${p.id}`}
-              className="p-4 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500 text-left transition-colors"
-            >
-              <div className="text-xs font-mono text-cyan-400">{p.platform}</div>
-              <div className="text-sm font-bold text-white mt-1">{p.title}</div>
-            </Link>
-          ))}
-        </div>
-        <div className="pt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-cyan-400 text-slate-950 font-bold text-xs"
-          >
-            <span>Return to Home Overview</span>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle disabled discipline for regular users
-  if (platform.enabled === false && !isAdmin) {
-    return (
-      <div className="py-20 px-4 max-w-2xl mx-auto text-center space-y-6">
-        <div className="p-3 w-12 h-12 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold">
-          !
-        </div>
-        <h1 className="text-2xl font-bold text-white">Discipline Offline</h1>
-        <p className="text-slate-400 text-sm">
-          The <span className="text-cyan-300 font-semibold">{platform.title}</span> architecture discipline has been temporarily taken offline by site administrators for maintenance.
-        </p>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-cyan-400 text-slate-950 font-bold text-xs"
-        >
-          <span>Browse Available Disciplines</span>
-        </Link>
-      </div>
-    );
+  if (!platform || (platform.enabled === false && !isAdmin)) {
+    return <NotFoundPage />;
   }
 
   const designs = platform.designs && platform.designs.length > 0 ? platform.designs : [

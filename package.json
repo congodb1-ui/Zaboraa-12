@@ -4,7 +4,7 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "vite --port=3000 --host=0.0.0.0",
+        "dev": "vite --port=3001 --host=0.0.0.0",
         "build": "vite build && node scripts/prerender.mjs",
         "preview": "vite preview",
         "clean": "rm -rf dist",
@@ -13,6 +13,8 @@
         "indexnow": "node scripts/submit-indexnow.mjs"
     },
     "dependencies": {
+        "@fontsource-variable/jetbrains-mono": "^5.3.0",
+        "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
         "@google/genai": "^2.28.0",
         "@supabase/supabase-js": "^2.117.3",
         "@tailwindcss/vite": "^4.3.3",
@@ -39,8 +41,16 @@
         "@types/react-dom": "^19.3.0",
         "autoprefixer": "^10.4.21",
         "esbuild": "^0.25.0",
+        "sharp": "^0.35.5",
         "tailwindcss": "^4.3.3",
         "typescript": "^7.0.2",
         "vitest": "^5.0.4"
+    },
+    "allowScripts": {
+        "esbuild@0.25.12": true,
+        "protobufjs@7.6.6": true,
+        "@firebase/util@1.15.3": true,
+        "core-js@3.51.0": true,
+        "@google/genai@2.32.0": true
     }
 }

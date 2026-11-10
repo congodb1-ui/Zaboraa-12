@@ -611,7 +611,7 @@ class AdminService {
         status: 'active',
         subscription_tier: 'enterprise',
         full_name: 'Wasim Sayyed',
-        avatar_url: '/assets/images/wasim_headshot_framer.png',
+        avatar_url: '/assets/images/wasim_headshot_framer.webp',
         admin_notes: 'Principal Multi-Cloud Architect & Founder',
         created_at: '2026-01-01T00:00:00.000Z'
       },
@@ -1111,7 +1111,7 @@ class AdminService {
           ? ['VMware Migration', 'Disaster Recovery', 'Sovereign Cloud', 'Wasim Sayyed']
           : ['VMware Cloud', 'Azure AVS', 'AWS VMC', 'Google GCVE', 'Wasim Sayyed'],
         structured_data_type: structuredType,
-        indexable: true,
+        indexable: !route.noindex,
         audit_score: 98,
         audit_findings: [],
         updated_at: `${route.lastmod}T00:00:00Z`

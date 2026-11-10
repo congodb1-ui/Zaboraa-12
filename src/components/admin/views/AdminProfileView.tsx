@@ -45,7 +45,7 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
       'Senior Infrastructure Architect specializing in enterprise VMware hyperscaler migrations across Azure AVS, AWS VMC, and Google Cloud GCVE.'
   );
   const [avatarUrl, setAvatarUrl] = useState<string>(
-    user?.photoURL || siteConfig.founder?.portraitImage || '/assets/images/Wasim-Pic-02.png'
+    user?.photoURL || siteConfig.founder?.portraitImage || '/assets/images/Wasim-Pic-02.webp'
   );
 
   // Preferences
@@ -297,7 +297,7 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
                 src={avatarUrl}
                 alt={fullName}
                 referrerPolicy="no-referrer"
-                onError={() => setAvatarUrl('/assets/images/Wasim-Pic-02.png')}
+                onError={() => setAvatarUrl('/assets/images/Wasim-Pic-02.webp')}
                 className="w-full h-full object-cover object-top rounded-[14px]"
               />
             </div>
@@ -341,8 +341,8 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({ currentUserE
               <button
                 type="button"
                 onClick={() => {
-                  setAvatarUrl('/assets/images/Wasim-Pic-02.png');
-                  updateFounderPhoto('/assets/images/Wasim-Pic-02.png');
+                  setAvatarUrl('/assets/images/Wasim-Pic-02.webp');
+                  updateFounderPhoto('/assets/images/Wasim-Pic-02.webp');
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold transition cursor-pointer"
               >

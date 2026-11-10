@@ -51,98 +51,12 @@ export const CaseStudyDetailPage: React.FC = () => {
     setOpenFaqIndex(openFaqIndex === idx ? null : idx);
   };
 
-  const canonicalUrl = `https://zaboraa.com/case-studies/${study.slug}`;
-
-  // Structured Data
-  const jsonLdTechArticle = {
-    '@context': 'https://schema.org',
-    '@type': 'TechArticle',
-    'headline': study.h1,
-    'description': study.metaDescription,
-    'datePublished': study.datePublished,
-    'dateModified': study.dateModified,
-    'author': {
-      '@type': 'Person',
-      'name': 'Wasim Sayyed',
-      'jobTitle': 'Principal VMware Architect',
-      'address': {
-        '@type': 'PostalAddress',
-        'addressLocality': 'Pune',
-        'addressRegion': 'Maharashtra',
-        'addressCountry': 'IN'
-      },
-      'sameAs': 'https://www.linkedin.com/in/wasim-sayyed-8b857714b/'
-    },
-    'publisher': {
-      '@type': 'Organization',
-      'name': 'Zaboraa',
-      'url': 'https://zaboraa.com',
-      'logo': 'https://zaboraa.com/assets/images/zaboraa-logo.png'
-    },
-    'about': study.platforms,
-    'keywords': study.keywords.join(', ')
-  };
-
-  const jsonLdBreadcrumbs = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    'itemListElement': [
-      {
-        '@type': 'ListItem',
-        'position': 1,
-        'name': 'Home',
-        'item': 'https://zaboraa.com'
-      },
-      {
-        '@type': 'ListItem',
-        'position': 2,
-        'name': 'Case Studies',
-        'item': 'https://zaboraa.com/case-studies'
-      },
-      {
-        '@type': 'ListItem',
-        'position': 3,
-        'name': study.title,
-        'item': canonicalUrl
-      }
-    ]
-  };
-
-  const jsonLdFaq = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    'mainEntity': study.faq.map((f) => ({
-      '@type': 'Question',
-      'name': f.question,
-      'acceptedAnswer': {
-        '@type': 'Answer',
-        'text': f.answer
-      }
-    }))
-  };
-
   const relatedStudies = study.relatedSlugs && study.relatedSlugs.length > 0
     ? study.relatedSlugs.map((s) => CASE_STUDIES.find((cs) => cs.slug === s)).filter((cs): cs is typeof CASE_STUDIES[0] => Boolean(cs)).slice(0, 2)
     : CASE_STUDIES.filter((cs) => cs.slug !== study.slug).slice(0, 2);
 
   return (
-    <>
-      {/* React 19 Native Head Hoisting */}
-      <title>{study.metaTitle}</title>
-      <meta name="description" content={study.metaDescription} />
-      <link rel="canonical" href={canonicalUrl} />
-      <meta property="og:title" content={study.metaTitle} />
-      <meta property="og:description" content={study.metaDescription} />
-      <meta property="og:url" content={canonicalUrl} />
-      <meta property="og:type" content="article" />
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={study.metaTitle} />
-      <meta name="twitter:description" content={study.metaDescription} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdTechArticle) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumbs) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }} />
-
-      <article className="py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-12">
+    <article className="py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-12">
         {/* 1. Breadcrumbs */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <Link to="/" className="hover:text-cyan-400 transition-colors">Home</Link>
@@ -507,6 +421,5 @@ export const CaseStudyDetailPage: React.FC = () => {
           </div>
         </section>
       </article>
-    </>
   );
 };

@@ -1568,9 +1568,9 @@ export const CustomizerDrawer: React.FC = () => {
                       setAboutOutcomes(prev => [
                         ...prev,
                         {
-                          text: '820 VMs, 99.999% availability, $1.4M/year saved (global freight)',
+                          text: 'Standardised AVS migration framework handling 50–100 VMs average per wave, up to 300 VMs',
                           caseStudySlug: CASE_STUDIES[0]?.slug || 'middle-east-gov-avs-framework',
-                          sector: 'Global Logistics'
+                          sector: 'Government Sovereign Cloud'
                         }
                       ]);
                     }}
@@ -1624,7 +1624,7 @@ export const CustomizerDrawer: React.FC = () => {
                                 return copy;
                               });
                             }}
-                            placeholder="e.g. 1,240 VMs, 0 hours downtime, 38% TCO reduction (Tier-1 bank)"
+                            placeholder="e.g. 14+ sovereign entity program (DR active for majority); RPO 5–15 min, RTO 1–2 hr"
                             className="w-full bg-slate-950 border border-slate-800 rounded p-1.5 text-white text-xs focus:border-cyan-400 focus:outline-none"
                           />
                         </div>

@@ -54,7 +54,10 @@ export interface ContentQueueItem {
   scheduled_at?: string;
   platform?: string;
   status: 'Queued' | 'Posted' | 'Cancelled';
+  posted_at?: string;
+  linkedin_url?: string;
   created_at?: string;
+  updated_at?: string;
   draft?: ContentDraft;
 }
 
@@ -430,5 +433,174 @@ export async function deleteQueueItem(queueItemId: string): Promise<void> {
     } catch (e) {
       console.warn('Notice deleting item from content_queue in Supabase:', e);
     }
+  }
+}
+
+// ============================================================================
+// PHASE 2B: MANUAL LINKEDIN POSTING & VALIDATION HELPERS
+// ============================================================================
+
+export interface FormattedLinkedInPost {
+  text: string;
+  length: number;
+  overLimit: boolean;
+}
+
+/**
+ * Pure function to format a draft for LinkedIn publication.
+ * Format: hook + blank line + (edited_body ?? body) + blank line + cta + blank line + hashtags.
+ * The title is NOT included (LinkedIn text posts do not have titles).
+ * Plain text, no escaping (for manual copy-paste).
+ * Character length is measured in Unicode code points (Array.from).
+ * overLimit is true when length > 3000.
+ */
+export function formatLinkedInPost(
+  draft: Pick<ContentDraft, 'hook' | 'body' | 'edited_body' | 'cta' | 'hashtags'>
+): FormattedLinkedInPost {
+  const hook = (draft.hook || '').trim();
+  const rawBody = draft.edited_body !== undefined && draft.edited_body !== null
+    ? draft.edited_body
+    : draft.body;
+  const body = (rawBody || '').trim();
+  const cta = (draft.cta || '').trim();
+
+  // Normalize hashtags to #Word (max 6, space-separated, strip internal spaces and leading #)
+  const normalizedHashtags = (draft.hashtags || [])
+    .map((tag) => {
+      const stripped = tag.replace(/^#+/, '').replace(/\s+/g, '');
+      return stripped ? `#${stripped}` : '';
+    })
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const hashtagsText = normalizedHashtags.join(' ');
+
+  const sections: string[] = [];
+  if (hook) sections.push(hook);
+  if (body) sections.push(body);
+  if (cta) sections.push(cta);
+  if (hashtagsText) sections.push(hashtagsText);
+
+  const text = sections.join('\n\n');
+  const length = Array.from(text).length;
+  const overLimit = length > 3000;
+
+  return {
+    text,
+    length,
+    overLimit,
+  };
+}
+
+/**
+ * Validates whether a given URL is a legitimate LinkedIn post URL.
+ * Accepts:
+ * - https://www.linkedin.com/feed/update/urn:li:(activity|share|ugcPost):<digits>
+ * - https://www.linkedin.com/posts/<slug>
+ * (also accepts apex https://linkedin.com/...)
+ */
+export function validateLinkedInUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (host !== 'www.linkedin.com' && host !== 'linkedin.com') return false;
+
+    const pathname = parsed.pathname;
+    const feedPattern = /^\/feed\/update\/urn:li:(?:activity|share|ugcPost):\d+\/?$/i;
+    const postsPattern = /^\/posts\/[a-zA-Z0-9_\-\.]+\/?$/i;
+
+    return feedPattern.test(pathname) || postsPattern.test(pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Marks a queued post as 'Posted' with manual LinkedIn post URL verification.
+ * Write order:
+ * 1. Write to Supabase content_queue first.
+ * 2. Insert audit_logs row.
+ * 3. Update local cache only after DB writes succeed.
+ * If Supabase fails, throws an error and does not update local state.
+ */
+export async function markQueueItemAsPosted(
+  queueItemId: string,
+  linkedinUrl: string,
+  actorEmail?: string
+): Promise<void> {
+  const trimmedUrl = linkedinUrl.trim();
+  if (!validateLinkedInUrl(trimmedUrl)) {
+    throw new Error('Please provide a valid LinkedIn post URL.');
+  }
+
+  const postedAt = new Date().toISOString();
+
+  // 1. Write to Supabase content_queue
+  if (isSupabaseConfigured && supabase) {
+    const { error: dbError } = await supabase
+      .from('content_queue')
+      .update({
+        status: 'Posted',
+        posted_at: postedAt,
+        linkedin_url: trimmedUrl,
+        updated_at: postedAt,
+      })
+      .eq('id', queueItemId);
+
+    if (dbError) {
+      throw new Error(`Database error marking post as posted: ${dbError.message}`);
+    }
+
+    // 2. Insert audit_logs row
+    try {
+      let actorId: string | null = null;
+      let email = actorEmail;
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        actorId = sess?.session?.user?.id || null;
+        if (!email) email = sess?.session?.user?.email || 'admin@zaboraa.com';
+      } catch {}
+
+      await supabase.from('audit_logs').insert([
+        {
+          actor_id: actorId,
+          actor_email: email || 'admin@zaboraa.com',
+          actor_role: 'admin',
+          action: 'MARK_POSTED_MANUAL',
+          target_entity: 'content_queue',
+          target_id: queueItemId,
+          outcome: 'success',
+          metadata: {
+            linkedin_url: trimmedUrl,
+            posted_at: postedAt,
+            queue_id: queueItemId,
+          },
+        },
+      ]);
+    } catch (auditErr) {
+      console.warn('Notice inserting audit_logs entry for mark posted:', auditErr);
+    }
+  }
+
+  // 3. Update local storage cache only after DB operation succeeds
+  try {
+    const queue = await getContentQueue();
+    const updated = queue.map((item) =>
+      item.id === queueItemId
+        ? {
+            ...item,
+            status: 'Posted' as const,
+            posted_at: postedAt,
+            linkedin_url: trimmedUrl,
+            updated_at: postedAt,
+          }
+        : item
+    );
+    safeStorage.setItem(STORAGE_KEYS.QUEUE, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Notice updating local storage queue:', err);
   }
 }

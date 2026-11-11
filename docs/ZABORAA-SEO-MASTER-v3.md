@@ -1,4 +1,4 @@
-# ZABORAA — SINGLE SEO MASTER FILE — v2.1
+# ZABORAA — SINGLE SEO MASTER FILE — v3.0
 **Single source of truth for SEO, GEO (AI Visibility), Content & Marketing — now with the implementation plan, status tracker and Antigravity CLI runbook (§19–§21) · v2.1: founder decisions D1–D9 applied, autonomous no-questions runbook**
 
 > **READ THIS FIRST — Accuracy Note**
@@ -18,9 +18,9 @@
 | Contact | wasim@zaboraa.com · +91 7497624807 · Pune, Maharashtra, India |
 | Business model | Founder-led advisory (briefing booking) + free interactive engineering tools as lead-gen and credibility |
 | Primary / Secondary CTA | **Book Briefing** / **Book Call** · **Explore Workbench Tools** (`/tools`) |
-| Version | **v2.1 — 10 Nov 2026** (supersedes v2.0; founder decisions D1–D9 applied) |
+| Version | **v3.0 — 10 Nov 2026** (supersedes v2.2; adds §16.2 Content & Growth Agent — Phase 1; changelog entry v2.3) |
 | Companion file | `ZABORAA_MASTER_BIBLE_v2.md` |
-| Jump to | **§19 Implementation Plan & Status Tracker** · §20 Antigravity runbook · §21 Verification checklist |
+| Jump to | **§19 Implementation Plan & Status Tracker** · §20 Antigravity runbook · §21 Verification checklist · **§16.2 Content & Growth Agent (Phase 1)** · §16.2b YouTube (on hold) |
 
 ---
 
@@ -33,6 +33,7 @@
 | **v2.0** | **10 Nov 2026** | **Audited against the project zip.** Corrected statements that the code no longer supports (listed below), added the 30-route reality, new findings (missing favicon/logo/OG image, duplicate JSON-LD risk, legacy figures on /about, 23 MB of images, dev-port clash), the founder decision list, the phased implementation plan, the Antigravity CLI runbook and the verification checklist. |
 | **v2.1** | **10 Nov 2026** | **Founder decisions D1–D9 recorded and applied to the plan:** 13+ years · 25+ migrations · 6 certifications · Principal VMware Architect · "100% Runbook-Driven Cutovers" · latest case-study outcomes on /about · brand = Zaboraa · public disclosure approved · videos not available yet (new tasks P1-07 and P1-08; `/resources/videos` → `noindex`, sitemap 30 → 29 URLs). `vercel.json`, `tsconfig.json` and `.gitignore` confirmed present and working. Antigravity runbook rewritten as a fully autonomous, no-questions run (§20). |
 | **v2.2** | **10 Nov 2026** | **Autonomous execution of Phase 0 through Phase 4 completed by Antigravity CLI:** P0-01 to P0-05 baseline & security guardrails; P1-01 to P1-08 content integrity & founder decisions D1–D9 applied (zero retired claims across codebase); P2-01 to P2-11 technical SEO, favicons, OG image, de-duplication, soft-404 hygiene, vercel.json hardening, IndexNow, llms.txt, Vitest invariants; P3-01 to P3-03 WebP image optimization (-88% size to 2.68 MB), self-hosted variable fonts, route-level code splitting (58% initial bundle reduction); P4-01 to P4-05 rich prerendered semantic HTML on all 53 routes (450–1,658 words/page), dedicated pages for 18 KB runbooks and 5 tutorials, SoftwareApplication schema for 7 tools, Person schema with 6 verified credentials for founder, and universal BreadcrumbList and contextual cross-linking (>= 3 links/page). 53 manifest routes, 52 indexable sitemap URLs. P4-06 remains ON HOLD per D9. |
+| **v2.3 / v3.0** | **10 Nov 2026** | **Content & Growth Agent — Phase 1 specified (§16.2).** v2.3: PR #3 media fix merged (`0136436` → Production `117c960`) — missing profile portraits in `public/assets/images/` fixed, `resolveMediaUrl` fixed, recursive `onError` loops (blinking avatar) removed, `vite.config.ts` fallback to `.webp` fixed; Phase 1 started on `feature/content-agent-phase1`. v3.0: new §16.2 (Ideas / Drafts / Queue / Analytics tabs, `generateContentIdeas()`, data model, env-var rules, acceptance criteria, Phases 2–5 roadmap); previous §16.2 YouTube moved to §16.2b (kept, still ON HOLD per D9). All other sections unchanged. |
 
 **v1.1 statements corrected in v2.0:**
 | v1.1 said | Code reality (evidence) |
@@ -775,7 +776,108 @@ Use the fact sheet in `ZABORAA_MASTER_BIBLE_v2.md` §9 (single copy, to avoid dr
   - Hashtags: #VMware #AzureVMwareSolution #NutanixNC2 #HCX #VMwareMigration
 - **Content Agent (in build):** Single agent inside Zaboraa Admin Console will plan, draft, create video, optimize and post to LinkedIn Company Page after human approval. Uses Vertex AI (Gemini + Veo) with $300 Google Cloud credit. No subscription. Instagram Reels to be added later with same agent.
 
-### 16.2 YouTube (4 Masterclasses — ON HOLD until the videos are produced, D9)
+## §16.2 Content & Growth Agent — Phase 1 (Ideas / Drafts / Queue / Analytics)
+
+### 16.2.1 Goal
+Add a Content & Growth Agent module inside the Zaboraa Control Center admin console to generate LinkedIn content with Gemini, with human approval before any posting.
+Phase 1 is generation + approval only. No auto-posting, no LinkedIn API posting, no Instagram Reels, no video generation.
+
+### 16.2.2 Branch & Base
+- **Branch:** `feature/content-agent-phase1`
+- **Based on:** `main` @ `117c960` (after PR #3 media fix merged 10 Nov 2026)
+- **Local work folder:** `Zaboraa-12-Fresh`
+- **Dev URL:** `http://localhost:3001/admin`
+- **Port rule:** Zaboraa stays on `3001`. Zabura FX stays untouched on `3000` + `8001`.
+- **Production rule:** `main` = live `zaboraa.com`. Never push directly to `main`. Work only on feature branch → PR → Vercel Preview → Merge.
+
+### 16.2.3 Location in UI
+- Admin Console → Left Sidebar → Under `SEO & Growth Center` → New item: `Content & Growth Agent`
+- Must use exact same dark UI, fonts, spacing, and cards as existing SEO & Growth Center page.
+- Must not break any existing admin pages.
+
+### 16.2.4 Tabs (4)
+
+#### Tab 1 — Ideas
+- Button: `Generate Ideas`
+- On click, calls `generateContentIdeas()` → Gemini API → returns 3 ideas.
+- Each idea card shows: Title, Hook, Body preview, Hashtags, CTA, buttons: `Save as Draft` / `Discard`.
+- Empty state: `No ideas yet. Click Generate Ideas.`
+
+#### Tab 2 — Drafts
+- List of all saved drafts from `content_drafts`.
+- Each draft row shows: Title, Topic, Status (Draft / Approved / Rejected), Created date.
+- Actions per draft: `Edit` (inline editor), `Approve` → moves to Queue, `Reject`.
+- Edit must allow changing Title, Body, Hashtags, CTA before approval.
+
+#### Tab 3 — Queue
+- List of approved posts from `content_queue`.
+- Display-only in Phase 1. Shows scheduled slot: Mon / Wed / Fri 9:30 AM IST.
+- No auto-posting in Phase 1. Queue is a visual schedule only.
+- Actions: `Unapprove` (moves back to Drafts), `Delete`.
+
+#### Tab 4 — Analytics
+- Placeholder in Phase 1.
+- Empty state: `Analytics coming in Phase 3 — Sunday review will show impressions, likes, comments, CTR.`
+- No fake data. No mock charts.
+
+### 16.2.5 Function — generateContentIdeas()
+- **File:** `src/lib/contentAgent.ts` (or existing agent lib if present, do not duplicate)
+- **Function signature:** `generateContentIdeas(): Promise<ContentIdea[]>`
+- **Uses env vars from `.env.local`:** `GEMINI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- **Gemini prompt (exact):** `Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing`
+- **Return JSON format (strict):**
+```json
+[
+  {
+    "title": "string",
+    "hook": "string",
+    "body": "string",
+    "hashtags": ["string"],
+    "cta": "string",
+    "topic": "AVS | hyperscaler migration | cloud sizing"
+  }
+]
+```
+- Must handle Gemini errors gracefully: show `Failed to generate. Check GEMINI_API_KEY and try again.` — never crash the admin page.
+
+### 16.2.6 Data Model (Supabase / Firestore)
+- **Collection `content_ideas`:** `id`, `title`, `hook`, `body`, `hashtags[]`, `cta`, `topic`, `status`, `created_at`
+- **Collection `content_drafts`:** `id`, `idea_id`, `title`, `body`, `hashtags[]`, `cta`, `status` (Draft / Approved / Rejected), `updated_at`
+- **Collection `content_queue`:** `id`, `draft_id`, `scheduled_day` (Mon / Wed / Fri), `scheduled_time` (09:30 IST), `status` (Queued / Posted), `created_at`
+- Do not create new tables if these already exist in Supabase — reuse them.
+
+### 16.2.7 Env Vars (Do Not Commit)
+- `.env.local` must contain: `GEMINI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- `.env.local` must never be committed. Check `.gitignore` contains `.env.local`.
+- `.env.example` must contain names only, no values.
+- Never paste `.env.local` contents in chat, PR, or MD file. Keys that were exposed must be rotated in Google Cloud / Supabase / Vercel.
+
+### 16.2.8 Out of Scope for Phase 1
+- No LinkedIn API posting
+- No Instagram Reels
+- No Veo video generation
+- No Cloud Scheduler / cron auto-poster
+- No Analytics data fetching
+
+### 16.2.9 Acceptance Criteria
+1. Module appears in sidebar under SEO & Growth Center and loads on `localhost:3001/admin` without breaking existing pages.
+2. Clicking `Generate Ideas` returns 3 real Gemini posts, not mock data.
+3. Draft can be edited, approved → moves to Queue, rejected → stays in Drafts with Rejected status.
+4. Queue shows approved posts with Mon / Wed / Fri 9:30 AM IST slots, no auto-post.
+5. Analytics tab shows placeholder empty state, no fake data.
+6. `npm run build` passes. `npm test` — no new failures beyond known baseline (4 baseline failures in `adminSuite.test.ts` + `supabaseAndAuth.test.ts`).
+7. PR from `feature/content-agent-phase1` → `main` → Vercel Preview shows module working.
+
+### 16.2.10 Next Phases (Not in This Section)
+- **Phase 2:** Video — Veo video generation via Vertex AI, CapCut editing flow.
+- **Phase 3:** Auto-Poster — LinkedIn API + approval → auto-post Mon / Wed / Fri 9:30 AM IST + Sunday analytics review.
+- **Phase 4:** Instagram Reels — Business/Creator account connected to Facebook Page.
+- **Phase 5:** Optimization — SEO + content optimization loop.
+
+### 16.2.11 Changelog Link
+- v2.3 — 10 Nov 2026 — PR #3 media fix merged (`0136436` → Production `117c960`). Fixed missing profile portraits in `public/assets/images/`, fixed `resolveMediaUrl`, removed recursive `onError` loops causing blinking avatar, fixed `vite.config.ts` fallback to `.webp`. Phase 1 started on `feature/content-agent-phase1`.
+
+### 16.2b YouTube (4 Masterclasses — ON HOLD until the videos are produced, D9)
 - **The videos do not exist yet (D9).** Create and publish the 4 masterclasses first; until then do not plan, post or link YouTube videos.
 - Title format: `VMware to Azure VMware Solution: Government Migration Framework (HCX RAV & Bulk) | Zaboraa` — use only facts from §3.5; **never** the archived 1,240-VM / zero-downtime claims
 - Description first line: `Free tool: https://zaboraa.com/tools/rvtools-analyzer` + full transcript

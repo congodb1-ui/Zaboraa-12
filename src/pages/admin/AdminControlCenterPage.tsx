@@ -23,6 +23,7 @@ import { AdminDatabaseView } from '../../components/admin/views/AdminDatabaseVie
 import { AdminMediaView } from '../../components/admin/views/AdminMediaView';
 import { AdminContentView } from '../../components/admin/views/AdminContentView';
 import { AdminSeoView } from '../../components/admin/views/AdminSeoView';
+import { AdminContentAgentView } from '../../components/admin/views/AdminContentAgentView';
 import { AdminAnalyticsView } from '../../components/admin/views/AdminAnalyticsView';
 import { AdminSecurityView } from '../../components/admin/views/AdminSecurityView';
 import { AdminBackupsView } from '../../components/admin/views/AdminBackupsView';
@@ -49,6 +50,7 @@ const VALID_VIEWS: AdminViewId[] = [
   'backups',
   'content',
   'seo',
+  'content-agent',
   'analytics',
   'integrations'
 ];
@@ -205,8 +207,10 @@ export const AdminControlCenterPage: React.FC = () => {
       setActiveView('database');
     } else if (lower.includes('media') || lower.includes('image') || lower.includes('asset')) {
       setActiveView('media');
-    } else if (lower.includes('audit') || lower.includes('sec')) {
-      setActiveView('security');
+    } else if (lower.includes('seo') || lower.includes('sitemap') || lower.includes('robots')) {
+      setActiveView('seo');
+    } else if (lower.includes('agent') || lower.includes('linkedin') || lower.includes('draft') || lower.includes('ideas') || lower.includes('growth')) {
+      setActiveView('content-agent');
     }
   };
 
@@ -388,6 +392,12 @@ export const AdminControlCenterPage: React.FC = () => {
 
           {activeView === 'seo' && (
             <AdminSeoView
+              currentUserEmail={currentUserEmail}
+            />
+          )}
+
+          {activeView === 'content-agent' && (
+            <AdminContentAgentView
               currentUserEmail={currentUserEmail}
             />
           )}

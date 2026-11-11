@@ -20,7 +20,8 @@ import {
   Sparkles,
   SlidersHorizontal,
   Cpu,
-  UserCheck
+  UserCheck,
+  Bot
 } from 'lucide-react';
 
 export type AdminViewId =
@@ -38,6 +39,7 @@ export type AdminViewId =
   | 'backups'
   | 'content'
   | 'seo'
+  | 'content-agent'
   | 'analytics'
   | 'integrations';
 
@@ -109,7 +111,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         { id: 'briefings', label: 'Briefing Requests', icon: Calendar, badge: badges.briefings, badgeColor: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' },
         { id: 'analytics', label: 'Analytics & Reporting', icon: BarChart3 },
         { id: 'content', label: 'Website Content CMS', icon: FileText },
-        { id: 'seo', label: 'SEO & Growth Center', icon: Search }
+        { id: 'seo', label: 'SEO & Growth Center', icon: Search },
+        { id: 'content-agent', label: 'Content & Growth Agent', icon: Bot }
       ]
     }
   ];

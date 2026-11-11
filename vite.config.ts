@@ -390,6 +390,109 @@ export default defineConfig(({ mode }) => {
             res.end(JSON.stringify({ success: true, proposal }));
           });
 
+          // Server-side LinkedIn Content & Growth Agent generation middleware
+          server.middlewares.use(async (req, res, next) => {
+            const requestPath = req.url?.split('?')[0];
+            if (requestPath !== '/api/generate-content') {
+              return next();
+            }
+
+            if (req.method !== 'POST') {
+              res.setHeader('Allow', 'POST');
+              res.statusCode = 405;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+              return;
+            }
+
+            if (!apiKey) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                success: false,
+                error: 'Failed to generate. Check GEMINI_API_KEY and try again.'
+              }));
+              return;
+            }
+
+            let bodyStr = '';
+            for await (const chunk of req) {
+              bodyStr += chunk.toString();
+            }
+            const body = JSON.parse(bodyStr || '{}');
+            const prompt = body?.prompt || 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
+
+            const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
+Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
+
+Strict output requirements:
+Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanation, conforming exactly to this structure:
+[
+  {
+    "title": "string",
+    "hook": "string",
+    "body": "string",
+    "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
+    "cta": "string",
+    "topic": "AVS | hyperscaler migration | cloud sizing"
+  }
+]`;
+
+            try {
+              let jsonText = '';
+              try {
+                const ai = new GoogleGenAI({ apiKey });
+                const response = await ai.models.generateContent({
+                  model: 'gemini-2.5-flash',
+                  contents: `${systemInstruction}\n\nUser Request: ${prompt}`,
+                  config: {
+                    responseMimeType: 'application/json',
+                    temperature: 0.7,
+                  },
+                });
+                const parts = response.candidates?.flatMap((c) => c.content?.parts || []) || [];
+                jsonText = parts.map((p) => p.text || '').join('');
+                if (!jsonText && response.text) {
+                  jsonText = response.text;
+                }
+              } catch (sdkErr: any) {
+                const restResp = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      contents: [{ parts: [{ text: `${systemInstruction}\n\nUser Request: ${prompt}` }] }],
+                      generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
+                    }),
+                  }
+                );
+                if (restResp.ok) {
+                  const data = await restResp.json();
+                  const parts = data.candidates?.flatMap((c: any) => c.content?.parts || []) || [];
+                  jsonText = parts.map((p: any) => p.text || '').join('');
+                }
+              }
+
+              let cleaned = (jsonText || '').trim();
+              if (cleaned.startsWith('```')) {
+                cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+              }
+              const ideas = JSON.parse(cleaned);
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, ideas }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                success: false,
+                error: 'Failed to generate. Check GEMINI_API_KEY and try again.',
+                details: err?.message || String(err)
+              }));
+            }
+          });
+
           // Health diagnostics middleware
           server.middlewares.use((req, res, next) => {
             const requestPath = req.url?.split('?')[0];

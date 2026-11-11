@@ -82,17 +82,54 @@ export function getGeminiApiKey(): string {
 
 /**
  * Generate 3 LinkedIn content ideas using Gemini AI per §16.2.5
+ * Uses the same serverless /api endpoint pattern as /api/generate-blueprint
  */
 export async function generateContentIdeas(): Promise<ContentIdea[]> {
-  const apiKey = getGeminiApiKey();
-
-  if (!apiKey) {
-    throw new Error('Failed to generate. Check GEMINI_API_KEY and try again.');
-  }
-
   const prompt = 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
 
-  const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
+  // 1. Try serverless /api/generate-content endpoint (works seamlessly in Vercel Production & Vite Dev)
+  let apiEndpointSucceeded = false;
+  let parsedFromApi: any[] = [];
+
+  try {
+    const res = await fetch('/api/generate-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.ideas) && data.ideas.length > 0) {
+        apiEndpointSucceeded = true;
+        parsedFromApi = data.ideas;
+      }
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      if (res.status === 500 && errData.error) {
+        throw new Error(errData.error || 'Failed to generate. Check GEMINI_API_KEY and try again.');
+      }
+    }
+  } catch (apiErr: any) {
+    if (apiErr?.message?.includes('Failed to generate. Check GEMINI_API_KEY and try again.')) {
+      throw apiErr;
+    }
+    // Endpoint unavailable (e.g. offline unit test runner), fall back to client SDK/REST
+  }
+
+  let parsed: any[] = [];
+
+  if (apiEndpointSucceeded && parsedFromApi.length > 0) {
+    parsed = parsedFromApi;
+  } else {
+    // 2. Client-side fallback if GEMINI_API_KEY is available in client context
+    const apiKey = getGeminiApiKey();
+
+    if (!apiKey) {
+      throw new Error('Failed to generate. Check GEMINI_API_KEY and try again.');
+    }
+
+    const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
 Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
 
 Strict output requirements:
@@ -108,53 +145,32 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
   }
 ]`;
 
-  let jsonText = '';
+    let jsonText = '';
 
-  try {
-    // 1. Try with GoogleGenAI SDK
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `${systemInstruction}\n\nUser Request: ${prompt}`,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.7,
-        },
-      });
+      // 1. Try with GoogleGenAI SDK
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: `${systemInstruction}\n\nUser Request: ${prompt}`,
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.7,
+          },
+        });
 
-      const parts = response.candidates?.flatMap((c) => c.content?.parts || []) || [];
-      jsonText = parts.map((p) => p.text || '').join('');
-      if (!jsonText && response.text) {
-        jsonText = response.text;
-      }
-    } catch (sdkErr) {
-      console.warn('GoogleGenAI SDK call failed, falling back to direct REST API:', sdkErr);
-      
-      // 2. Direct REST fallback
-      const restResp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: `${systemInstruction}\n\nUser Request: ${prompt}` }],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              temperature: 0.7,
-            },
-          }),
+        const parts = response.candidates?.flatMap((c) => c.content?.parts || []) || [];
+        jsonText = parts.map((p) => p.text || '').join('');
+        if (!jsonText && response.text) {
+          jsonText = response.text;
         }
-      );
-
-      if (!restResp.ok) {
-        // Fallback to gemini-1.5-flash if 2.5 is unavailable
-        const fallbackResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      } catch (sdkErr) {
+        console.warn('GoogleGenAI SDK call failed, falling back to direct REST API:', sdkErr);
+        
+        // 2. Direct REST fallback
+        const restResp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -172,42 +188,68 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
           }
         );
 
-        if (!fallbackResp.ok) {
-          const errData = await fallbackResp.json().catch(() => ({}));
-          throw new Error(errData?.error?.message || `HTTP ${fallbackResp.status}`);
+        if (!restResp.ok) {
+          // Fallback to gemini-1.5-flash if 2.5 is unavailable
+          const fallbackResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [{ text: `${systemInstruction}\n\nUser Request: ${prompt}` }],
+                  },
+                ],
+                generationConfig: {
+                  responseMimeType: 'application/json',
+                  temperature: 0.7,
+                },
+              }),
+            }
+          );
+
+          if (!fallbackResp.ok) {
+            const errData = await fallbackResp.json().catch(() => ({}));
+            throw new Error(errData?.error?.message || `HTTP ${fallbackResp.status}`);
+          }
+
+          const data = await fallbackResp.json();
+          jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+          const data = await restResp.json();
+          jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
-
-        const data = await fallbackResp.json();
-        jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      } else {
-        const data = await restResp.json();
-        jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       }
+
+      if (!jsonText) {
+        throw new Error('Empty response received from Gemini.');
+      }
+
+      // Clean JSON text if wrapped in markdown
+      const cleaned = jsonText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch (clientErr: any) {
+      console.warn('Content agent generation notice:', clientErr?.message || clientErr);
+      throw new Error('Failed to generate. Check GEMINI_API_KEY and try again.');
     }
+  }
 
-    if (!jsonText) {
-      throw new Error('Empty response received from Gemini.');
-    }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('Invalid JSON array received.');
+  }
 
-    // Clean JSON text if wrapped in markdown
-    const cleaned = jsonText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      throw new Error('Invalid JSON array received.');
-    }
-
-    const ideas: ContentIdea[] = parsed.map((item: any, index: number) => ({
-      id: item.id || `idea-${Date.now()}-${index}`,
-      title: item.title || 'Enterprise Cloud Architecture Insight',
-      hook: item.hook || '',
-      body: item.body || '',
-      hashtags: Array.isArray(item.hashtags) ? item.hashtags : ['#VMware', '#AzureAVS', '#CloudMigration'],
-      cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
-      topic: item.topic || (index === 0 ? 'AVS' : index === 1 ? 'hyperscaler migration' : 'cloud sizing'),
-      status: 'idea',
-      created_at: new Date().toISOString(),
-    }));
+  const ideas: ContentIdea[] = parsed.map((item: any, index: number) => ({
+    id: item.id || `idea-${Date.now()}-${index}`,
+    title: item.title || 'Enterprise Cloud Architecture Insight',
+    hook: item.hook || '',
+    body: item.body || '',
+    hashtags: Array.isArray(item.hashtags) ? item.hashtags : ['#VMware', '#AzureAVS', '#CloudMigration'],
+    cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
+    topic: item.topic || (index === 0 ? 'AVS' : index === 1 ? 'hyperscaler migration' : 'cloud sizing'),
+    status: 'idea',
+    created_at: new Date().toISOString(),
+  }));
 
     // Cache locally
     try {
@@ -236,10 +278,6 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
     }
 
     return ideas;
-  } catch (err: any) {
-    console.error('generateContentIdeas error:', err);
-    throw new Error('Failed to generate. Check GEMINI_API_KEY and try again.');
-  }
 }
 
 /**

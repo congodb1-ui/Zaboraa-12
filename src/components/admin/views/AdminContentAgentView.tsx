@@ -28,7 +28,8 @@ import {
   Plus,
   SlidersHorizontal,
   CheckSquare,
-  Square
+  Square,
+  Copy
 } from 'lucide-react';
 import {
   PILLARS,
@@ -44,7 +45,10 @@ import {
   getContentQueue,
   approveDraftToQueue,
   unapproveQueueItem,
-  deleteQueueItem
+  deleteQueueItem,
+  formatLinkedInPost,
+  validateLinkedInUrl,
+  markQueueItemAsPosted
 } from '../../../lib/contentAgent';
 
 interface AdminContentAgentViewProps {
@@ -91,6 +95,12 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
   const [editHashtags, setEditHashtags] = useState('');
   const [editCta, setEditCta] = useState('');
   const [editTopic, setEditTopic] = useState('');
+
+  // Phase 2b: Manual LinkedIn Posting State
+  const [postingQueueItem, setPostingQueueItem] = useState<ContentQueueItem | null>(null);
+  const [linkedinPostUrlInput, setLinkedinPostUrlInput] = useState('');
+  const [isSubmittingPosted, setIsSubmittingPosted] = useState(false);
+  const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
 
   // Initial Load
   const loadData = async () => {
@@ -301,6 +311,61 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
   };
 
   // --- Queue Actions ---
+  const handleCopyForLinkedIn = (item: ContentQueueItem) => {
+    const linkedDraft = drafts.find((d) => d.id === item.draft_id) || item.draft;
+    if (!linkedDraft) {
+      showToast('Could not find draft content for this queue item.', true);
+      return;
+    }
+
+    const formatted = formatLinkedInPost(linkedDraft);
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(formatted.text);
+      setCopiedItemId(item.id);
+      setTimeout(() => setCopiedItemId(null), 2500);
+
+      if (formatted.overLimit) {
+        showToast(
+          `Copied to clipboard (${formatted.length} chars). Warning: Post exceeds LinkedIn limit of 3,000 chars!`,
+          true
+        );
+      } else {
+        showToast(`Copied formatted post for LinkedIn (${formatted.length} characters).`);
+      }
+    } else {
+      showToast('Clipboard access not available in this environment.', true);
+    }
+  };
+
+  const handleOpenMarkAsPostedModal = (item: ContentQueueItem) => {
+    setPostingQueueItem(item);
+    setLinkedinPostUrlInput('');
+  };
+
+  const handleConfirmMarkAsPosted = async () => {
+    if (!postingQueueItem) return;
+    const trimmed = linkedinPostUrlInput.trim();
+    if (!validateLinkedInUrl(trimmed)) {
+      showToast('Please enter a valid LinkedIn post URL.', true);
+      return;
+    }
+
+    setIsSubmittingPosted(true);
+    try {
+      // 1. Supabase write first + audit_logs row + local cache (handled in markQueueItemAsPosted)
+      await markQueueItemAsPosted(postingQueueItem.id, trimmed, currentUserEmail);
+      // 2. Refresh local component data only after DB succeeds
+      await loadData();
+      setPostingQueueItem(null);
+      setLinkedinPostUrlInput('');
+      showToast('Post successfully marked as posted on LinkedIn!');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to mark post as posted in database.', true);
+    } finally {
+      setIsSubmittingPosted(false);
+    }
+  };
+
   const handleUnapproveQueueItem = async (item: ContentQueueItem) => {
     try {
       await unapproveQueueItem(item.id, item.draft_id);
@@ -921,7 +986,7 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
               <span>SCHEDULED PUBLICATION SLOTS (MON / WED / FRI 09:30 AM IST)</span>
             </div>
             <p className="text-xs text-slate-400">
-              Phase 1 provides visual scheduling and approval controls. Posts in the queue will be dispatched to LinkedIn Company Page via API in Phase 3.
+              Approved posts scheduled for LinkedIn publication. Copy formatted copy to post manually, or mark as posted after publication.
             </p>
           </div>
 
@@ -937,69 +1002,173 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
             <div className="space-y-3">
               {queue.map((item, idx) => {
                 const linkedDraft = drafts.find((d) => d.id === item.draft_id) || item.draft;
+                const isQueued = item.status === 'Queued';
+                const isPosted = item.status === 'Posted';
+                const formatted = linkedDraft ? formatLinkedInPost(linkedDraft) : null;
+
                 return (
                   <div
                     key={item.id || idx}
-                    className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm"
+                    className={`p-5 rounded-2xl bg-slate-900 border transition shadow-sm ${
+                      isPosted ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-800'
+                    }`}
                   >
-                    <div className="space-y-2 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        {/* Time Slot Badge */}
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{item.scheduled_day} {item.scheduled_time}</span>
-                        </span>
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Time Slot Badge */}
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{item.scheduled_day} {item.scheduled_time}</span>
+                          </span>
 
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-slate-800 text-cyan-300 border border-slate-700">
-                          {linkedDraft?.topic || 'Cloud Architecture'}
-                        </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-slate-800 text-cyan-300 border border-slate-700">
+                            {linkedDraft?.topic || 'Cloud Architecture'}
+                          </span>
 
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-950/80 text-emerald-400">
-                          {item.status}
-                        </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                              isPosted
+                                ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-500/50'
+                                : 'bg-emerald-950/80 text-emerald-400'
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+
+                          {isPosted && item.posted_at && (
+                            <span className="text-[10px] font-mono text-emerald-400/80">
+                              Posted: {new Date(item.posted_at).toLocaleDateString()} {new Date(item.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+
+                          {isQueued && formatted && (
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                formatted.overLimit
+                                  ? 'bg-rose-950 text-rose-300 border border-rose-500/40'
+                                  : 'bg-slate-800 text-slate-400'
+                              }`}
+                              title={formatted.overLimit ? 'Exceeds LinkedIn 3,000 character limit' : 'Formatted character count'}
+                            >
+                              {formatted.length} / 3000 chars{formatted.overLimit ? ' ⚠️ (Over limit)' : ''}
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-sm font-bold text-white truncate">
+                          {linkedDraft?.title || 'Approved Architecture Post'}
+                        </h3>
+
+                        {linkedDraft && (
+                          <p className="text-xs text-slate-300 line-clamp-2">
+                            {linkedDraft.edited_body || linkedDraft.body}
+                          </p>
+                        )}
+
+                        {isPosted && item.linkedin_url && (
+                          <div className="pt-1">
+                            <a
+                              href={item.linkedin_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 underline font-mono"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>View on LinkedIn</span>
+                            </a>
+                          </div>
+                        )}
+
+                        {linkedDraft?.hashtags && linkedDraft.hashtags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {linkedDraft.hashtags.map((tag, tIdx) => (
+                              <span
+                                key={tIdx}
+                                className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-slate-950"
+                              >
+                                {tag.startsWith('#') ? tag : `#${tag}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
-                      <h3 className="text-sm font-bold text-white truncate">
-                        {linkedDraft?.title || 'Approved Architecture Post'}
-                      </h3>
-
-                      {linkedDraft?.body && (
-                        <p className="text-xs text-slate-400 line-clamp-2">
-                          {linkedDraft.body}
-                        </p>
-                      )}
-
-                      {linkedDraft?.hashtags && linkedDraft.hashtags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {linkedDraft.hashtags.map((tag, tIdx) => (
-                            <span
-                              key={tIdx}
-                              className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-slate-950"
+                      {/* Queue Actions */}
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {isQueued && (
+                          <>
+                            {/* Copy for LinkedIn */}
+                            <button
+                              onClick={() => handleCopyForLinkedIn(item)}
+                              className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                              title="Copy formatted post with hook, body, CTA, and hashtags"
                             >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                              {copiedItemId === item.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-200" />
+                                  <span>Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Copy for LinkedIn</span>
+                                </>
+                              )}
+                            </button>
 
-                    {/* Queue Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleUnapproveQueueItem(item)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Unapprove</span>
-                      </button>
+                            {/* Open Zaboraa LinkedIn Page */}
+                            <a
+                              href="https://www.linkedin.com/company/zaboraa/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Open Zaboraa Page</span>
+                            </a>
 
-                      <button
-                        onClick={() => handleDeleteQueueItem(item)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-200 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </button>
+                            {/* Mark as Posted */}
+                            <button
+                              onClick={() => handleOpenMarkAsPostedModal(item)}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Mark as Posted</span>
+                            </button>
+
+                            {/* Unapprove */}
+                            <button
+                              onClick={() => handleUnapproveQueueItem(item)}
+                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Unapprove</span>
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeleteQueueItem(item)}
+                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-200 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </>
+                        )}
+
+                        {isPosted && item.linkedin_url && (
+                          <a
+                            href={item.linkedin_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>View on LinkedIn</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1132,6 +1301,92 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                 <Save className="w-3.5 h-3.5" />
                 <span>Save Changes</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: MARK AS POSTED (Phase 2b)                                          */}
+      {/* ========================================================================= */}
+      {postingQueueItem && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-bold text-white">Mark Post as Published</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setPostingQueueItem(null);
+                  setLinkedinPostUrlInput('');
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-slate-300 leading-relaxed">
+                Paste the live URL of the post published on the Zaboraa LinkedIn Company page to complete the publication record.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono text-slate-400 uppercase font-semibold block">
+                  LinkedIn Post URL
+                </label>
+                <input
+                  type="url"
+                  value={linkedinPostUrlInput}
+                  onChange={(e) => setLinkedinPostUrlInput(e.target.value)}
+                  placeholder="https://www.linkedin.com/feed/update/urn:li:activity:7123456789... or /posts/..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-cyan-500 text-white text-xs outline-none transition"
+                  autoFocus
+                />
+                {linkedinPostUrlInput.trim().length > 0 && !validateLinkedInUrl(linkedinPostUrlInput.trim()) && (
+                  <p className="text-[11px] text-rose-400 font-medium">
+                    Please enter a valid LinkedIn URL (e.g. https://www.linkedin.com/feed/update/urn:li:activity:... or https://www.linkedin.com/posts/...)
+                  </p>
+                )}
+                {validateLinkedInUrl(linkedinPostUrlInput.trim()) && (
+                  <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+                    <Check className="w-3 h-3" /> Valid LinkedIn post URL format
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  onClick={() => {
+                    setPostingQueueItem(null);
+                    setLinkedinPostUrlInput('');
+                  }}
+                  disabled={isSubmittingPosted}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleConfirmMarkAsPosted}
+                  disabled={!validateLinkedInUrl(linkedinPostUrlInput.trim()) || isSubmittingPosted}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  {isSubmittingPosted ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Recording Publication...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Yes, I posted this to the real Zaboraa LinkedIn page</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

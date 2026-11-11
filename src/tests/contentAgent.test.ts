@@ -21,6 +21,39 @@ if (typeof globalThis.localStorage === 'undefined') {
   (globalThis as any).localStorage = localStorageMock;
 }
 
+// Mock Supabase to guarantee no live network calls during tests
+vi.mock('../lib/supabase', () => {
+  return {
+    isSupabaseConfigured: true,
+    supabase: {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: {
+            session: {
+              access_token: 'mock-jwt-token',
+              user: { id: 'mock-admin-uuid', email: 'wasim.sayyed@zaboraa.com' },
+            },
+          },
+        }),
+      },
+      from: vi.fn((table: string) => {
+        return {
+          select: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+          upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        };
+      }),
+    },
+  };
+});
+
 import {
   generateContentIdeas,
   fetchSuggestedTopics,
@@ -31,6 +64,9 @@ import {
   unapproveQueueItem,
   deleteQueueItem,
   getNextQueueSlot,
+  formatLinkedInPost,
+  validateLinkedInUrl,
+  markQueueItemAsPosted,
   PILLARS,
   ContentDraft,
   ContentQueueItem
@@ -480,6 +516,273 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
       expect(result.suggestedTopics[0]).toBe('Multi-Hyperscaler Strategy');
 
       global.fetch = originalFetch;
+    });
+  });
+
+  describe('6. Phase 2b: LinkedIn Copy Formatter, URL Validator & Manual Posting', () => {
+    describe('formatLinkedInPost', () => {
+      it('formats hook, body, CTA, and hashtags with double linebreaks', () => {
+        const draft: ContentDraft = {
+          id: 'draft-1',
+          title: 'This Title Should Never Appear in Formatted Post',
+          hook: 'Why do 70% of VMware migrations stall?',
+          body: 'Here is the detailed body copy explaining why migrations stall.',
+          cta: '👉 Assess your clusters at zaboraa.com/tools/sizing',
+          hashtags: ['#AVS', 'VMware', 'Cloud Migration'],
+          topic: 'AVS Migrations',
+          status: 'Approved',
+        };
+
+        const result = formatLinkedInPost(draft);
+
+        // Title must not appear
+        expect(result.text).not.toContain('This Title Should Never Appear');
+        // Sections properly separated
+        expect(result.text).toContain(
+          'Why do 70% of VMware migrations stall?\n\nHere is the detailed body copy explaining why migrations stall.\n\n👉 Assess your clusters at zaboraa.com/tools/sizing\n\n#AVS #VMware #CloudMigration'
+        );
+        expect(result.overLimit).toBe(false);
+        expect(result.length).toBe(Array.from(result.text).length);
+      });
+
+      it('prefers edited_body over original body', () => {
+        const draft: ContentDraft = {
+          id: 'draft-2',
+          title: 'Custom Title',
+          hook: 'Hook text',
+          body: 'Original unedited body',
+          edited_body: 'Executive edited body text',
+          cta: 'CTA link',
+          hashtags: ['#FinOps'],
+          topic: 'Cloud Sizing / FinOps',
+          status: 'Approved',
+        };
+
+        const result = formatLinkedInPost(draft);
+        expect(result.text).toContain('Executive edited body text');
+        expect(result.text).not.toContain('Original unedited body');
+      });
+
+      it('normalizes hashtags: prefixes #, strips internal spaces, caps at 6 tags', () => {
+        const draft: ContentDraft = {
+          id: 'draft-3',
+          title: 'Hashtag Test',
+          hook: 'Hook',
+          body: 'Body',
+          cta: 'CTA',
+          hashtags: [
+            '#AVS',
+            'Broadcom VMware',
+            '##DoubleHash',
+            'FinOps',
+            'Hyperscaler',
+            'Multi Cloud',
+            'ExtraTag7',
+            'ExtraTag8',
+          ],
+          topic: 'AVS Migrations',
+          status: 'Draft',
+        };
+
+        const result = formatLinkedInPost(draft);
+        expect(result.text).toContain(
+          '#AVS #BroadcomVMware #DoubleHash #FinOps #Hyperscaler #MultiCloud'
+        );
+        expect(result.text).not.toContain('#ExtraTag7');
+        expect(result.text).not.toContain('#ExtraTag8');
+      });
+
+      it('does NOT apply HTML or URL escaping to characters (plain text copy)', () => {
+        const draft: ContentDraft = {
+          id: 'draft-4',
+          title: 'Special Chars',
+          hook: 'Quotes & "Ampersands" <Tags> & \'Apostrophes\'',
+          body: 'Lines with \\ backslashes, *asterisks*, and _underscores_.',
+          cta: 'Visit https://zaboraa.com/tools?id=1&type=avs',
+          hashtags: ['#Cloud_Ops'],
+          topic: 'AVS Migrations',
+          status: 'Approved',
+        };
+
+        const result = formatLinkedInPost(draft);
+        expect(result.text).toContain('Quotes & "Ampersands" <Tags> & \'Apostrophes\'');
+        expect(result.text).toContain('Lines with \\ backslashes, *asterisks*, and _underscores_.');
+        expect(result.text).toContain('https://zaboraa.com/tools?id=1&type=avs');
+      });
+
+      it('accurately counts Unicode emojis by code points and flags overLimit > 3000', () => {
+        const emojiHook = '🚀⚡🎯🔥💡🏆'; // 6 code points
+        const baseDraft: ContentDraft = {
+          id: 'draft-5',
+          title: 'Emoji test',
+          hook: emojiHook,
+          body: 'Short body',
+          cta: 'CTA',
+          hashtags: ['#Test'],
+          topic: 'AVS Migrations',
+          status: 'Approved',
+        };
+
+        const shortResult = formatLinkedInPost(baseDraft);
+        expect(shortResult.overLimit).toBe(false);
+
+        // Build a long text draft exceeding 3000 code points
+        const longBody = 'A'.repeat(3100);
+        const longDraft: ContentDraft = {
+          ...baseDraft,
+          body: longBody,
+        };
+
+        const longResult = formatLinkedInPost(longDraft);
+        expect(longResult.overLimit).toBe(true);
+        expect(longResult.length).toBeGreaterThan(3000);
+        // Does not silently truncate
+        expect(longResult.text.length).toBeGreaterThanOrEqual(3100);
+      });
+    });
+
+    describe('validateLinkedInUrl', () => {
+      it('validates activity, share, ugcPost, and /posts/ LinkedIn URLs correctly', () => {
+        const validUrls = [
+          'https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/',
+          'https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678',
+          'https://www.linkedin.com/feed/update/urn:li:share:7123456789012345678',
+          'https://www.linkedin.com/feed/update/urn:li:ugcPost:7123456789012345678/',
+          'https://linkedin.com/feed/update/urn:li:activity:7123456789012345678',
+          'https://www.linkedin.com/posts/zaboraa_enterprise-vmware-cloud-migration-activity-7123456789012345678-abcd',
+          'https://linkedin.com/posts/wasim-sayyed_broadcom-licensing-analysis',
+          'https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678?updateEntityUrn=urn%3Ali%3Afs_feedUpdate',
+        ];
+
+        for (const url of validUrls) {
+          expect(validateLinkedInUrl(url), `Expected ${url} to be valid`).toBe(true);
+        }
+      });
+
+      it('rejects invalid domains, schemes, malformed URNs, and non-post URLs', () => {
+        const invalidUrls = [
+          'http://www.linkedin.com/feed/update/urn:li:activity:7123456789', // http instead of https
+          'https://twitter.com/zaboraa/status/123456', // wrong domain
+          'https://www.linkedin.com/in/wasim-sayyed', // profile URL
+          'https://www.linkedin.com/company/zaboraa/', // company page URL
+          'https://www.linkedin.com/feed/update/urn:li:unknown:7123456789', // invalid URN type
+          'https://www.linkedin.com/feed/update/', // missing URN
+          'https://www.linkedin.com/posts/', // empty post slug
+          'not a url',
+          '',
+          null as any,
+          undefined as any,
+        ];
+
+        for (const url of invalidUrls) {
+          expect(validateLinkedInUrl(url), `Expected ${url} to be invalid`).toBe(false);
+        }
+      });
+    });
+
+    describe('markQueueItemAsPosted & Lifecycle Gating', () => {
+      it('updates queue item to Posted, records posted_at & linkedin_url, and draft remains Approved', async () => {
+        const draft: ContentDraft = {
+          id: 'draft-posted-test',
+          title: 'Manual Posting Test Draft',
+          hook: 'Hook',
+          body: 'Body',
+          cta: 'CTA',
+          hashtags: ['#AVS'],
+          topic: 'AVS Migrations',
+          status: 'Approved',
+        };
+        await saveContentDraft(draft);
+
+        const queueItem = await approveDraftToQueue(draft);
+        expect(queueItem.status).toBe('Queued');
+
+        const validLinkedinUrl =
+          'https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/';
+
+        await markQueueItemAsPosted(queueItem.id, validLinkedinUrl, 'wasim.sayyed@zaboraa.com');
+
+        const updatedQueue = await getContentQueue();
+        const found = updatedQueue.find((q) => q.id === queueItem.id);
+        expect(found).toBeDefined();
+        expect(found?.status).toBe('Posted');
+        expect(found?.linkedin_url).toBe(validLinkedinUrl);
+        expect(found?.posted_at).toBeDefined();
+
+        // Linked draft status must remain 'Approved'
+        const drafts = await getContentDrafts();
+        const linkedDraft = drafts.find((d) => d.id === draft.id);
+        expect(linkedDraft?.status).toBe('Approved');
+      });
+
+      it('rejects markQueueItemAsPosted when URL is invalid', async () => {
+        const draft: ContentDraft = {
+          id: 'draft-invalid-url',
+          title: 'Invalid URL Test',
+          hook: 'Hook',
+          body: 'Body',
+          cta: 'CTA',
+          hashtags: ['#AVS'],
+          topic: 'AVS Migrations',
+          status: 'Approved',
+        };
+        await saveContentDraft(draft);
+        const queueItem = await approveDraftToQueue(draft);
+
+        await expect(
+          markQueueItemAsPosted(queueItem.id, 'https://invalid-domain.com/post/123')
+        ).rejects.toThrow('valid LinkedIn post URL');
+      });
+
+      it('surfaces database error and leaves local queue untouched when Supabase update fails', async () => {
+        const draft: ContentDraft = {
+          id: 'draft-db-failure',
+          title: 'DB Failure Test',
+          hook: 'Hook',
+          body: 'Body',
+          cta: 'CTA',
+          hashtags: ['#AVS'],
+          topic: 'AVS Migrations',
+          status: 'Approved',
+        };
+        await saveContentDraft(draft);
+        const queueItem = await approveDraftToQueue(draft);
+
+        // Temporarily override supabase.from('content_queue').update to return an error
+        const { supabase } = await import('../lib/supabase');
+        if (supabase) {
+          const originalFrom = (supabase as any).from;
+          (supabase as any).from = vi.fn().mockImplementation((table: string) => {
+            if (table === 'content_queue') {
+              return {
+                update: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockResolvedValue({
+                    data: null,
+                    error: { message: 'Database connection timeout' },
+                  }),
+                }),
+                select: vi.fn().mockReturnThis(),
+                order: vi.fn().mockResolvedValue({ data: [], error: null }),
+              };
+            }
+            return originalFrom(table);
+          });
+
+          await expect(
+            markQueueItemAsPosted(
+              queueItem.id,
+              'https://www.linkedin.com/feed/update/urn:li:activity:7123456789012345678/'
+            )
+          ).rejects.toThrow('Database connection timeout');
+
+          // Confirm local storage queue was NOT marked as Posted
+          const queue = await getContentQueue();
+          const item = queue.find((q) => q.id === queueItem.id);
+          expect(item?.status).toBe('Queued');
+
+          (supabase as any).from = originalFrom;
+        }
+      });
     });
   });
 });

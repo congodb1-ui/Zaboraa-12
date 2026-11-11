@@ -56,98 +56,54 @@ async function generateBlueprint(apiKey: string, prompt: string) {
 }
 
 async function generateContentWithVertex(inputTopics?: string[]) {
-  const apiKey = process.env.VERTEX_API_KEY;
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'prime-bridge-511404-a3';
-  const configuredLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+  const apiKey =
+    process.env.VERTEX_API_KEY ||
+    process.env.GOOGLE_CLOUD_API_KEY ||
+    process.env.VITE_VERTEX_API_KEY;
+  const projectId =
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.VERTEX_PROJECT_ID ||
+    process.env.VITE_GOOGLE_CLOUD_PROJECT ||
+    'prime-bridge-511404-a3';
+  const configuredLocation =
+    process.env.GOOGLE_CLOUD_LOCATION ||
+    process.env.VERTEX_LOCATION ||
+    process.env.VITE_GOOGLE_CLOUD_LOCATION ||
+    'us-central1';
 
   if (!apiKey) {
     throw new Error('VERTEX_API_KEY is not configured.');
   }
 
   const { validateTopics, allocatePosts } = await import('./api/_lib/contentPillars.js');
-  const validation = validateTopics(inputTopics || ['AVS Migrations', 'Broadcom / VMware Licensing']);
+  const validation = validateTopics(inputTopics);
   if (!validation.valid) {
     throw new Error(validation.error || 'topics is required, pick 1 to 3 topics.');
   }
 
   const topics = validation.topics;
   const allocation = allocatePosts(topics);
-
   const CONTENT_MODEL = 'gemini-3.7-flash';
-  const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier founder-led enterprise VMware Cloud Architecture and Hyperscaler Migration consultancy.
 
-ZABORAA FOUNDATIONAL FACTS (STRICT GROUNDING - USE ONLY THESE FACTS):
-- Founder-led enterprise VMware and multi-hyperscaler advisory.
-- 13+ years of specialized enterprise virtualization and cloud infrastructure experience.
-- 25+ successful enterprise hyperscaler migrations delivered across Azure VMware Solution (AVS), AWS VMware Cloud (VMC), and Google Cloud VMware Engine (GCVE).
-- 6 verified enterprise cloud and virtualization certifications held.
-- 100% runbook-driven cutovers with zero unplanned rollback.
-- 6 free enterprise architecture engineering tools and calculators on zaboraa.com.
+  const { buildSystemInstruction } = await import('./api/generate-content.js');
+  const systemInstruction = buildSystemInstruction(allocation);
+  const userPrompt = `${systemInstruction}\n\nExecute post generation for the specified topics now. Return only the JSON array conforming to the schema.`;
 
-STRICT CONTENT RESTRICTIONS (NEVER INCLUDE ANY OF THE FOLLOWING):
-- DO NOT invent or quote specific client names or confidential company names.
-- DO NOT quote synthetic pricing, license rates, or monetary figures.
-- DO NOT mention videos, YouTube, masterclasses, or webinars.
-- DO NOT include testimonials or fabricated customer quotes.
-- DO NOT refer to "Zaboraa Technologies" (use "Zaboraa" or "Zaboraa Cloud Architecture").
-- DO NOT invent unverified metrics or case-study statistics.
-
-TARGET AUDIENCE:
-Enterprise IT Directors, VP Infrastructure, Principal Enterprise Architects, and Cloud Infrastructure Leads.
-
-OUTPUT REQUIREMENTS:
-Generate high-impact, actionable, technically rigorous LinkedIn posts matching the requested topics and exact post allocation.
-Return ONLY a valid JSON array of objects conforming to the response schema.`;
-
-  const allocationDesc = allocation
-    .map((a) => `- Topic: "${a.topic}" -> Generate exactly ${a.count} post${a.count > 1 ? 's' : ''}`)
-    .join('\n');
-
-  const userPrompt = `=== REQUESTED TOPICS DATA ===
-${topics.map((t, idx) => `Topic ${idx + 1}: "${t}"`).join('\n')}
-
-=== ALLOCATION REQUIREMENT ===
-${allocationDesc}
-
-Total posts required: 3.
-Ensure each post has its "topic" property set EXACTLY to the matching requested topic.`;
-
-  let ai = new GoogleGenAI({
+  const ai = new GoogleGenAI({
     vertexai: true,
     apiKey,
     project: projectId,
     location: configuredLocation,
   });
 
-  let response;
-  try {
-    response = await ai.models.generateContent({
-      model: CONTENT_MODEL,
-      contents: `${systemInstruction}\n\n${userPrompt}`,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
-  } catch (regionalErr: any) {
-    console.warn(
-      `Vertex AI Express request in ${configuredLocation} failed (${regionalErr?.message}), falling back to global location.`
-    );
-    ai = new GoogleGenAI({
-      vertexai: true,
-      apiKey,
-      project: projectId,
-      location: 'global',
-    });
-    response = await ai.models.generateContent({
-      model: CONTENT_MODEL,
-      contents: `${systemInstruction}\n\n${userPrompt}`,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
-  }
+  const response = await ai.models.generateContent({
+    model: CONTENT_MODEL,
+    contents: userPrompt,
+    config: {
+      responseMimeType: 'application/json',
+      temperature: 0.7,
+    },
+  });
 
   const parts =
     response.candidates?.flatMap(
@@ -172,22 +128,64 @@ Ensure each post has its "topic" property set EXACTLY to the matching requested 
   const parsed = JSON.parse(cleaned);
 
   if (!Array.isArray(parsed) || parsed.length !== 3) {
-    throw new Error('Invalid JSON array received from Vertex AI.');
+    throw new Error('Model did not return exactly 3 posts.');
   }
 
-  const posts = parsed.map((item: any, index: number) => ({
-    id: item.id || `post-${Date.now()}-${index}`,
-    title: item.title || 'Enterprise Cloud Architecture Insight',
-    hook: item.hook || '',
-    body: item.body || '',
-    hashtags: Array.isArray(item.hashtags)
-      ? item.hashtags
-      : ['#VMware', '#AzureAVS', '#CloudMigration'],
-    cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
-    topic: item.topic || topics[0],
-    status: 'idea',
-    created_at: new Date().toISOString(),
-  }));
+  const topicCountMap = new Map();
+  topics.forEach((t: string) => topicCountMap.set(t.toLowerCase(), 0));
+
+  const posts = parsed.map((item: any, index: number) => {
+    const title = typeof item.title === 'string' ? item.title.trim() : 'Enterprise Cloud Architecture Insight';
+    let hook = typeof item.hook === 'string' ? item.hook.trim() : '';
+    let body = typeof item.body === 'string' ? item.body.trim() : '';
+    let cta = typeof item.cta === 'string' ? item.cta.trim() : 'Explore enterprise cloud architecture at zaboraa.com';
+    const rawTopic = typeof item.topic === 'string' ? item.topic.trim() : '';
+
+    const matchingTopic = topics.find(
+      (t: string) => t.toLowerCase() === rawTopic.toLowerCase()
+    );
+
+    if (!matchingTopic) {
+      throw new Error(`Post topic "${rawTopic}" does not match requested topics.`);
+    }
+
+    topicCountMap.set(
+      matchingTopic.toLowerCase(),
+      (topicCountMap.get(matchingTopic.toLowerCase()) || 0) + 1
+    );
+
+    if (hook.length > 200) hook = hook.slice(0, 197) + '...';
+    if (body.length > 2200) body = body.slice(0, 2197) + '...';
+    if (cta.length > 200) cta = cta.slice(0, 197) + '...';
+
+    const rawHashtags = Array.isArray(item.hashtags) ? item.hashtags : [];
+    const cleanedHashtags: string[] = [];
+    const seenTags = new Set<string>();
+
+    for (const tag of rawHashtags) {
+      if (typeof tag !== 'string') continue;
+      const stripped = tag.replace(/[\s\r\n]+/g, '').replace(/^#+/, '');
+      if (stripped.length > 0) {
+        const fullTag = `#${stripped}`;
+        if (!seenTags.has(fullTag.toLowerCase())) {
+          seenTags.add(fullTag.toLowerCase());
+          cleanedHashtags.push(fullTag);
+        }
+      }
+    }
+
+    return {
+      id: item.id || `post-${Date.now()}-${index}`,
+      title,
+      hook,
+      body,
+      hashtags: cleanedHashtags.slice(0, 6),
+      cta,
+      topic: matchingTopic,
+      status: 'idea',
+      created_at: new Date().toISOString(),
+    };
+  });
 
   return {
     success: true,

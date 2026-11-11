@@ -90,27 +90,28 @@ export async function requireAdmin(req, res) {
   const user = userData.user;
   const userEmail = user.email ? user.email.toLowerCase().trim() : '';
 
-  // 1. Direct email allowlist verification
-  if (isAuthoritativeAdminEmail(userEmail)) {
-    return { authorized: true, user, email: userEmail, supabase };
+  // Admin verification: role === 'admin' AND email in allowlist (Requirement 1)
+  if (!isAuthoritativeAdminEmail(userEmail)) {
+    res.status(403).json({
+      success: false,
+      error: 'Forbidden: Admin access privileges required.',
+    });
+    return { authorized: false, status: 403 };
   }
 
-  // 2. Query public.profiles role
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
     .select('id, email, role, status')
     .eq('id', user.id)
     .single();
 
-  if (!profileError && profileData) {
-    if (profileData.role === 'admin' && profileData.status !== 'suspended') {
-      return { authorized: true, user, email: userEmail, profile: profileData, supabase };
-    }
+  if (profileError || !profileData || profileData.role !== 'admin' || profileData.status === 'suspended') {
+    res.status(403).json({
+      success: false,
+      error: 'Forbidden: Admin role verification failed.',
+    });
+    return { authorized: false, status: 403 };
   }
 
-  res.status(403).json({
-    success: false,
-    error: 'Forbidden: Admin access privileges required.',
-  });
-  return { authorized: false, status: 403 };
+  return { authorized: true, user, email: userEmail, profile: profileData, supabase };
 }

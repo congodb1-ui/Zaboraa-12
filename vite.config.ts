@@ -56,18 +56,12 @@ async function generateBlueprint(apiKey: string, prompt: string) {
 }
 
 async function generateContentWithVertex(prompt?: string) {
+  const apiKey = process.env.VERTEX_API_KEY;
   const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'prime-bridge-511404-a3';
   const configuredLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
 
-  let googleAuthOptions;
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    try {
-      googleAuthOptions = {
-        credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
-      };
-    } catch (e: any) {
-      console.warn('Notice parsing GOOGLE_APPLICATION_CREDENTIALS_JSON in vite:', e?.message);
-    }
+  if (!apiKey) {
+    throw new Error('VERTEX_API_KEY is not configured.');
   }
 
   const CONTENT_MODEL = 'gemini-3.7-flash';
@@ -94,9 +88,9 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
 
   let ai = new GoogleGenAI({
     vertexai: true,
+    apiKey,
     project: projectId,
     location: configuredLocation,
-    googleAuthOptions,
   });
 
   let response;
@@ -111,13 +105,13 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
     });
   } catch (regionalErr: any) {
     console.warn(
-      `Vertex AI request in ${configuredLocation} failed (${regionalErr?.message}), falling back to global location.`
+      `Vertex AI Express request in ${configuredLocation} failed (${regionalErr?.message}), falling back to global location.`
     );
     ai = new GoogleGenAI({
       vertexai: true,
+      apiKey,
       project: projectId,
       location: 'global',
-      googleAuthOptions,
     });
     response = await ai.models.generateContent({
       model: CONTENT_MODEL,

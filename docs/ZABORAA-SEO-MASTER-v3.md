@@ -844,10 +844,11 @@ Phase 1 is generation + approval only. No auto-posting, no LinkedIn API posting,
 - Must handle Vertex AI errors gracefully with clear server responses — never crash the admin page.
 
 ### 16.2.6 Data Model (Supabase / Firestore)
-- **Collection `content_ideas`:** `id`, `title`, `hook`, `body`, `hashtags[]`, `cta`, `topic`, `status`, `created_at`
-- **Collection `content_drafts`:** `id`, `idea_id`, `title`, `body`, `hashtags[]`, `cta`, `status` (Draft / Approved / Rejected), `updated_at`
-- **Collection `content_queue`:** `id`, `draft_id`, `scheduled_day` (Mon / Wed / Fri), `scheduled_time` (09:30 IST), `status` (Queued / Posted), `created_at`
-- Do not create new tables if these already exist in Supabase — reuse them.
+- **Table `public.content_ideas`:** `id` (TEXT PK), `title`, `hook`, `body`, `hashtags` (TEXT[]), `cta`, `topic`, `status` (`idea` | `drafted` | `discarded`), `created_at`, `updated_at`
+- **Table `public.content_drafts`:** `id` (TEXT PK), `idea_id`, `title`, `hook`, `body`, `edited_body`, `hashtags` (TEXT[]), `cta`, `topic`, `status` (`Draft` | `Approved` | `Rejected`), `scheduled_at`, `created_at`, `updated_at`
+- **Table `public.content_queue`:** `id` (TEXT PK), `draft_id`, `scheduled_day` (Mon / Wed / Fri), `scheduled_time` (09:30 AM IST), `scheduled_at`, `platform`, `status` (`Queued` | `Posted` | `Cancelled`), `created_at`, `updated_at`
+- **Admin Schema Prerequisites:** Migration `supabase/migrations/20261111_content_agent_and_admin_schema.sql` creates all three content tables with RLS and adds `last_sign_in_at` to `public.profiles`, along with `crm_leads`, `audit_logs`, and `admin_notifications` resilience.
+- Do not create new duplicate tables if these already exist in Supabase — reuse them.
 
 ### 16.2.7 Env Vars & Serverless Billing (Do Not Commit)
 - Uses Vertex AI under Google Cloud project `prime-bridge-511404-a3` with Google Cloud billing. Zero client secret leakage.

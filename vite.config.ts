@@ -55,6 +55,135 @@ async function generateBlueprint(apiKey: string, prompt: string) {
   };
 }
 
+async function generateContentWithVertex(prompt?: string) {
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'prime-bridge-511404-a3';
+  const configuredLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+
+  let googleAuthOptions;
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    try {
+      googleAuthOptions = {
+        credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
+      };
+    } catch (e: any) {
+      console.warn('Notice parsing GOOGLE_APPLICATION_CREDENTIALS_JSON in vite:', e?.message);
+    }
+  }
+
+  const CONTENT_MODEL = 'gemini-3.7-flash';
+  const targetPrompt =
+    typeof prompt === 'string' && prompt.trim()
+      ? prompt.trim()
+      : 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
+
+  const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
+Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
+
+Strict output requirements:
+Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanation, conforming exactly to this structure:
+[
+  {
+    "title": "string",
+    "hook": "string",
+    "body": "string",
+    "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
+    "cta": "string",
+    "topic": "AVS | hyperscaler migration | cloud sizing"
+  }
+]`;
+
+  let ai = new GoogleGenAI({
+    vertexai: true,
+    project: projectId,
+    location: configuredLocation,
+    googleAuthOptions,
+  });
+
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: CONTENT_MODEL,
+      contents: `${systemInstruction}\n\nUser Request: ${targetPrompt}`,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      },
+    });
+  } catch (regionalErr: any) {
+    console.warn(
+      `Vertex AI request in ${configuredLocation} failed (${regionalErr?.message}), falling back to global location.`
+    );
+    ai = new GoogleGenAI({
+      vertexai: true,
+      project: projectId,
+      location: 'global',
+      googleAuthOptions,
+    });
+    response = await ai.models.generateContent({
+      model: CONTENT_MODEL,
+      contents: `${systemInstruction}\n\nUser Request: ${targetPrompt}`,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      },
+    });
+  }
+
+  const parts =
+    response.candidates?.flatMap(
+      (candidate) => candidate.content?.parts || []
+    ) || [];
+
+  let jsonText = parts.map((p) => p.text || '').join('');
+  if (!jsonText && response.text) {
+    jsonText = response.text;
+  }
+
+  if (!jsonText) {
+    throw new Error('Vertex AI returned empty response.');
+  }
+
+  const cleaned = jsonText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
+
+  const parsed = JSON.parse(cleaned);
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('Invalid JSON array received from Vertex AI.');
+  }
+
+  const posts = parsed.map((item: any, index: number) => ({
+    id: item.id || `post-${Date.now()}-${index}`,
+    title: item.title || 'Enterprise Cloud Architecture Insight',
+    hook: item.hook || '',
+    body: item.body || '',
+    hashtags: Array.isArray(item.hashtags)
+      ? item.hashtags
+      : ['#VMware', '#AzureAVS', '#CloudMigration'],
+    cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
+    topic:
+      item.topic ||
+      (index === 0
+        ? 'AVS'
+        : index === 1
+        ? 'hyperscaler migration'
+        : 'cloud sizing'),
+    status: 'idea',
+    created_at: new Date().toISOString(),
+  }));
+
+  return {
+    success: true,
+    posts,
+    ideas: posts,
+    model: CONTENT_MODEL,
+    project: projectId,
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
@@ -272,6 +401,81 @@ export default defineConfig(({ mode }) => {
                   : 'AI blueprint generation unavailable. Loaded high-resolution enterprise 3D architecture blueprint.',
                 message: 'Rendered using bundled high-resolution 3D isometric architecture blueprint.'
               }));
+            }
+          });
+
+          // Server-side Vertex AI LinkedIn Content Generation Middleware
+          server.middlewares.use(async (req, res, next) => {
+            const requestPath = req.url?.split('?')[0];
+
+            if (requestPath !== '/api/generate-content') {
+              return next();
+            }
+
+            if (req.method !== 'POST') {
+              res.setHeader('Allow', 'POST');
+              res.statusCode = 405;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  success: false,
+                  error: 'Method not allowed',
+                })
+              );
+              return;
+            }
+
+            let bodyStr = '';
+            try {
+              for await (const chunk of req) {
+                bodyStr += chunk.toString();
+                if (Buffer.byteLength(bodyStr, 'utf8') > 20000) {
+                  res.statusCode = 413;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      success: false,
+                      error: 'Request body is too large.',
+                    })
+                  );
+                  return;
+                }
+              }
+
+              const body = JSON.parse(bodyStr || '{}');
+              const prompt = body?.topic || body?.prompt;
+
+              const result = await generateContentWithVertex(prompt);
+
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(result));
+            } catch (err: any) {
+              const isSyntaxErr = err instanceof SyntaxError;
+              if (isSyntaxErr) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                  JSON.stringify({
+                    success: false,
+                    error: 'Invalid JSON request body.',
+                  })
+                );
+                return;
+              }
+
+              console.error('Vite middleware /api/generate-content error:', err);
+              if (res.writableEnded) return;
+
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  success: false,
+                  error: err?.message || 'Server error during Vertex AI content generation',
+                  details: String(err?.stack || err),
+                })
+              );
             }
           });
 

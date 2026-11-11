@@ -820,10 +820,13 @@ Phase 1 is generation + approval only. No auto-posting, no LinkedIn API posting,
 - Empty state: `Analytics coming in Phase 3 — Sunday review will show impressions, likes, comments, CTR.`
 - No fake data. No mock charts.
 
-### 16.2.5 Function — generateContentIdeas()
-- **File:** `src/lib/contentAgent.ts` (or existing agent lib if present, do not duplicate)
-- **Function signature:** `generateContentIdeas(): Promise<ContentIdea[]>`
-- **Uses env vars from `.env.local`:** `GEMINI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+### 16.2.5 Function & API Architecture — generateContentIdeas()
+- **Client library:** `src/lib/contentAgent.ts`
+- **Serverless Endpoint:** `/api/generate-content` (`api/generate-content.js` in production, `vite.config.ts` dev middleware locally)
+- **AI Backend:** Google Cloud Vertex AI (Google Cloud billing, project: `prime-bridge-511404-a3`, location: `us-central1` / `global`)
+- **Model:** `gemini-3.7-flash` (Uses Google Cloud billing trial credits, NOT AI Studio prepayment key)
+- **Function signature:** `generateContentIdeas(topic?: string): Promise<ContentIdea[]>`
+- **Env vars used server-side:** `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` / `VERCEL_OIDC_TOKEN`
 - **Gemini prompt (exact):** `Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing`
 - **Return JSON format (strict):**
 ```json
@@ -838,7 +841,7 @@ Phase 1 is generation + approval only. No auto-posting, no LinkedIn API posting,
   }
 ]
 ```
-- Must handle Gemini errors gracefully: show `Failed to generate. Check GEMINI_API_KEY and try again.` — never crash the admin page.
+- Must handle Vertex AI errors gracefully with clear server responses — never crash the admin page.
 
 ### 16.2.6 Data Model (Supabase / Firestore)
 - **Collection `content_ideas`:** `id`, `title`, `hook`, `body`, `hashtags[]`, `cta`, `topic`, `status`, `created_at`
@@ -846,11 +849,11 @@ Phase 1 is generation + approval only. No auto-posting, no LinkedIn API posting,
 - **Collection `content_queue`:** `id`, `draft_id`, `scheduled_day` (Mon / Wed / Fri), `scheduled_time` (09:30 IST), `status` (Queued / Posted), `created_at`
 - Do not create new tables if these already exist in Supabase — reuse them.
 
-### 16.2.7 Env Vars (Do Not Commit)
-- `.env.local` must contain: `GEMINI_API_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+### 16.2.7 Env Vars & Serverless Billing (Do Not Commit)
+- Uses Vertex AI under Google Cloud project `prime-bridge-511404-a3` with Google Cloud billing. Zero client secret leakage.
 - `.env.local` must never be committed. Check `.gitignore` contains `.env.local`.
 - `.env.example` must contain names only, no values.
-- Never paste `.env.local` contents in chat, PR, or MD file. Keys that were exposed must be rotated in Google Cloud / Supabase / Vercel.
+- Never paste `.env.local` contents in chat, PR, or MD file.
 
 ### 16.2.8 Out of Scope for Phase 1
 - No LinkedIn API posting

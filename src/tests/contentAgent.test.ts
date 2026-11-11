@@ -41,19 +41,29 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
   });
 
   describe('1. generateContentIdeas() Error Handling & Resilience (§16.2.5)', () => {
-    it('gracefully throws exact user-facing error message when API key is missing or invalid', async () => {
-      // Mock missing key
-      const originalEnv = process.env;
-      process.env = { ...originalEnv, GEMINI_API_KEY: '', VITE_GEMINI_API_KEY: '' };
+    it('gracefully throws error message when serverless API returns error response', async () => {
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async () => {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Vertex AI authentication failed',
+          }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      });
 
       await expect(generateContentIdeas()).rejects.toThrow(
-        'Failed to generate. Check GEMINI_API_KEY and try again.'
+        'Vertex AI authentication failed'
       );
 
-      process.env = originalEnv;
+      global.fetch = originalFetch;
     });
 
-    it('returns structured JSON ideas when Gemini responds with valid array', async () => {
+    it('returns structured JSON ideas when Vertex AI responds with valid posts array', async () => {
       const mockIdeas = [
         {
           title: 'Unlocking 40% Node Savings with Azure NetApp Files in AVS',
@@ -61,7 +71,7 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
           body: 'Most enterprise VMware architects over-provision ESXi nodes just for vSAN storage.\nDecoupling storage with ANF reduces node count dramatically.',
           hashtags: ['#VMware', '#AzureAVS', '#NetApp', '#CloudEconomics'],
           cta: 'Evaluate your node requirements with our free sizing tool at zaboraa.com/tools/sizing',
-          topic: 'AVS'
+          topic: 'AVS',
         },
         {
           title: '6 Migration Blockers That Kill HCX Live Waves',
@@ -69,7 +79,7 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
           body: 'From RDMs to shared SCSI multi-writer disks, discover the key architectural hurdles before scheduling maintenance windows.',
           hashtags: ['#HCX', '#Migration', '#EnterpriseIT', '#CloudArchitecture'],
           cta: 'Analyze your cluster with RVTools Analyzer at zaboraa.com/tools/rvtools-analyzer',
-          topic: 'hyperscaler migration'
+          topic: 'hyperscaler migration',
         },
         {
           title: 'Decoupled Storage Economics for VMware Cloud',
@@ -77,8 +87,8 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
           body: 'Learn how decoupled NFS and Google Cloud NetApp Volumes slash enterprise TCO across multi-cloud deployments.',
           hashtags: ['#CloudSizing', '#StorageArchitecture', '#FinOps'],
           cta: 'Download the comprehensive multi-cloud architectural runbook at zaboraa.com',
-          topic: 'cloud sizing'
-        }
+          topic: 'cloud sizing',
+        },
       ];
 
       // Mock global fetch
@@ -86,23 +96,15 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
       global.fetch = vi.fn().mockImplementation(async () => {
         return new Response(
           JSON.stringify({
-            candidates: [
-              {
-                content: {
-                  parts: [{ text: JSON.stringify(mockIdeas) }]
-                }
-              }
-            ]
+            success: true,
+            posts: mockIdeas,
           }),
           {
             status: 200,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
           }
         );
       });
-
-      const originalEnv = process.env;
-      process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key-123' };
 
       const ideas = await generateContentIdeas();
       expect(ideas).toHaveLength(3);
@@ -112,7 +114,6 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
       expect(ideas[2].topic).toBe('cloud sizing');
 
       global.fetch = originalFetch;
-      process.env = originalEnv;
     });
   });
 

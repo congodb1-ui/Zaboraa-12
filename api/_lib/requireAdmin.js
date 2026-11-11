@@ -1,11 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const ADMIN_ALLOWLIST_EMAILS = [
-  'admin@zaboraa.com',
-  'congodb1992@gmail.com',
-  'congodb4@gmail.com',
-  'wasim.sayyed@zaboraa-cloud.com',
-  'anansari678@gmail.com',
+  'congodb1@gmail.com',
 ];
 
 /**
@@ -38,10 +34,7 @@ export function getAdminSupabaseClient() {
 export function isAuthoritativeAdminEmail(email) {
   if (!email || typeof email !== 'string') return false;
   const lower = email.toLowerCase().trim();
-  return (
-    ADMIN_ALLOWLIST_EMAILS.includes(lower) ||
-    lower.endsWith('@zaboraa.com')
-  );
+  return ADMIN_ALLOWLIST_EMAILS.includes(lower);
 }
 
 /**

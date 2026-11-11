@@ -55,73 +55,55 @@ async function generateBlueprint(apiKey: string, prompt: string) {
   };
 }
 
-async function generateContentWithVertex(prompt?: string) {
-  const apiKey = process.env.VERTEX_API_KEY;
-  const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'prime-bridge-511404-a3';
-  const configuredLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+async function generateContentWithVertex(inputTopics?: string[]) {
+  const apiKey =
+    process.env.VERTEX_API_KEY ||
+    process.env.GOOGLE_CLOUD_API_KEY ||
+    process.env.VITE_VERTEX_API_KEY;
+  const projectId =
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.VERTEX_PROJECT_ID ||
+    process.env.VITE_GOOGLE_CLOUD_PROJECT ||
+    'prime-bridge-511404-a3';
+  const configuredLocation =
+    process.env.GOOGLE_CLOUD_LOCATION ||
+    process.env.VERTEX_LOCATION ||
+    process.env.VITE_GOOGLE_CLOUD_LOCATION ||
+    'us-central1';
 
   if (!apiKey) {
     throw new Error('VERTEX_API_KEY is not configured.');
   }
 
-  const CONTENT_MODEL = 'gemini-3.7-flash';
-  const targetPrompt =
-    typeof prompt === 'string' && prompt.trim()
-      ? prompt.trim()
-      : 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
-
-  const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
-Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
-
-Strict output requirements:
-Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanation, conforming exactly to this structure:
-[
-  {
-    "title": "string",
-    "hook": "string",
-    "body": "string",
-    "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
-    "cta": "string",
-    "topic": "AVS | hyperscaler migration | cloud sizing"
+  const { validateTopics, allocatePosts } = await import('./api/_lib/contentPillars.js');
+  const validation = validateTopics(inputTopics);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'topics is required, pick 1 to 3 topics.');
   }
-]`;
 
-  let ai = new GoogleGenAI({
+  const topics = validation.topics;
+  const allocation = allocatePosts(topics);
+  const CONTENT_MODEL = 'gemini-3.7-flash';
+
+  const { buildSystemInstruction } = await import('./api/generate-content.js');
+  const systemInstruction = buildSystemInstruction(allocation);
+  const userPrompt = `${systemInstruction}\n\nExecute post generation for the specified topics now. Return only the JSON array conforming to the schema.`;
+
+  const ai = new GoogleGenAI({
     vertexai: true,
     apiKey,
     project: projectId,
     location: configuredLocation,
   });
 
-  let response;
-  try {
-    response = await ai.models.generateContent({
-      model: CONTENT_MODEL,
-      contents: `${systemInstruction}\n\nUser Request: ${targetPrompt}`,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
-  } catch (regionalErr: any) {
-    console.warn(
-      `Vertex AI Express request in ${configuredLocation} failed (${regionalErr?.message}), falling back to global location.`
-    );
-    ai = new GoogleGenAI({
-      vertexai: true,
-      apiKey,
-      project: projectId,
-      location: 'global',
-    });
-    response = await ai.models.generateContent({
-      model: CONTENT_MODEL,
-      contents: `${systemInstruction}\n\nUser Request: ${targetPrompt}`,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
-  }
+  const response = await ai.models.generateContent({
+    model: CONTENT_MODEL,
+    contents: userPrompt,
+    config: {
+      responseMimeType: 'application/json',
+      temperature: 0.7,
+    },
+  });
 
   const parts =
     response.candidates?.flatMap(
@@ -145,36 +127,71 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
 
   const parsed = JSON.parse(cleaned);
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('Invalid JSON array received from Vertex AI.');
+  if (!Array.isArray(parsed) || parsed.length !== 3) {
+    throw new Error('Model did not return exactly 3 posts.');
   }
 
-  const posts = parsed.map((item: any, index: number) => ({
-    id: item.id || `post-${Date.now()}-${index}`,
-    title: item.title || 'Enterprise Cloud Architecture Insight',
-    hook: item.hook || '',
-    body: item.body || '',
-    hashtags: Array.isArray(item.hashtags)
-      ? item.hashtags
-      : ['#VMware', '#AzureAVS', '#CloudMigration'],
-    cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
-    topic:
-      item.topic ||
-      (index === 0
-        ? 'AVS'
-        : index === 1
-        ? 'hyperscaler migration'
-        : 'cloud sizing'),
-    status: 'idea',
-    created_at: new Date().toISOString(),
-  }));
+  const topicCountMap = new Map();
+  topics.forEach((t: string) => topicCountMap.set(t.toLowerCase(), 0));
+
+  const posts = parsed.map((item: any, index: number) => {
+    const title = typeof item.title === 'string' ? item.title.trim() : 'Enterprise Cloud Architecture Insight';
+    let hook = typeof item.hook === 'string' ? item.hook.trim() : '';
+    let body = typeof item.body === 'string' ? item.body.trim() : '';
+    let cta = typeof item.cta === 'string' ? item.cta.trim() : 'Explore enterprise cloud architecture at zaboraa.com';
+    const rawTopic = typeof item.topic === 'string' ? item.topic.trim() : '';
+
+    const matchingTopic = topics.find(
+      (t: string) => t.toLowerCase() === rawTopic.toLowerCase()
+    );
+
+    if (!matchingTopic) {
+      throw new Error(`Post topic "${rawTopic}" does not match requested topics.`);
+    }
+
+    topicCountMap.set(
+      matchingTopic.toLowerCase(),
+      (topicCountMap.get(matchingTopic.toLowerCase()) || 0) + 1
+    );
+
+    if (hook.length > 200) hook = hook.slice(0, 197) + '...';
+    if (body.length > 2200) body = body.slice(0, 2197) + '...';
+    if (cta.length > 200) cta = cta.slice(0, 197) + '...';
+
+    const rawHashtags = Array.isArray(item.hashtags) ? item.hashtags : [];
+    const cleanedHashtags: string[] = [];
+    const seenTags = new Set<string>();
+
+    for (const tag of rawHashtags) {
+      if (typeof tag !== 'string') continue;
+      const stripped = tag.replace(/[\s\r\n]+/g, '').replace(/^#+/, '');
+      if (stripped.length > 0) {
+        const fullTag = `#${stripped}`;
+        if (!seenTags.has(fullTag.toLowerCase())) {
+          seenTags.add(fullTag.toLowerCase());
+          cleanedHashtags.push(fullTag);
+        }
+      }
+    }
+
+    return {
+      id: item.id || `post-${Date.now()}-${index}`,
+      title,
+      hook,
+      body,
+      hashtags: cleanedHashtags.slice(0, 6),
+      cta,
+      topic: matchingTopic,
+      status: 'idea',
+      created_at: new Date().toISOString(),
+    };
+  });
 
   return {
     success: true,
     posts,
     ideas: posts,
     model: CONTENT_MODEL,
-    project: projectId,
   };
 }
 
@@ -402,6 +419,32 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use(async (req, res, next) => {
             const requestPath = req.url?.split('?')[0];
 
+            if (requestPath === '/api/suggest-topics') {
+              if (req.method !== 'GET') {
+                res.setHeader('Allow', 'GET');
+                res.statusCode = 405;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+                return;
+              }
+
+              const { pickSuggestedTopics } = await import('./api/_lib/contentPillars.js');
+              const { topics, excluded, reason } = pickSuggestedTopics([]);
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  success: true,
+                  suggestedTopics: topics,
+                  topics,
+                  excluded,
+                  reason,
+                  fallback: false,
+                })
+              );
+              return;
+            }
+
             if (requestPath !== '/api/generate-content') {
               return next();
             }
@@ -437,9 +480,15 @@ export default defineConfig(({ mode }) => {
               }
 
               const body = JSON.parse(bodyStr || '{}');
-              const prompt = body?.topic || body?.prompt;
+              const inputTopics = Array.isArray(body?.topics)
+                ? body.topics
+                : body?.topic
+                ? [body.topic]
+                : body?.prompt
+                ? [body.prompt]
+                : undefined;
 
-              const result = await generateContentWithVertex(prompt);
+              const result = await generateContentWithVertex(inputTopics);
 
               res.statusCode = 200;
               res.setHeader('Content-Type', 'application/json');
@@ -586,109 +635,6 @@ export default defineConfig(({ mode }) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ success: true, proposal }));
-          });
-
-          // Server-side LinkedIn Content & Growth Agent generation middleware
-          server.middlewares.use(async (req, res, next) => {
-            const requestPath = req.url?.split('?')[0];
-            if (requestPath !== '/api/generate-content') {
-              return next();
-            }
-
-            if (req.method !== 'POST') {
-              res.setHeader('Allow', 'POST');
-              res.statusCode = 405;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
-              return;
-            }
-
-            if (!apiKey) {
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({
-                success: false,
-                error: 'Failed to generate. Check GEMINI_API_KEY and try again.'
-              }));
-              return;
-            }
-
-            let bodyStr = '';
-            for await (const chunk of req) {
-              bodyStr += chunk.toString();
-            }
-            const body = JSON.parse(bodyStr || '{}');
-            const prompt = body?.prompt || 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
-
-            const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
-Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
-
-Strict output requirements:
-Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanation, conforming exactly to this structure:
-[
-  {
-    "title": "string",
-    "hook": "string",
-    "body": "string",
-    "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
-    "cta": "string",
-    "topic": "AVS | hyperscaler migration | cloud sizing"
-  }
-]`;
-
-            try {
-              let jsonText = '';
-              try {
-                const ai = new GoogleGenAI({ apiKey });
-                const response = await ai.models.generateContent({
-                  model: 'gemini-2.5-flash',
-                  contents: `${systemInstruction}\n\nUser Request: ${prompt}`,
-                  config: {
-                    responseMimeType: 'application/json',
-                    temperature: 0.7,
-                  },
-                });
-                const parts = response.candidates?.flatMap((c) => c.content?.parts || []) || [];
-                jsonText = parts.map((p) => p.text || '').join('');
-                if (!jsonText && response.text) {
-                  jsonText = response.text;
-                }
-              } catch (sdkErr: any) {
-                const restResp = await fetch(
-                  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      contents: [{ parts: [{ text: `${systemInstruction}\n\nUser Request: ${prompt}` }] }],
-                      generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-                    }),
-                  }
-                );
-                if (restResp.ok) {
-                  const data = await restResp.json();
-                  const parts = data.candidates?.flatMap((c: any) => c.content?.parts || []) || [];
-                  jsonText = parts.map((p: any) => p.text || '').join('');
-                }
-              }
-
-              let cleaned = (jsonText || '').trim();
-              if (cleaned.startsWith('```')) {
-                cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-              }
-              const ideas = JSON.parse(cleaned);
-              res.statusCode = 200;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, ideas }));
-            } catch (err: any) {
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({
-                success: false,
-                error: 'Failed to generate. Check GEMINI_API_KEY and try again.',
-                details: err?.message || String(err)
-              }));
-            }
           });
 
           // Health diagnostics middleware

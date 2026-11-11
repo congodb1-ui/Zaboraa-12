@@ -23,13 +23,22 @@ import {
   Tag,
   ThumbsDown,
   ThumbsUp,
-  Inbox
+  Inbox,
+  Lightbulb,
+  Plus,
+  SlidersHorizontal,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import {
+  PILLARS,
+  ContentPillar,
   ContentIdea,
   ContentDraft,
   ContentQueueItem,
+  SuggestedTopicsResponse,
   generateContentIdeas,
+  fetchSuggestedTopics,
   getContentDrafts,
   saveContentDraft,
   getContentQueue,
@@ -43,12 +52,20 @@ interface AdminContentAgentViewProps {
 }
 
 type TabType = 'ideas' | 'drafts' | 'queue' | 'analytics';
+type TopicMode = 'manual' | 'suggest';
 
 export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
   currentUserEmail
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('ideas');
   
+  // Topic Picker States (Phase 2a)
+  const [topicMode, setTopicMode] = useState<TopicMode>('manual');
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(['AVS Migrations']);
+  const [customTopicInput, setCustomTopicInput] = useState('');
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestResult, setSuggestResult] = useState<SuggestedTopicsResponse | null>(null);
+
   // Data States
   const [ideas, setIdeas] = useState<ContentIdea[]>(() => {
     try {
@@ -107,16 +124,80 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
     }, 4000);
   };
 
+  // --- Topic Picker Actions ---
+  const handleTogglePillar = (pillar: string) => {
+    const isSelected = selectedTopics.some((t) => t.toLowerCase() === pillar.toLowerCase());
+    if (isSelected) {
+      setSelectedTopics(selectedTopics.filter((t) => t.toLowerCase() !== pillar.toLowerCase()));
+    } else {
+      if (selectedTopics.length >= 3) {
+        showToast('Maximum 3 topics allowed per generation run.', true);
+        return;
+      }
+      setSelectedTopics([...selectedTopics, pillar]);
+    }
+  };
+
+  const handleAddCustomTopic = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = customTopicInput.trim();
+    if (!trimmed) return;
+    if (trimmed.length > 120) {
+      showToast('Custom topic must be 120 characters or fewer.', true);
+      return;
+    }
+    if (selectedTopics.length >= 3) {
+      showToast('Maximum 3 topics allowed. Remove one before adding another.', true);
+      return;
+    }
+    const alreadySelected = selectedTopics.some((t) => t.toLowerCase() === trimmed.toLowerCase());
+    if (alreadySelected) {
+      showToast('Topic is already selected.', true);
+      return;
+    }
+    setSelectedTopics([...selectedTopics, trimmed]);
+    setCustomTopicInput('');
+  };
+
+  const handleRemoveTopic = (topicToRemove: string) => {
+    setSelectedTopics(selectedTopics.filter((t) => t.toLowerCase() !== topicToRemove.toLowerCase()));
+  };
+
+  const handleFetchSuggestedTopics = async () => {
+    setIsSuggesting(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetchSuggestedTopics();
+      setSuggestResult(res);
+      showToast('Suggested 3 topics based on recent coverage.');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to suggest topics.', true);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  const handleApplySuggestedTopics = () => {
+    if (!suggestResult || !suggestResult.suggestedTopics || suggestResult.suggestedTopics.length === 0) return;
+    setSelectedTopics(suggestResult.suggestedTopics.slice(0, 3));
+    setTopicMode('manual');
+    showToast('Applied suggested topics to picker.');
+  };
+
   // --- Ideas Actions ---
   const handleGenerateIdeas = async () => {
+    if (selectedTopics.length === 0 || selectedTopics.length > 3) {
+      showToast('Please select between 1 and 3 topics to generate ideas.', true);
+      return;
+    }
     setIsGenerating(true);
     setErrorMessage(null);
     try {
-      const newIdeas = await generateContentIdeas();
+      const newIdeas = await generateContentIdeas(selectedTopics);
       setIdeas(newIdeas);
-      showToast('Generated 3 new LinkedIn posts via Gemini AI.');
+      showToast(`Generated ${newIdeas.length} new LinkedIn post ideas via Vertex AI.`);
     } catch (err: any) {
-      setErrorMessage('Failed to generate. Check GEMINI_API_KEY and try again.');
+      setErrorMessage(err.message || 'Failed to generate ideas. Please check configuration.');
     } finally {
       setIsGenerating(false);
     }
@@ -350,28 +431,232 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'ideas' && (
         <div className="space-y-6">
-          {/* Top Action Bar */}
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
-                <span>Gemini LinkedIn Idea Generation</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Generates 3 targeted posts covering Azure VMware Solution (AVS), hyperscaler migration, and node/storage sizing economics.
-              </p>
+          {/* Topic Picker Container */}
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
+            {/* Top Bar: Title & Manual / Suggest Toggle */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div className="space-y-1">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <span>Topic Picker & Pillar Strategy</span>
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Select 1 to 3 enterprise cloud topics. The AI engine grounds each post in verified enterprise architecture facts.
+                </p>
+              </div>
+
+              {/* Mode Toggle [Manual | Suggest] */}
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTopicMode('manual')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                    topicMode === 'manual'
+                      ? 'bg-cyan-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Manual</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTopicMode('suggest')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                    topicMode === 'suggest'
+                      ? 'bg-cyan-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  <span>Suggest</span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={handleGenerateIdeas}
-              disabled={isGenerating}
-              className={`px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-md cursor-pointer shrink-0 ${
-                isGenerating ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-              <span>{isGenerating ? 'Generating Ideas...' : 'Generate Ideas'}</span>
-            </button>
+            {/* MANUAL MODE VIEW */}
+            {topicMode === 'manual' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-300">
+                    Standard Content Pillars:
+                  </span>
+                  <span className="text-[11px] font-mono text-cyan-400">
+                    {selectedTopics.length}/3 topics selected
+                  </span>
+                </div>
+
+                {/* 6 Pillar Checkbox Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {PILLARS.map((pillar) => {
+                    const isSelected = selectedTopics.some(
+                      (t) => t.toLowerCase() === pillar.toLowerCase()
+                    );
+                    const isDisabled = !isSelected && selectedTopics.length >= 3;
+                    return (
+                      <button
+                        key={pillar}
+                        type="button"
+                        onClick={() => handleTogglePillar(pillar)}
+                        disabled={isDisabled}
+                        className={`p-3 rounded-xl border text-left text-xs font-medium transition flex items-center gap-2.5 ${
+                          isSelected
+                            ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-200 shadow-sm'
+                            : isDisabled
+                            ? 'bg-slate-950/40 border-slate-800/50 text-slate-600 cursor-not-allowed opacity-50'
+                            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white cursor-pointer'
+                        }`}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-cyan-400 shrink-0" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-500 shrink-0" />
+                        )}
+                        <span className="truncate">{pillar}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Topic Input */}
+                <form
+                  onSubmit={handleAddCustomTopic}
+                  className="flex items-center gap-2 pt-2"
+                >
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={customTopicInput}
+                      onChange={(e) => setCustomTopicInput(e.target.value)}
+                      placeholder="Or type custom topic (e.g. AWS vs AVS cost breakdown, max 120 chars)..."
+                      maxLength={120}
+                      disabled={selectedTopics.length >= 3}
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!customTopicInput.trim() || selectedTopics.length >= 3}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* SUGGEST MODE VIEW */}
+            {topicMode === 'suggest' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Lightbulb className="w-4 h-4 text-amber-400" />
+                        <span>AI Pillar Coverage Analyzer</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Scans recent drafts and queue history to identify under-represented pillars from the core 6 strategy pillars.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleFetchSuggestedTopics}
+                      disabled={isSuggesting}
+                      className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSuggesting ? 'animate-spin' : ''}`} />
+                      <span>{isSuggesting ? 'Analyzing...' : 'Suggest Topics'}</span>
+                    </button>
+                  </div>
+
+                  {suggestResult && (
+                    <div className="pt-3 border-t border-slate-800/80 space-y-3 animate-in fade-in">
+                      <div className="text-[11px] text-slate-400">
+                        <span className="text-amber-400 font-semibold">Recommendation: </span>
+                        <span>{suggestResult.reason}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {suggestResult.suggestedTopics.map((top, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 rounded-lg bg-slate-900 border border-amber-500/30 text-amber-200 text-xs font-medium flex items-center gap-2"
+                          >
+                            <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="truncate">{top}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleApplySuggestedTopics}
+                        className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Use these topics</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Selected Topics Chips Bar & Generate Action */}
+            <div className="pt-4 border-t border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1.5 flex-1">
+                <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">
+                  Active Selected Topics:
+                </span>
+                {selectedTopics.length === 0 ? (
+                  <p className="text-xs text-rose-400 font-medium">
+                    Pick 1 to 3 topics to enable idea generation.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {selectedTopics.map((topic) => (
+                      <span
+                        key={topic}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-500/30"
+                      >
+                        <span>{topic}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTopic(topic)}
+                          className="hover:text-rose-300 cursor-pointer"
+                          aria-label={`Remove ${topic}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                    <span className="text-[11px] text-slate-500 ml-1">
+                      ({selectedTopics.length === 1 && 'will produce 3 posts'}
+                      {selectedTopics.length === 2 && 'will produce 2 + 1 posts'}
+                      {selectedTopics.length === 3 && 'will produce 1 + 1 + 1 posts'})
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGenerateIdeas}
+                disabled={isGenerating || selectedTopics.length === 0 || selectedTopics.length > 3}
+                className={`px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-md cursor-pointer shrink-0 ${
+                  isGenerating || selectedTopics.length === 0 || selectedTopics.length > 3
+                    ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500'
+                    : ''
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                <span>{isGenerating ? 'Generating Ideas...' : 'Generate Ideas'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Ideas List or Empty State */}

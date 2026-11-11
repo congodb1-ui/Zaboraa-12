@@ -55,7 +55,7 @@ async function generateBlueprint(apiKey: string, prompt: string) {
   };
 }
 
-async function generateContentWithVertex(prompt?: string) {
+async function generateContentWithVertex(inputTopics?: string[]) {
   const apiKey = process.env.VERTEX_API_KEY;
   const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'prime-bridge-511404-a3';
   const configuredLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
@@ -64,27 +64,53 @@ async function generateContentWithVertex(prompt?: string) {
     throw new Error('VERTEX_API_KEY is not configured.');
   }
 
-  const CONTENT_MODEL = 'gemini-3.7-flash';
-  const targetPrompt =
-    typeof prompt === 'string' && prompt.trim()
-      ? prompt.trim()
-      : 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
-
-  const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
-Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
-
-Strict output requirements:
-Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanation, conforming exactly to this structure:
-[
-  {
-    "title": "string",
-    "hook": "string",
-    "body": "string",
-    "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
-    "cta": "string",
-    "topic": "AVS | hyperscaler migration | cloud sizing"
+  const { validateTopics, allocatePosts } = await import('./api/_lib/contentPillars.js');
+  const validation = validateTopics(inputTopics || ['AVS Migrations', 'Broadcom / VMware Licensing']);
+  if (!validation.valid) {
+    throw new Error(validation.error || 'topics is required, pick 1 to 3 topics.');
   }
-]`;
+
+  const topics = validation.topics;
+  const allocation = allocatePosts(topics);
+
+  const CONTENT_MODEL = 'gemini-3.7-flash';
+  const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier founder-led enterprise VMware Cloud Architecture and Hyperscaler Migration consultancy.
+
+ZABORAA FOUNDATIONAL FACTS (STRICT GROUNDING - USE ONLY THESE FACTS):
+- Founder-led enterprise VMware and multi-hyperscaler advisory.
+- 13+ years of specialized enterprise virtualization and cloud infrastructure experience.
+- 25+ successful enterprise hyperscaler migrations delivered across Azure VMware Solution (AVS), AWS VMware Cloud (VMC), and Google Cloud VMware Engine (GCVE).
+- 6 verified enterprise cloud and virtualization certifications held.
+- 100% runbook-driven cutovers with zero unplanned rollback.
+- 6 free enterprise architecture engineering tools and calculators on zaboraa.com.
+
+STRICT CONTENT RESTRICTIONS (NEVER INCLUDE ANY OF THE FOLLOWING):
+- DO NOT invent or quote specific client names or confidential company names.
+- DO NOT quote synthetic pricing, license rates, or monetary figures.
+- DO NOT mention videos, YouTube, masterclasses, or webinars.
+- DO NOT include testimonials or fabricated customer quotes.
+- DO NOT refer to "Zaboraa Technologies" (use "Zaboraa" or "Zaboraa Cloud Architecture").
+- DO NOT invent unverified metrics or case-study statistics.
+
+TARGET AUDIENCE:
+Enterprise IT Directors, VP Infrastructure, Principal Enterprise Architects, and Cloud Infrastructure Leads.
+
+OUTPUT REQUIREMENTS:
+Generate high-impact, actionable, technically rigorous LinkedIn posts matching the requested topics and exact post allocation.
+Return ONLY a valid JSON array of objects conforming to the response schema.`;
+
+  const allocationDesc = allocation
+    .map((a) => `- Topic: "${a.topic}" -> Generate exactly ${a.count} post${a.count > 1 ? 's' : ''}`)
+    .join('\n');
+
+  const userPrompt = `=== REQUESTED TOPICS DATA ===
+${topics.map((t, idx) => `Topic ${idx + 1}: "${t}"`).join('\n')}
+
+=== ALLOCATION REQUIREMENT ===
+${allocationDesc}
+
+Total posts required: 3.
+Ensure each post has its "topic" property set EXACTLY to the matching requested topic.`;
 
   let ai = new GoogleGenAI({
     vertexai: true,
@@ -97,7 +123,7 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
   try {
     response = await ai.models.generateContent({
       model: CONTENT_MODEL,
-      contents: `${systemInstruction}\n\nUser Request: ${targetPrompt}`,
+      contents: `${systemInstruction}\n\n${userPrompt}`,
       config: {
         responseMimeType: 'application/json',
         temperature: 0.7,
@@ -115,7 +141,7 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
     });
     response = await ai.models.generateContent({
       model: CONTENT_MODEL,
-      contents: `${systemInstruction}\n\nUser Request: ${targetPrompt}`,
+      contents: `${systemInstruction}\n\n${userPrompt}`,
       config: {
         responseMimeType: 'application/json',
         temperature: 0.7,
@@ -145,7 +171,7 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
 
   const parsed = JSON.parse(cleaned);
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
+  if (!Array.isArray(parsed) || parsed.length !== 3) {
     throw new Error('Invalid JSON array received from Vertex AI.');
   }
 
@@ -158,13 +184,7 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
       ? item.hashtags
       : ['#VMware', '#AzureAVS', '#CloudMigration'],
     cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
-    topic:
-      item.topic ||
-      (index === 0
-        ? 'AVS'
-        : index === 1
-        ? 'hyperscaler migration'
-        : 'cloud sizing'),
+    topic: item.topic || topics[0],
     status: 'idea',
     created_at: new Date().toISOString(),
   }));
@@ -174,7 +194,6 @@ Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanat
     posts,
     ideas: posts,
     model: CONTENT_MODEL,
-    project: projectId,
   };
 }
 
@@ -402,6 +421,32 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use(async (req, res, next) => {
             const requestPath = req.url?.split('?')[0];
 
+            if (requestPath === '/api/suggest-topics') {
+              if (req.method !== 'GET') {
+                res.setHeader('Allow', 'GET');
+                res.statusCode = 405;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
+                return;
+              }
+
+              const { pickSuggestedTopics } = await import('./api/_lib/contentPillars.js');
+              const { topics, excluded, reason } = pickSuggestedTopics([]);
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  success: true,
+                  suggestedTopics: topics,
+                  topics,
+                  excluded,
+                  reason,
+                  fallback: false,
+                })
+              );
+              return;
+            }
+
             if (requestPath !== '/api/generate-content') {
               return next();
             }
@@ -437,9 +482,15 @@ export default defineConfig(({ mode }) => {
               }
 
               const body = JSON.parse(bodyStr || '{}');
-              const prompt = body?.topic || body?.prompt;
+              const inputTopics = Array.isArray(body?.topics)
+                ? body.topics
+                : body?.topic
+                ? [body.topic]
+                : body?.prompt
+                ? [body.prompt]
+                : undefined;
 
-              const result = await generateContentWithVertex(prompt);
+              const result = await generateContentWithVertex(inputTopics);
 
               res.statusCode = 200;
               res.setHeader('Content-Type', 'application/json');
@@ -586,109 +637,6 @@ export default defineConfig(({ mode }) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ success: true, proposal }));
-          });
-
-          // Server-side LinkedIn Content & Growth Agent generation middleware
-          server.middlewares.use(async (req, res, next) => {
-            const requestPath = req.url?.split('?')[0];
-            if (requestPath !== '/api/generate-content') {
-              return next();
-            }
-
-            if (req.method !== 'POST') {
-              res.setHeader('Allow', 'POST');
-              res.statusCode = 405;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: false, error: 'Method not allowed' }));
-              return;
-            }
-
-            if (!apiKey) {
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({
-                success: false,
-                error: 'Failed to generate. Check GEMINI_API_KEY and try again.'
-              }));
-              return;
-            }
-
-            let bodyStr = '';
-            for await (const chunk of req) {
-              bodyStr += chunk.toString();
-            }
-            const body = JSON.parse(bodyStr || '{}');
-            const prompt = body?.prompt || 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
-
-            const systemInstruction = `You are the Lead Technical Content Architect for Zaboraa (zaboraa.com), a premier VMware Cloud Architecture and Hyperscaler Migration consultancy specializing in Azure VMware Solution (AVS), AWS VMC, Google Cloud VMware Engine (GCVE), and Nutanix NC2.
-Generate exactly 3 high-impact, professional LinkedIn posts tailored for Enterprise IT Directors, VP Infrastructure, and Lead Cloud Architects.
-
-Strict output requirements:
-Return ONLY a valid JSON array of 3 objects with no markdown fences, no explanation, conforming exactly to this structure:
-[
-  {
-    "title": "string",
-    "hook": "string",
-    "body": "string",
-    "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
-    "cta": "string",
-    "topic": "AVS | hyperscaler migration | cloud sizing"
-  }
-]`;
-
-            try {
-              let jsonText = '';
-              try {
-                const ai = new GoogleGenAI({ apiKey });
-                const response = await ai.models.generateContent({
-                  model: 'gemini-2.5-flash',
-                  contents: `${systemInstruction}\n\nUser Request: ${prompt}`,
-                  config: {
-                    responseMimeType: 'application/json',
-                    temperature: 0.7,
-                  },
-                });
-                const parts = response.candidates?.flatMap((c) => c.content?.parts || []) || [];
-                jsonText = parts.map((p) => p.text || '').join('');
-                if (!jsonText && response.text) {
-                  jsonText = response.text;
-                }
-              } catch (sdkErr: any) {
-                const restResp = await fetch(
-                  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-                  {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      contents: [{ parts: [{ text: `${systemInstruction}\n\nUser Request: ${prompt}` }] }],
-                      generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-                    }),
-                  }
-                );
-                if (restResp.ok) {
-                  const data = await restResp.json();
-                  const parts = data.candidates?.flatMap((c: any) => c.content?.parts || []) || [];
-                  jsonText = parts.map((p: any) => p.text || '').join('');
-                }
-              }
-
-              let cleaned = (jsonText || '').trim();
-              if (cleaned.startsWith('```')) {
-                cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-              }
-              const ideas = JSON.parse(cleaned);
-              res.statusCode = 200;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, ideas }));
-            } catch (err: any) {
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({
-                success: false,
-                error: 'Failed to generate. Check GEMINI_API_KEY and try again.',
-                details: err?.message || String(err)
-              }));
-            }
           });
 
           // Health diagnostics middleware

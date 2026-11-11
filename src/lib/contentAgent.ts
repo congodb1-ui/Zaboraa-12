@@ -1,5 +1,23 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
+export const PILLARS = [
+  'AVS Migrations',
+  'Broadcom / VMware Licensing',
+  'Multi-Hyperscaler Strategy',
+  'Cloud Sizing / FinOps',
+  'Modernization Without Rewrite',
+  'Zaboraa Proof / Case Studies',
+] as const;
+
+export type ContentPillar =
+  | 'AVS Migrations'
+  | 'Broadcom / VMware Licensing'
+  | 'Multi-Hyperscaler Strategy'
+  | 'Cloud Sizing / FinOps'
+  | 'Modernization Without Rewrite'
+  | 'Zaboraa Proof / Case Studies'
+  | string;
+
 export interface ContentIdea {
   id?: string;
   title: string;
@@ -7,7 +25,7 @@ export interface ContentIdea {
   body: string;
   hashtags: string[];
   cta: string;
-  topic: 'AVS' | 'hyperscaler migration' | 'cloud sizing' | string;
+  topic: ContentPillar;
   status?: 'idea' | 'drafted' | 'discarded';
   created_at?: string;
 }
@@ -18,10 +36,12 @@ export interface ContentDraft {
   title: string;
   hook?: string;
   body: string;
+  edited_body?: string;
   hashtags: string[];
   cta: string;
-  topic: string;
+  topic: ContentPillar;
   status: 'Draft' | 'Approved' | 'Rejected';
+  scheduled_at?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -31,9 +51,20 @@ export interface ContentQueueItem {
   draft_id: string;
   scheduled_day: string; // e.g. 'Mon', 'Wed', 'Fri'
   scheduled_time: string; // e.g. '09:30 AM IST'
-  status: 'Queued' | 'Posted';
+  scheduled_at?: string;
+  platform?: string;
+  status: 'Queued' | 'Posted' | 'Cancelled';
   created_at?: string;
   draft?: ContentDraft;
+}
+
+export interface SuggestedTopicsResponse {
+  success: boolean;
+  suggestedTopics: string[];
+  topics?: string[];
+  excluded?: { pillar: string; lastUsed?: string | null }[];
+  reason: string;
+  fallback?: boolean;
 }
 
 const safeStorage = {
@@ -58,7 +89,7 @@ const safeStorage = {
         localStorage.setItem(key, value);
       }
     } catch {}
-  }
+  },
 };
 
 const STORAGE_KEYS = {
@@ -68,21 +99,87 @@ const STORAGE_KEYS = {
 };
 
 /**
- * Generate 3 LinkedIn content ideas using Vertex AI serverless endpoint (§16.2.5)
+ * Retrieves the active Supabase session token if available.
  */
-export async function generateContentIdeas(topic?: string): Promise<ContentIdea[]> {
-  try {
-    const prompt =
-      typeof topic === 'string' && topic.trim()
-        ? topic.trim()
-        : 'Generate 3 LinkedIn posts for Zaboraa, VMware Cloud Architecture company, topics: AVS, hyperscaler migration, cloud sizing';
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
 
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (e) {
+      console.warn('Notice reading Supabase session token:', e);
+    }
+  }
+
+  return headers;
+}
+
+/**
+ * Fetch suggested topics from /api/suggest-topics with offline fallback.
+ */
+export async function fetchSuggestedTopics(): Promise<SuggestedTopicsResponse> {
+  try {
+    const headers = await getAuthHeaders();
+    const resp = await fetch('/api/suggest-topics', {
+      method: 'GET',
+      headers,
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.success && Array.isArray(data.suggestedTopics)) {
+        return data as SuggestedTopicsResponse;
+      }
+    }
+  } catch (e) {
+    console.warn('Notice fetching suggested topics:', e);
+  }
+
+  // Pure client fallback
+  return {
+    success: true,
+    suggestedTopics: [
+      'Broadcom / VMware Licensing',
+      'AVS Migrations',
+      'Cloud Sizing / FinOps',
+    ],
+    topics: [
+      'Broadcom / VMware Licensing',
+      'AVS Migrations',
+      'Cloud Sizing / FinOps',
+    ],
+    excluded: [],
+    reason: 'Recommended top 3 strategic growth pillars based on enterprise cloud priorities.',
+    fallback: true,
+  };
+}
+
+/**
+ * Generate 3 LinkedIn content ideas using Vertex AI serverless endpoint (§16.2 / Phase 2a)
+ */
+export async function generateContentIdeas(topicsInput?: string[] | string): Promise<ContentIdea[]> {
+  try {
+    let topics: string[] = [];
+    if (Array.isArray(topicsInput)) {
+      topics = topicsInput;
+    } else if (typeof topicsInput === 'string' && topicsInput.trim()) {
+      topics = [topicsInput.trim()];
+    } else {
+      topics = ['AVS Migrations', 'Broadcom / VMware Licensing'];
+    }
+
+    const headers = await getAuthHeaders();
     const resp = await fetch('/api/generate-content', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt, topic: prompt }),
+      headers,
+      body: JSON.stringify({ topics }),
     });
 
     if (!resp.ok) {
@@ -111,13 +208,7 @@ export async function generateContentIdeas(topic?: string): Promise<ContentIdea[
         ? item.hashtags
         : ['#VMware', '#AzureAVS', '#CloudMigration'],
       cta: item.cta || 'Explore enterprise migration runbooks at zaboraa.com',
-      topic:
-        item.topic ||
-        (index === 0
-          ? 'AVS'
-          : index === 1
-          ? 'hyperscaler migration'
-          : 'cloud sizing'),
+      topic: item.topic || (topics[index % topics.length] || 'AVS Migrations'),
       status: 'idea',
       created_at: item.created_at || new Date().toISOString(),
     }));
@@ -166,7 +257,7 @@ export async function getContentDrafts(): Promise<ContentDraft[]> {
         .from('content_drafts')
         .select('*')
         .order('created_at', { ascending: false });
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         return data as ContentDraft[];
       }
     } catch (e) {
@@ -185,7 +276,8 @@ export async function getContentDrafts(): Promise<ContentDraft[]> {
 export async function saveContentDraft(draft: ContentDraft): Promise<ContentDraft> {
   // Update local storage
   try {
-    const drafts = await getContentDrafts();
+    const raw = safeStorage.getItem(STORAGE_KEYS.DRAFTS);
+    const drafts: ContentDraft[] = raw ? JSON.parse(raw) : [];
     const index = drafts.findIndex((d) => d.id === draft.id);
     if (index >= 0) {
       drafts[index] = { ...drafts[index], ...draft, updated_at: new Date().toISOString() };
@@ -206,7 +298,9 @@ export async function saveContentDraft(draft: ContentDraft): Promise<ContentDraf
         id: draft.id,
         idea_id: draft.idea_id || null,
         title: draft.title,
+        hook: draft.hook || '',
         body: draft.body,
+        edited_body: draft.edited_body || null,
         hashtags: draft.hashtags,
         cta: draft.cta,
         topic: draft.topic,
@@ -229,7 +323,7 @@ export async function getContentQueue(): Promise<ContentQueueItem[]> {
         .from('content_queue')
         .select('*')
         .order('created_at', { ascending: false });
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         return data as ContentQueueItem[];
       }
     } catch (e) {

@@ -23,6 +23,7 @@ if (typeof globalThis.localStorage === 'undefined') {
 
 import {
   generateContentIdeas,
+  fetchSuggestedTopics,
   getContentDrafts,
   saveContentDraft,
   getContentQueue,
@@ -30,9 +31,21 @@ import {
   unapproveQueueItem,
   deleteQueueItem,
   getNextQueueSlot,
+  PILLARS,
   ContentDraft,
   ContentQueueItem
 } from '../lib/contentAgent';
+
+// Import backend pillar helpers directly for unit testing
+// @ts-ignore
+import {
+  PILLARS as BACKEND_PILLARS,
+  validateTopics,
+  allocatePosts,
+  pickSuggestedTopics,
+  normalizeTopicToPillar,
+  RANKED_PILLARS
+} from '../../api/_lib/contentPillars.js';
 
 describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
   beforeEach(() => {
@@ -284,6 +297,189 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
       expect(getNextQueueSlot(2)).toEqual({ day: 'Fri', time: '09:30 AM IST' });
       expect(getNextQueueSlot(3)).toEqual({ day: 'Mon', time: '09:30 AM IST' });
       expect(getNextQueueSlot(4)).toEqual({ day: 'Wed', time: '09:30 AM IST' });
+    });
+  });
+
+  describe('4. Phase 2a Topic Validation & Allocation Logic', () => {
+    it('validates and matches standard 6 content pillars', () => {
+      expect(PILLARS).toHaveLength(6);
+      expect(BACKEND_PILLARS).toEqual(PILLARS);
+      expect(PILLARS).toContain('AVS Migrations');
+      expect(PILLARS).toContain('Broadcom / VMware Licensing');
+      expect(PILLARS).toContain('Multi-Hyperscaler Strategy');
+      expect(PILLARS).toContain('Cloud Sizing / FinOps');
+      expect(PILLARS).toContain('Modernization Without Rewrite');
+      expect(PILLARS).toContain('Zaboraa Proof / Case Studies');
+    });
+
+    it('normalizes legacy aliases to standard pillars', () => {
+      expect(normalizeTopicToPillar('avs')).toBe('AVS Migrations');
+      expect(normalizeTopicToPillar('broadcom')).toBe('Broadcom / VMware Licensing');
+      expect(normalizeTopicToPillar('hyperscaler migration')).toBe('Multi-Hyperscaler Strategy');
+      expect(normalizeTopicToPillar('cloud sizing')).toBe('Cloud Sizing / FinOps');
+    });
+
+    it('validateTopics rejects empty input or non-array with valid=false', () => {
+      expect(validateTopics(null).valid).toBe(false);
+      expect(validateTopics([]).valid).toBe(false);
+      expect(validateTopics('').valid).toBe(false);
+      expect(validateTopics(123).valid).toBe(false);
+    });
+
+    it('validateTopics trims, strips control chars, dedupes, and accepts valid 1-3 topics', () => {
+      const input = [
+        '  AVS Migrations  ',
+        'avs migrations', // duplicate
+        'Custom Cloud Topic\u0000\u001F',
+        'Cloud Sizing / FinOps',
+      ];
+      const result = validateTopics(input);
+      expect(result.valid).toBe(true);
+      expect(result.topics).toHaveLength(3);
+      expect(result.topics[0]).toBe('AVS Migrations');
+      expect(result.topics[1]).toBe('Custom Cloud Topic');
+      expect(result.topics[2]).toBe('Cloud Sizing / FinOps');
+    });
+
+    it('validateTopics rejects topics longer than 120 chars', () => {
+      const longTopic = 'A'.repeat(150);
+      const result = validateTopics([longTopic]);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('exceeds maximum allowed length of 120 characters');
+    });
+
+    it('allocates posts accurately per Prompt 2a allocation rules', () => {
+      // 1 topic -> 3 posts
+      const alloc1 = allocatePosts(['AVS Migrations']);
+      expect(alloc1).toEqual([{ topic: 'AVS Migrations', count: 3 }]);
+
+      // 2 topics -> 2 posts topic #1, 1 post topic #2
+      const alloc2 = allocatePosts(['AVS Migrations', 'Broadcom / VMware Licensing']);
+      expect(alloc2).toEqual([
+        { topic: 'AVS Migrations', count: 2 },
+        { topic: 'Broadcom / VMware Licensing', count: 1 }
+      ]);
+
+      // 3 topics -> 1 post each
+      const alloc3 = allocatePosts([
+        'AVS Migrations',
+        'Broadcom / VMware Licensing',
+        'Cloud Sizing / FinOps'
+      ]);
+      expect(alloc3).toEqual([
+        { topic: 'AVS Migrations', count: 1 },
+        { topic: 'Broadcom / VMware Licensing', count: 1 },
+        { topic: 'Cloud Sizing / FinOps', count: 1 }
+      ]);
+    });
+
+    it('pickSuggestedTopics prioritizes pillars not recently used in drafts/queue', () => {
+      // If AVS and Broadcom were used recently, suggest the remaining top 3
+      const recent = [
+        { topic: 'AVS Migrations', created_at: '2026-11-10T10:00:00Z' },
+        { topic: 'Broadcom / VMware Licensing', created_at: '2026-11-09T10:00:00Z' }
+      ];
+      const suggestion = pickSuggestedTopics(recent);
+      expect(suggestion.topics).toHaveLength(3);
+      expect(suggestion.topics).not.toContain('AVS Migrations');
+      expect(suggestion.topics).not.toContain('Broadcom / VMware Licensing');
+      expect(suggestion.topics).toContain('Cloud Sizing / FinOps');
+      expect(suggestion.topics).toContain('Multi-Hyperscaler Strategy');
+      expect(suggestion.topics).toContain('Modernization Without Rewrite');
+      expect(suggestion.reason).toContain('Prioritized');
+    });
+
+    it('pickSuggestedTopics returns top 3 ranked pillars when history is empty', () => {
+      const suggestion = pickSuggestedTopics([]);
+      expect(suggestion.topics).toHaveLength(3);
+      expect(suggestion.topics).toEqual([
+        'Broadcom / VMware Licensing',
+        'AVS Migrations',
+        'Cloud Sizing / FinOps'
+      ]);
+      expect(suggestion.reason).toContain('Recommended top 3 strategic growth pillars');
+    });
+  });
+
+  describe('5. Client API Integration with Topics & Auth Header', () => {
+    it('generateContentIdeas sends topics array in POST body to /api/generate-content', async () => {
+      const originalFetch = global.fetch;
+      let capturedBody: any = null;
+
+      global.fetch = vi.fn().mockImplementation(async (url: string, options: any) => {
+        if (url === '/api/generate-content') {
+          capturedBody = JSON.parse(options.body);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              posts: [
+                {
+                  title: 'AVS Post 1',
+                  hook: 'Hook 1',
+                  body: 'Body 1',
+                  hashtags: ['#AVS'],
+                  cta: 'CTA 1',
+                  topic: 'AVS Migrations'
+                },
+                {
+                  title: 'AVS Post 2',
+                  hook: 'Hook 2',
+                  body: 'Body 2',
+                  hashtags: ['#AVS'],
+                  cta: 'CTA 2',
+                  topic: 'AVS Migrations'
+                },
+                {
+                  title: 'FinOps Post 1',
+                  hook: 'Hook 3',
+                  body: 'Body 3',
+                  hashtags: ['#FinOps'],
+                  cta: 'CTA 3',
+                  topic: 'Cloud Sizing / FinOps'
+                }
+              ]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response('Not found', { status: 404 });
+      });
+
+      const ideas = await generateContentIdeas(['AVS Migrations', 'Cloud Sizing / FinOps']);
+      expect(ideas).toHaveLength(3);
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.topics).toEqual(['AVS Migrations', 'Cloud Sizing / FinOps']);
+
+      global.fetch = originalFetch;
+    });
+
+    it('fetchSuggestedTopics calls GET /api/suggest-topics and returns suggestions', async () => {
+      const originalFetch = global.fetch;
+      let requestedUrl = '';
+
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        requestedUrl = url;
+        return new Response(
+          JSON.stringify({
+            success: true,
+            suggestedTopics: [
+              'Multi-Hyperscaler Strategy',
+              'Cloud Sizing / FinOps',
+              'Modernization Without Rewrite'
+            ],
+            reason: 'Least recently covered across 7 days'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      });
+
+      const result = await fetchSuggestedTopics();
+      expect(requestedUrl).toBe('/api/suggest-topics');
+      expect(result.success).toBe(true);
+      expect(result.suggestedTopics).toHaveLength(3);
+      expect(result.suggestedTopics[0]).toBe('Multi-Hyperscaler Strategy');
+
+      global.fetch = originalFetch;
     });
   });
 });

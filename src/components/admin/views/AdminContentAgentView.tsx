@@ -1117,6 +1117,13 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                               )}
                             </button>
 
+                            {/* Live character count display */}
+                            {formatted && (
+                              <span className="text-xs text-slate-500 font-mono">
+                                {formatted.length.toLocaleString()} chars
+                              </span>
+                            )}
+
                             {/* Open Zaboraa LinkedIn Page */}
                             <a
                               href="https://www.linkedin.com/company/zaboraa/"

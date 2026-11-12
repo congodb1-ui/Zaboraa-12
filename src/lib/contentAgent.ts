@@ -457,21 +457,32 @@ export interface FormattedLinkedInPost {
 export function formatLinkedInPost(
   draft: Pick<ContentDraft, 'hook' | 'body' | 'edited_body' | 'cta' | 'hashtags'>
 ): FormattedLinkedInPost {
-  const hook = (draft.hook || '').trim();
+  const unescapeStr = (str?: string | null) =>
+    (str || '').replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').trim();
+
+  const hook = unescapeStr(draft.hook);
   const rawBody = draft.edited_body !== undefined && draft.edited_body !== null
     ? draft.edited_body
     : draft.body;
-  const body = (rawBody || '').trim();
-  const cta = (draft.cta || '').trim();
+  const body = unescapeStr(rawBody);
+  const cta = unescapeStr(draft.cta);
 
-  // Normalize hashtags to #Word (max 6, space-separated, strip internal spaces and leading #)
-  const normalizedHashtags = (draft.hashtags || [])
-    .map((tag) => {
-      const stripped = tag.replace(/^#+/, '').replace(/\s+/g, '');
-      return stripped ? `#${stripped}` : '';
-    })
-    .filter(Boolean)
-    .slice(0, 6);
+  // Normalize hashtags: split on commas, quotes, newlines, strip internal whitespace and leading #
+  const tagTokens = (draft.hashtags || [])
+    .flatMap((t) => (typeof t === 'string' ? t.split(/[,;'"\r\n]+/) : []))
+    .map((tag) => tag.replace(/^#+/, '').replace(/\s+/g, '').trim())
+    .filter(Boolean);
+
+  const seen = new Set<string>();
+  const normalizedHashtags: string[] = [];
+  for (const tag of tagTokens) {
+    const full = `#${tag}`;
+    if (!seen.has(full.toLowerCase())) {
+      seen.add(full.toLowerCase());
+      normalizedHashtags.push(full);
+      if (normalizedHashtags.length >= 6) break;
+    }
+  }
 
   const hashtagsText = normalizedHashtags.join(' ');
 

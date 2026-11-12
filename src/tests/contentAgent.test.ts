@@ -72,7 +72,7 @@ import {
   ContentQueueItem
 } from '../lib/contentAgent';
 
-// Import backend pillar helpers directly for unit testing
+// Import backend pillar and vertex helpers directly for unit testing
 // @ts-ignore
 import {
   PILLARS as BACKEND_PILLARS,
@@ -82,6 +82,17 @@ import {
   normalizeTopicToPillar,
   RANKED_PILLARS
 } from '../../api/_lib/contentPillars.js';
+// @ts-ignore
+import {
+  validateModel,
+  deriveVertexHost,
+  sanitizeErrorMessage,
+  callVertex,
+  normalizeNewlines,
+  ensureHttpsUrls,
+  normalizeHashtags,
+  validatePostQualityAndClaims
+} from '../../api/generate-content.js';
 
 describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
   beforeEach(() => {
@@ -782,6 +793,370 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
 
           (supabase as any).from = originalFrom;
         }
+      });
+    });
+  });
+
+  describe('8. Vertex AI Location, Model Validation & Error Redaction Suite', () => {
+    describe('Model Name Validation & Security Guardrails', () => {
+      it('accepts valid gemini model identifiers', () => {
+        expect(validateModel('gemini-3.7-flash')).toEqual({
+          valid: true,
+          model: 'gemini-3.7-flash',
+        });
+        expect(validateModel('gemini-2.5-pro')).toEqual({
+          valid: true,
+          model: 'gemini-2.5-pro',
+        });
+        expect(validateModel('gemini-1.5-flash-8b')).toEqual({
+          valid: true,
+          model: 'gemini-1.5-flash-8b',
+        });
+      });
+
+      it('hard-rejects forbidden model gemini-4-argon', () => {
+        const res = validateModel('gemini-4-argon');
+        expect(res.valid).toBe(false);
+        expect(res.error).toBe('Model gemini-4-argon is not supported.');
+      });
+
+      it('rejects invalid model name formats and non-gemini models', () => {
+        expect(validateModel('gpt-4').valid).toBe(false);
+        expect(validateModel('claude-3-5-sonnet').valid).toBe(false);
+        expect(validateModel('gemini_flash').valid).toBe(false);
+        expect(validateModel('').valid).toBe(false);
+        // @ts-ignore
+        expect(validateModel(null).valid).toBe(false);
+      });
+    });
+
+    describe('Location to Vertex AI Host Mapping', () => {
+      it('maps global location to aiplatform.googleapis.com', () => {
+        expect(deriveVertexHost('global')).toBe('aiplatform.googleapis.com');
+        expect(deriveVertexHost('')).toBe('aiplatform.googleapis.com');
+        // @ts-ignore
+        expect(deriveVertexHost(null)).toBe('aiplatform.googleapis.com');
+      });
+
+      it('maps regional and multi-region locations to prefixed hostnames', () => {
+        expect(deriveVertexHost('us-central1')).toBe('us-central1-aiplatform.googleapis.com');
+        expect(deriveVertexHost('europe-west1')).toBe('europe-west1-aiplatform.googleapis.com');
+        expect(deriveVertexHost('asia-northeast1')).toBe('asia-northeast1-aiplatform.googleapis.com');
+      });
+    });
+
+    describe('Error Message Sanitization & Redaction', () => {
+      it('redacts sensitive API keys and project IDs from error messages', () => {
+        const secretKey = 'AIzaSySecretApiKey12345';
+        const secretProject = 'prime-bridge-511404-a3';
+        const rawMessage = `Error 404 from Vertex at projects/${secretProject}/locations/global with key ${secretKey}`;
+
+        const sanitized = sanitizeErrorMessage(rawMessage, [secretKey, secretProject]);
+        expect(sanitized).not.toContain(secretKey);
+        expect(sanitized).not.toContain(secretProject);
+        expect(sanitized).toContain('[REDACTED]');
+      });
+    });
+
+    describe('callVertex() Mock Invariant & Error Surfacing', () => {
+      it('surfaces upstream 404 error with correct upstreamStatus and sanitized message', async () => {
+        const originalFetch = global.fetch;
+        const fakeKey = 'test-fake-key-999';
+        const fakeProject = 'secret-proj-123';
+
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          json: async () => ({
+            error: {
+              code: 404,
+              message: `Publisher model projects/${fakeProject}/locations/us-central1/publishers/google/models/gemini-3.7-flash was not found`,
+            },
+          }),
+        });
+
+        await expect(
+          callVertex({
+            prompt: 'Reply OK',
+            apiKey: fakeKey,
+            projectId: fakeProject,
+            location: 'us-central1',
+            model: 'gemini-3.7-flash',
+          })
+        ).rejects.toMatchObject({
+          upstreamStatus: 404,
+          statusText: 'Not Found',
+        });
+
+        // Ensure fake project was redacted from the error message
+        try {
+          await callVertex({
+            prompt: 'Reply OK',
+            apiKey: fakeKey,
+            projectId: fakeProject,
+            location: 'us-central1',
+            model: 'gemini-3.7-flash',
+          });
+        } catch (err: any) {
+          expect(err.message).toContain('Vertex request failed (HTTP 404 Not Found)');
+          expect(err.message).not.toContain(fakeProject);
+          expect(err.message).not.toContain(fakeKey);
+        }
+
+        global.fetch = originalFetch;
+      });
+
+      it('correctly passes x-goog-api-key header and formats v1 endpoint URL', async () => {
+        const originalFetch = global.fetch;
+        let capturedUrl = '';
+        let capturedHeaders: any = {};
+
+        global.fetch = vi.fn().mockImplementation(async (url: string, init: any) => {
+          capturedUrl = url;
+          capturedHeaders = init?.headers;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: JSON.stringify([{ title: 'A', hook: 'B', body: 'C', hashtags: ['#D'], cta: 'E', topic: 'F' }]) }],
+                  },
+                },
+              ],
+            }),
+          };
+        });
+
+        const result = await callVertex({
+          prompt: 'Generate post',
+          apiKey: 'test-api-key',
+          projectId: 'my-project',
+          location: 'global',
+          model: 'gemini-3.7-flash',
+        });
+
+        expect(capturedUrl).toBe(
+          'https://aiplatform.googleapis.com/v1/projects/my-project/locations/global/publishers/google/models/gemini-3.7-flash:generateContent'
+        );
+        expect(capturedHeaders['x-goog-api-key']).toBe('test-api-key');
+        expect(capturedHeaders['Content-Type']).toBe('application/json');
+        expect(result.candidates).toBeDefined();
+
+        global.fetch = originalFetch;
+      });
+    });
+  });
+
+  describe('9. LinkedIn Copy Formatting, Forbidden Claims & Post Quality Guardrails Suite', () => {
+    describe('Literal Newline Normalisation & Safety Net', () => {
+      it('converts literal \\n and \\r\\n strings to real newline characters', () => {
+        const raw = 'Paragraph one.\\n\\nParagraph two.\\r\\nParagraph three.';
+        const normalized = normalizeNewlines(raw);
+        expect(normalized).not.toContain('\\n');
+        expect(normalized).not.toContain('\\r');
+        expect(normalized).toBe('Paragraph one.\n\nParagraph two.\nParagraph three.');
+      });
+
+      it('formatLinkedInPost unescapes literal \\n and formats before/after screenshot example', () => {
+        const rawDraft: ContentDraft = {
+          id: 'test-unescape-draft',
+          title: 'AVS Storage Insights',
+          hook: 'Are your VMware clusters compute-bound or storage-bound in Azure?',
+          body: 'workloads.\\n\\nFirst, events.\\n\\nThird, verify HCX interconnects and stretched clusters across enterprise availability zones.',
+          cta: 'Explore sizing on zaboraa.com/tools',
+          hashtags: ['#Azure,#NC2,#NutanixCloud'],
+          topic: 'Azure VMware Solution (AVS)',
+          status: 'Approved',
+        };
+
+        const result = formatLinkedInPost(rawDraft);
+
+        // BEFORE (raw escaped): contains literal \n
+        expect(rawDraft.body).toContain('\\n\\n');
+
+        // AFTER (clean output): contains real newlines, no literal \n
+        expect(result.text).not.toContain('\\n');
+        expect(result.text).toContain('workloads.\n\nFirst, events.\n\nThird, verify HCX');
+        expect(result.text).toContain('#Azure #NC2 #NutanixCloud');
+        expect(result.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Hashtag Cleaning & Formatting', () => {
+      it('splits comma/quote joined tags and formats space-separated without commas', () => {
+        const raw = ['#Azure,#NC2,#NutanixCloud', "#CloudMigration','#HybridCloud"];
+        const cleaned = normalizeHashtags(raw);
+
+        expect(cleaned).toContain('#Azure');
+        expect(cleaned).toContain('#NC2');
+        expect(cleaned).toContain('#NutanixCloud');
+        expect(cleaned).toContain('#CloudMigration');
+        expect(cleaned).toContain('#HybridCloud');
+        expect(cleaned.join(' ')).not.toContain(',');
+        expect(cleaned.join(' ')).not.toContain("'");
+      });
+
+      it('limits to max 7 hashtags and guarantees at least 3 fallback tags', () => {
+        const excessive = ['#One', '#Two', '#Three', '#Four', '#Five', '#Six', '#Seven', '#Eight', '#Nine'];
+        const limited = normalizeHashtags(excessive);
+        expect(limited.length).toBeLessThanOrEqual(7);
+
+        const empty = normalizeHashtags([]);
+        expect(empty.length).toBeGreaterThanOrEqual(3);
+      });
+    });
+
+    describe('URL Prefixing & Normalisation', () => {
+      it('silently prefixes bare domains with https:// and updates http://', () => {
+        expect(ensureHttpsUrls('Visit zaboraa.com/tools for sizing')).toBe(
+          'Visit https://zaboraa.com/tools for sizing'
+        );
+        expect(ensureHttpsUrls('Check out http://zaboraa.com/docs')).toBe(
+          'Check out https://zaboraa.com/docs'
+        );
+        expect(ensureHttpsUrls('Already secure https://zaboraa.com/tools')).toBe(
+          'Already secure https://zaboraa.com/tools'
+        );
+      });
+    });
+
+    describe('Post Quality & Structure Validator (validatePostQualityAndClaims)', () => {
+      const validBasePost = {
+        title: 'Enterprise VMware Cloud Architecture Strategy',
+        hook: 'Are your VMware clusters compute-bound or storage-bound in Azure?',
+        body: 'Migrating legacy virtualization to Azure VMware Solution requires careful compute and storage decoupling.\n\nFirst, evaluate NFS datastores to avoid excessive node provisioning.\n\nSecond, test HCX network extension throughput and MTU constraints across data centers.',
+        cta: 'Test your architecture parameters on https://zaboraa.com/tools',
+        hashtags: ['#VMware', '#AzureAVS', '#CloudArchitecture', '#FinOps'],
+      };
+
+      it('accepts compliant enterprise post', () => {
+        const res = validatePostQualityAndClaims(validBasePost);
+        expect(res.valid).toBe(true);
+      });
+
+      // Forbidden Claims
+      it('rejects Pattern 1 numeric proof claims (13+ years, 25+ migrations, 6 certifications, 500 TB)', () => {
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nWe have 13+ years of experience.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nDelivered 25+ migrations.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nManaging 500 TB of storage.',
+        }).valid).toBe(false);
+      });
+
+      it('rejects Pattern 2 spelled-out proof claims (thirteen years, six certifications)', () => {
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nOver thirteen years of enterprise virtualization advisory.',
+        }).valid).toBe(false);
+      });
+
+      it('rejects forbidden flat strings (zaboraa technologies, masterclass, video, zero-downtime)', () => {
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nContact Zaboraa Technologies today.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nWatch our migration masterclass video.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nGuaranteed zero-downtime cutover.',
+        }).valid).toBe(false);
+      });
+
+      // Hook Checks
+      it('rejects hook with fewer than 6 words', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'AVS cloud migration tips',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('fewer than 6 words');
+      });
+
+      it('rejects hook containing a URL', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'Check out https://zaboraa.com for the best cloud migration advice',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('contains a URL');
+      });
+
+      it('rejects hook containing a hashtag', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'Why #Azure VMware Solution changes your data center cost model completely',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('contains a hashtag');
+      });
+
+      it('rejects hook starting with "I"', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'I believe most enterprise VMware architects over-provision ESXi compute nodes',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('starts with "I"');
+      });
+
+      // Structure Checks
+      it('rejects body with fewer than 2 paragraph breaks', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          body: 'Single long paragraph without any paragraph breaks describing cloud architecture in great detail with lots of technical explanations.',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('fewer than 2 paragraph breaks');
+      });
+
+      // Emoji Checks
+      it('rejects post containing emojis (🚀, 💡, 🔥)', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + ' 🚀',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('forbidden emoji');
+      });
+
+      // Length Checks
+      it('rejects post with total length under 300 characters', () => {
+        const res = validatePostQualityAndClaims({
+          title: 'Short',
+          hook: 'Short hook with at least six words here',
+          body: 'P1\n\nP2\n\nP3',
+          cta: 'CTA',
+          hashtags: ['#A', '#B', '#C'],
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('under 300 characters');
+      });
+
+      it('rejects post with total length over 3000 characters', () => {
+        const longBody = 'A'.repeat(3050) + '\n\n' + 'B'.repeat(50) + '\n\n' + 'C'.repeat(50);
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          body: longBody,
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('over 3000 characters');
       });
     });
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
+import contentStudioHandler, {
   processGenerateCaptions,
   processGenerateVideoScript,
   processGenerateKB,
@@ -43,6 +43,30 @@ vi.mock('../../api/_lib/studioHelpers.js', async () => {
       throw new Error(`Draft with ID ${draftId} not found`);
     }),
     saveGeneratedAsset: vi.fn(async () => {})
+  };
+});
+
+// Mock requireAdmin to pass in tests
+vi.mock('../../api/_lib/requireAdmin.js', () => {
+  return {
+    default: vi.fn(async (req: any, res: any) => {
+      const authHeader = req.headers?.authorization || req.headers?.Authorization;
+      if (!authHeader || authHeader.includes('unauthorized')) {
+        res.setHeader('Content-Type', 'application/json');
+        res.status(401).json({ success: false, error: 'Unauthorized: Missing or invalid authentication token.' });
+        return { authorized: false, status: 401 };
+      }
+      return { authorized: true, user: { email: 'congodb1@gmail.com' } };
+    }),
+    requireAdmin: vi.fn(async (req: any, res: any) => {
+      const authHeader = req.headers?.authorization || req.headers?.Authorization;
+      if (!authHeader || authHeader.includes('unauthorized')) {
+        res.setHeader('Content-Type', 'application/json');
+        res.status(401).json({ success: false, error: 'Unauthorized: Missing or invalid authentication token.' });
+        return { authorized: false, status: 401 };
+      }
+      return { authorized: true, user: { email: 'congodb1@gmail.com' } };
+    }),
   };
 });
 
@@ -128,7 +152,17 @@ vi.stubGlobal('fetch', vi.fn(async (url: string, opts?: any) => {
 describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    process.env.VERTEX_API_KEY = 'mock-vertex-key';
+    process.env.GEMINI_API_KEY = 'mock-vertex-key';
+  });
+
+  describe('0. Dynamic Import / Module Load Smoke Test (No Mocks)', () => {
+    it('dynamically loads api/content-studio.js and api/generate-content.js without crashing', async () => {
+      const studioModule = await import('../../api/content-studio.js');
+      expect(typeof studioModule.default).toBe('function');
+
+      const generateModule = await import('../../api/generate-content.js');
+      expect(typeof generateModule.default).toBe('function');
+    });
   });
 
   describe('1. Captions Generation Track', () => {
@@ -159,7 +193,6 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
       expect(res.script.point3).toContain('POINT 3');
       expect(res.script.cta).toContain('Running VMware on-prem or evaluating AVS?');
 
-      // Check shot_list URLs
       for (const shot of res.shot_list) {
         if (shot.action.startsWith('Screen record: ')) {
           const url = shot.action.replace('Screen record: ', '');
@@ -188,7 +221,57 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
     });
   });
 
-  describe('5. Client Lib Studio Wrappers', () => {
+  describe('5. Handler Routing & Error Recovery', () => {
+    it('returns 405 for GET requests with JSON response', async () => {
+      const req = { method: 'GET', query: {}, body: {} };
+      let statusCode = 0;
+      let jsonBody: any = null;
+      let contentType = '';
+      const res = {
+        setHeader: (key: string, val: string) => { if (key === 'Content-Type') contentType = val; },
+        status: (code: number) => { statusCode = code; return res; },
+        json: (data: any) => { jsonBody = data; return res; }
+      };
+
+      await contentStudioHandler(req, res);
+      expect(statusCode).toBe(405);
+      expect(jsonBody.success).toBe(false);
+      expect(contentType).toBe('application/json');
+    });
+
+    it('returns 400 for missing draftId', async () => {
+      const req = { method: 'POST', query: { track: 'kb' }, body: {}, headers: { authorization: 'Bearer valid-token' } };
+      let statusCode = 0;
+      let jsonBody: any = null;
+      const res = {
+        setHeader: () => {},
+        status: (code: number) => { statusCode = code; return res; },
+        json: (data: any) => { jsonBody = data; return res; }
+      };
+
+      await contentStudioHandler(req, res);
+      expect(statusCode).toBe(400);
+      expect(jsonBody.success).toBe(false);
+      expect(jsonBody.error).toContain('draftId');
+    });
+
+    it('returns 401 when unauthorized', async () => {
+      const req = { method: 'POST', query: { track: 'kb' }, body: { draftId: 'valid-draft' }, headers: { authorization: 'unauthorized' } };
+      let statusCode = 0;
+      let jsonBody: any = null;
+      const res = {
+        setHeader: () => {},
+        status: (code: number) => { statusCode = code; return res; },
+        json: (data: any) => { jsonBody = data; return res; }
+      };
+
+      await contentStudioHandler(req, res);
+      expect(statusCode).toBe(401);
+      expect(jsonBody.success).toBe(false);
+    });
+  });
+
+  describe('6. Client Lib Studio Wrappers', () => {
     it('client lib functions dispatch to correct API endpoints', async () => {
       globalThis.fetch = vi.fn(async (url: string) => {
         if (url === '/api/content-studio?track=poster') {

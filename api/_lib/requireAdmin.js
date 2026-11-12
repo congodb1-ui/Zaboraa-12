@@ -44,6 +44,7 @@ export function isAuthoritativeAdminEmail(email) {
 export async function requireAdmin(req, res) {
   const authHeader = req.headers?.authorization || req.headers?.Authorization;
   if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+    res.setHeader('Content-Type', 'application/json');
     res.status(401).json({
       success: false,
       error: 'Unauthorized: Missing or invalid authentication token.',
@@ -53,6 +54,7 @@ export async function requireAdmin(req, res) {
 
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   if (!token) {
+    res.setHeader('Content-Type', 'application/json');
     res.status(401).json({
       success: false,
       error: 'Unauthorized: Empty token provided.',
@@ -62,7 +64,7 @@ export async function requireAdmin(req, res) {
 
   const supabase = getAdminSupabaseClient();
   if (!supabase) {
-    // If Supabase server keys are not configured, check token structure or reject safely
+    res.setHeader('Content-Type', 'application/json');
     res.status(500).json({
       success: false,
       error: 'Server authentication configuration is missing.',
@@ -72,6 +74,7 @@ export async function requireAdmin(req, res) {
 
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user) {
+    res.setHeader('Content-Type', 'application/json');
     res.status(401).json({
       success: false,
       error: 'Unauthorized: Invalid or expired session token.',
@@ -83,8 +86,8 @@ export async function requireAdmin(req, res) {
   const user = userData.user;
   const userEmail = user.email ? user.email.toLowerCase().trim() : '';
 
-  // Admin verification: role === 'admin' AND email in allowlist (Requirement 1)
   if (!isAuthoritativeAdminEmail(userEmail)) {
+    res.setHeader('Content-Type', 'application/json');
     res.status(403).json({
       success: false,
       error: 'Forbidden: Admin access privileges required.',
@@ -99,6 +102,7 @@ export async function requireAdmin(req, res) {
     .single();
 
   if (profileError || !profileData || profileData.role !== 'admin' || profileData.status === 'suspended') {
+    res.setHeader('Content-Type', 'application/json');
     res.status(403).json({
       success: false,
       error: 'Forbidden: Admin role verification failed.',
@@ -108,3 +112,5 @@ export async function requireAdmin(req, res) {
 
   return { authorized: true, user, email: userEmail, profile: profileData, supabase };
 }
+
+export default requireAdmin;

@@ -1,5 +1,4 @@
 import requireAdmin from './_lib/requireAdmin.js';
-import sharp from 'sharp';
 import {
   fetchDraftById,
   checkForbiddenClaims,
@@ -12,13 +11,13 @@ import {
 const VERTEX_LOCATION = 'global';
 const GEMINI_MODEL = 'gemini-3.7-flash';
 
-async function callVertexGemini(prompt, systemInstruction) {
+async function callVertexGemini(prompt, systemInstruction, timeoutMs = 25000) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const endpoint = `https://aiplatform.googleapis.com/v1/projects/${process.env.GOOGLE_CLOUD_PROJECT || 'zaboraa-prod'}/locations/${VERTEX_LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const endpoint = `https://aiplatform.googleapis.com/v1/projects/${process.env.GOOGLE_CLOUD_PROJECT || 'prime-bridge-511404-a3'}/locations/${VERTEX_LOCATION}/publishers/google/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   const body = {
     contents: [
@@ -32,30 +31,44 @@ async function callVertexGemini(prompt, systemInstruction) {
     },
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 4000,
       responseMimeType: 'application/json',
     },
   };
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Vertex AI call failed (${response.status}): ${errorText}`);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Vertex AI call failed (${response.status}): ${errorText}`);
+    }
+
+    const responseData = await response.json();
+    const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      throw new Error('Empty response from Vertex AI');
+    }
+
+    return rawText;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      throw new Error(`Vertex AI call timed out after ${timeoutMs}ms`);
+    }
+    throw err;
   }
-
-  const responseData = await response.json();
-  const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!rawText) {
-    throw new Error('Empty response from Vertex AI');
-  }
-
-  return rawText;
 }
 
 function buildPosterSvg(title, subtitle, size) {
@@ -91,7 +104,7 @@ function buildPosterSvg(title, subtitle, size) {
 
   <rect x="80" y="${height - 140}" width="${width - 160}" height="60" rx="8" fill="#0284C7" />
   <text x="110" y="${height - 102}" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700">
-    ${BRIEFING_CTA}
+    ${escapeXml(BRIEFING_CTA)}
   </text>
 </svg>`;
 }
@@ -105,7 +118,15 @@ function escapeXml(unsafe) {
     .replace(/'/g, '&apos;');
 }
 
-export async function processGenerateCaptions(draftId) {
+async function safeSaveGeneratedAsset(draftId, assetType, subtype, content) {
+  try {
+    await saveGeneratedAsset(draftId, assetType, subtype, content);
+  } catch (err) {
+    console.error(`[content-studio] Failed to save generated asset (${assetType}) to DB:`, err?.message || err);
+  }
+}
+
+export async function processGenerateCaptions(draftId, timeoutMs = 20000) {
   const draft = await fetchDraftById(draftId);
   const systemInstruction = `You are a social media manager for Zaboraa, a VMware-to-cloud migration consulting practice.
 Generate multi-platform captions based on a content draft.
@@ -130,7 +151,7 @@ Draft Hook: ${draft.hook || ''}
 Draft Body: ${draft.body}
 Topic: ${draft.topic}`;
 
-  const rawJson = await callVertexGemini(prompt, systemInstruction);
+  const rawJson = await callVertexGemini(prompt, systemInstruction, timeoutMs);
   const parsed = JSON.parse(rawJson);
 
   checkForbiddenClaims(parsed.linkedin_caption);
@@ -144,7 +165,7 @@ Topic: ${draft.topic}`;
     parsed.instagram_caption = parsed.instagram_caption.slice(0, 147) + '...';
   }
 
-  await saveGeneratedAsset(draftId, 'captions', 'captions', JSON.stringify(parsed));
+  await safeSaveGeneratedAsset(draftId, 'captions', 'captions', JSON.stringify(parsed));
 
   return {
     success: true,
@@ -153,7 +174,7 @@ Topic: ${draft.topic}`;
   };
 }
 
-export async function processGenerateVideoScript(draftId) {
+export async function processGenerateVideoScript(draftId, timeoutMs = 25000) {
   const draft = await fetchDraftById(draftId);
 
   const matchedToolObj = TOPIC_TOOL_MAP[draft.topic] || TOPIC_TOOL_MAP['AVS Migrations'];
@@ -198,15 +219,17 @@ Draft Hook: ${draft.hook || ''}
 Draft Body: ${draft.body}
 Topic: ${draft.topic}`;
 
-  const rawJson = await callVertexGemini(prompt, systemInstruction);
+  const rawJson = await callVertexGemini(prompt, systemInstruction, timeoutMs);
   const parsed = JSON.parse(rawJson);
 
   const scriptText = Object.values(parsed.script || {}).join(' ');
   checkForbiddenClaims(scriptText);
 
-  parsed.script.cta = BRIEFING_CTA;
+  if (parsed.script) {
+    parsed.script.cta = BRIEFING_CTA;
+  }
 
-  await saveGeneratedAsset(draftId, 'video_script', 'video_script', JSON.stringify(parsed));
+  await safeSaveGeneratedAsset(draftId, 'video_script', 'video_script', JSON.stringify(parsed));
 
   return {
     success: true,
@@ -215,10 +238,12 @@ Topic: ${draft.topic}`;
   };
 }
 
-export async function processGenerateKB(draftId) {
+export async function processGenerateKB(draftId, timeoutMs = 35000) {
   const draft = await fetchDraftById(draftId);
 
-  const matchedRoute = VALID_PUBLIC_ROUTES[draft.topic] || '/tools/avs-assessment';
+  const matchedRoute = (typeof VALID_PUBLIC_ROUTES === 'object' && !Array.isArray(VALID_PUBLIC_ROUTES))
+    ? (VALID_PUBLIC_ROUTES[draft.topic] || '/tools/sizing')
+    : '/tools/sizing';
 
   const systemInstruction = `You are a technical documenter for Zaboraa Knowledge Base.
 Generate a Knowledge Base article draft in Markdown format based on a content draft.
@@ -245,17 +270,17 @@ Draft Hook: ${draft.hook || ''}
 Draft Body: ${draft.body}
 Topic: ${draft.topic}`;
 
-  const rawJson = await callVertexGemini(prompt, systemInstruction);
+  const rawJson = await callVertexGemini(prompt, systemInstruction, timeoutMs);
   const parsed = JSON.parse(rawJson);
 
   checkForbiddenClaims(parsed.body || '');
   checkForbiddenClaims(parsed.full_markdown || '');
 
-  if (!parsed.full_markdown.includes(BRIEFING_CTA)) {
+  if (parsed.full_markdown && !parsed.full_markdown.includes(BRIEFING_CTA)) {
     parsed.full_markdown += `\n\n---\n${BRIEFING_CTA}`;
   }
 
-  await saveGeneratedAsset(draftId, 'kb_draft', 'kb_draft', JSON.stringify(parsed));
+  await safeSaveGeneratedAsset(draftId, 'kb_draft', 'kb_draft', JSON.stringify(parsed));
 
   return {
     success: true,
@@ -270,14 +295,16 @@ export async function processGeneratePoster(draftId) {
   const linkedinSvg = buildPosterSvg(draft.title, draft.hook || draft.body.slice(0, 80), '1200x627');
   const instagramSvg = buildPosterSvg(draft.title, draft.hook || draft.body.slice(0, 80), '1080x1080');
 
+  const { default: sharp } = await import('sharp');
+
   const linkedinPngBuffer = await sharp(Buffer.from(linkedinSvg)).png().toBuffer();
   const instagramPngBuffer = await sharp(Buffer.from(instagramSvg)).png().toBuffer();
 
   const linkedinBase64 = linkedinPngBuffer.toString('base64');
   const instagramBase64 = instagramPngBuffer.toString('base64');
 
-  await saveGeneratedAsset(draftId, 'poster_linkedin', 'poster_linkedin', linkedinBase64);
-  await saveGeneratedAsset(draftId, 'poster_instagram', 'poster_instagram', instagramBase64);
+  await safeSaveGeneratedAsset(draftId, 'poster_linkedin', 'poster_linkedin', linkedinBase64);
+  await safeSaveGeneratedAsset(draftId, 'poster_instagram', 'poster_instagram', instagramBase64);
 
   return {
     success: true,
@@ -289,9 +316,9 @@ export async function processGeneratePoster(draftId) {
 
 export async function processGenerateAll(draftId) {
   const [captionsRes, videoRes, kbRes, posterRes] = await Promise.allSettled([
-    processGenerateCaptions(draftId),
-    processGenerateVideoScript(draftId),
-    processGenerateKB(draftId),
+    processGenerateCaptions(draftId, 18000),
+    processGenerateVideoScript(draftId, 22000),
+    processGenerateKB(draftId, 32000),
     processGeneratePoster(draftId),
   ]);
 
@@ -311,33 +338,40 @@ export async function processGenerateAll(draftId) {
   };
 
   const hasAnySuccess = Object.values(results).some((r) => r.ok);
-  if (!hasAnySuccess) {
-    throw new Error('All generation tracks failed');
-  }
+  const failedTracks = Object.entries(results)
+    .filter(([_, r]) => !r.ok)
+    .map(([t]) => t);
 
   return {
-    success: true,
-    partial: true,
+    success: hasAnySuccess,
+    partial: failedTracks.length > 0 && hasAnySuccess,
+    draftId,
     results,
+    failedTracks,
   };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const isAdmin = await requireAdmin(req, res);
-  if (!isAdmin) return;
-
-  const { track } = req.query;
-  const { draftId } = req.body || {};
-
-  if (!draftId) {
-    return res.status(400).json({ error: 'Missing required field: draftId' });
-  }
-
+  let track = '';
   try {
+    res.setHeader('Content-Type', 'application/json');
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ success: false, error: 'Method not allowed. Content Studio requires POST.' });
+    }
+
+    const authResult = await requireAdmin(req, res);
+    if (!authResult || !authResult.authorized) {
+      return;
+    }
+
+    track = req.query?.track || '';
+    const { draftId } = req.body || {};
+
+    if (!draftId) {
+      return res.status(400).json({ success: false, error: 'Missing required body field: draftId' });
+    }
+
     let result;
     switch (track) {
       case 'captions':
@@ -356,14 +390,18 @@ export default async function handler(req, res) {
         result = await processGenerateAll(draftId);
         break;
       default:
-        return res.status(400).json({ error: `Invalid or missing track parameter: ${track}` });
+        return res.status(400).json({ success: false, error: `Invalid or missing track parameter: ${track}` });
     }
 
     return res.status(200).json(result);
   } catch (err) {
-    console.error(`Content Studio error (track=${track}):`, err);
-    return res.status(502).json({
-      error: err.message || 'Failed to generate asset via Content Studio',
+    console.error(`[content-studio] Handler uncaught exception (track=${track}):`, err);
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(500).json({
+      success: false,
+      track,
+      error: 'Content Studio internal error: ' + String(err?.message || err).slice(0, 300),
+      retryable: true,
     });
   }
 }

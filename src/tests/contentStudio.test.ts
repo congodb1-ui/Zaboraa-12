@@ -188,19 +188,19 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
     });
   });
 
-  describe('5. Client Lib Studio Wrappers', () => {
+  describe('5. Client Lib Studio Wrappers & Resiliency', () => {
     it('client lib functions dispatch to correct API endpoints', async () => {
       globalThis.fetch = vi.fn(async (url: string) => {
         if (url === '/api/content-studio?track=poster') {
           return {
             ok: true,
-            json: async () => ({ success: true, draftId: 'valid-draft', linkedin: 'iVBOR123', instagram: 'iVBOR456' })
+            text: async () => JSON.stringify({ success: true, draftId: 'valid-draft', linkedin: 'iVBOR123', instagram: 'iVBOR456' })
           } as Response;
         }
         if (url === '/api/content-studio?track=all') {
           return {
             ok: true,
-            json: async () => ({
+            text: async () => JSON.stringify({
               success: true,
               results: {
                 poster: { ok: true, data: { linkedin: 'iVBOR' } },
@@ -211,7 +211,7 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
             })
           } as Response;
         }
-        return { ok: false, json: async () => ({ error: 'Not found' }) } as Response;
+        return { ok: false, text: async () => JSON.stringify({ error: 'Not found' }) } as Response;
       });
 
       const posterRes = await generatePoster('valid-draft');
@@ -219,6 +219,18 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
 
       const allRes = await generateAll('valid-draft');
       expect(allRes.results.poster.ok).toBe(true);
+    });
+
+    it('handles non-JSON HTML server errors gracefully without throwing SyntaxError', async () => {
+      globalThis.fetch = vi.fn(async () => {
+        return {
+          ok: false,
+          status: 504,
+          text: async () => '<html><body>Gateway Timeout</body></html>'
+        } as Response;
+      });
+
+      await expect(generateCaptions('valid-draft')).rejects.toThrow('Server returned status 504. Please retry.');
     });
   });
 });

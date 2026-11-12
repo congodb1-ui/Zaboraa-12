@@ -737,7 +737,15 @@ async function postStudioTrack<T>(endpoint: string, draftId: string): Promise<T>
     body: JSON.stringify({ draftId }),
   });
 
-  const body = await res.json().catch(() => ({}));
+  const rawText = await res.text().catch(() => '');
+  let body: any = {};
+  try {
+    body = JSON.parse(rawText);
+  } catch {
+    console.error(`Content Studio endpoint returned non-JSON response (${res.status}):`, rawText);
+    throw new Error(`Server returned status ${res.status}. Please retry.`);
+  }
+
   if (!res.ok) {
     throw new Error(body.error || `Failed request to ${endpoint}`);
   }

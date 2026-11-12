@@ -1,5 +1,4 @@
 import requireAdmin from './_lib/requireAdmin.js';
-import sharp from 'sharp';
 import {
   fetchDraftById,
   checkForbiddenClaims,
@@ -105,6 +104,29 @@ function escapeXml(unsafe) {
     .replace(/'/g, '&apos;');
 }
 
+function withTimeout(promise, ms, name) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Track '${name}' timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
+async function safeSaveGeneratedAsset(draftId, assetType, content) {
+  let saved = true;
+  try {
+    await saveGeneratedAsset(draftId, assetType, assetType, content);
+  } catch (err) {
+    console.error(`Failed to save generated asset (${assetType}) to database:`, err);
+    saved = false;
+  }
+  return saved;
+}
+
 export async function processGenerateCaptions(draftId) {
   const draft = await fetchDraftById(draftId);
   const systemInstruction = `You are a social media manager for Zaboraa, a VMware-to-cloud migration consulting practice.
@@ -144,10 +166,11 @@ Topic: ${draft.topic}`;
     parsed.instagram_caption = parsed.instagram_caption.slice(0, 147) + '...';
   }
 
-  await saveGeneratedAsset(draftId, 'captions', 'captions', JSON.stringify(parsed));
+  const saved = await safeSaveGeneratedAsset(draftId, 'captions', JSON.stringify(parsed));
 
   return {
     success: true,
+    saved,
     draftId,
     ...parsed,
   };
@@ -206,10 +229,11 @@ Topic: ${draft.topic}`;
 
   parsed.script.cta = BRIEFING_CTA;
 
-  await saveGeneratedAsset(draftId, 'video_script', 'video_script', JSON.stringify(parsed));
+  const saved = await safeSaveGeneratedAsset(draftId, 'video_script', JSON.stringify(parsed));
 
   return {
     success: true,
+    saved,
     draftId,
     ...parsed,
   };
@@ -255,10 +279,11 @@ Topic: ${draft.topic}`;
     parsed.full_markdown += `\n\n---\n${BRIEFING_CTA}`;
   }
 
-  await saveGeneratedAsset(draftId, 'kb_draft', 'kb_draft', JSON.stringify(parsed));
+  const saved = await safeSaveGeneratedAsset(draftId, 'kb_draft', JSON.stringify(parsed));
 
   return {
     success: true,
+    saved,
     draftId,
     ...parsed,
   };
@@ -266,6 +291,15 @@ Topic: ${draft.topic}`;
 
 export async function processGeneratePoster(draftId) {
   const draft = await fetchDraftById(draftId);
+
+  let sharp;
+  try {
+    const sharpModule = await import('sharp');
+    sharp = sharpModule.default || sharpModule;
+  } catch (err) {
+    console.error('Failed to dynamically load sharp module:', err);
+    throw new Error('Image rendering engine (Sharp) is unavailable');
+  }
 
   const linkedinSvg = buildPosterSvg(draft.title, draft.hook || draft.body.slice(0, 80), '1200x627');
   const instagramSvg = buildPosterSvg(draft.title, draft.hook || draft.body.slice(0, 80), '1080x1080');
@@ -276,11 +310,12 @@ export async function processGeneratePoster(draftId) {
   const linkedinBase64 = linkedinPngBuffer.toString('base64');
   const instagramBase64 = instagramPngBuffer.toString('base64');
 
-  await saveGeneratedAsset(draftId, 'poster_linkedin', 'poster_linkedin', linkedinBase64);
-  await saveGeneratedAsset(draftId, 'poster_instagram', 'poster_instagram', instagramBase64);
+  const saved1 = await safeSaveGeneratedAsset(draftId, 'poster_linkedin', linkedinBase64);
+  const saved2 = await safeSaveGeneratedAsset(draftId, 'poster_instagram', instagramBase64);
 
   return {
     success: true,
+    saved: saved1 && saved2,
     draftId,
     linkedin: linkedinBase64,
     instagram: instagramBase64,
@@ -288,11 +323,12 @@ export async function processGeneratePoster(draftId) {
 }
 
 export async function processGenerateAll(draftId) {
+  const TRACK_TIMEOUT = 12000;
   const [captionsRes, videoRes, kbRes, posterRes] = await Promise.allSettled([
-    processGenerateCaptions(draftId),
-    processGenerateVideoScript(draftId),
-    processGenerateKB(draftId),
-    processGeneratePoster(draftId),
+    withTimeout(processGenerateCaptions(draftId), TRACK_TIMEOUT, 'captions'),
+    withTimeout(processGenerateVideoScript(draftId), TRACK_TIMEOUT, 'video_script'),
+    withTimeout(processGenerateKB(draftId), TRACK_TIMEOUT, 'kb'),
+    withTimeout(processGeneratePoster(draftId), TRACK_TIMEOUT, 'poster'),
   ]);
 
   const results = {
@@ -310,34 +346,39 @@ export async function processGenerateAll(draftId) {
       : { ok: false, error: posterRes.reason?.message || 'Failed' },
   };
 
+  const failedTracks = Object.entries(results)
+    .filter(([_, r]) => !r.ok)
+    .map(([trackName, r]) => ({ track: trackName, error: r.error }));
+
   const hasAnySuccess = Object.values(results).some((r) => r.ok);
   if (!hasAnySuccess) {
-    throw new Error('All generation tracks failed');
+    throw new Error(`All generation tracks failed: ${failedTracks.map(f => f.track + ': ' + f.error).join('; ')}`);
   }
 
   return {
     success: true,
-    partial: true,
+    partial: failedTracks.length > 0,
+    failedTracks,
     results,
   };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const isAdmin = await requireAdmin(req, res);
-  if (!isAdmin) return;
-
-  const { track } = req.query;
-  const { draftId } = req.body || {};
-
-  if (!draftId) {
-    return res.status(400).json({ error: 'Missing required field: draftId' });
-  }
-
   try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const isAdmin = await requireAdmin(req, res);
+    if (!isAdmin) return;
+
+    const { track } = req.query;
+    const { draftId } = req.body || {};
+
+    if (!draftId) {
+      return res.status(400).json({ error: 'Missing required field: draftId' });
+    }
+
     let result;
     switch (track) {
       case 'captions':
@@ -361,8 +402,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json(result);
   } catch (err) {
-    console.error(`Content Studio error (track=${track}):`, err);
-    return res.status(502).json({
+    console.error(`Content Studio error (track=${req.query?.track}):`, err);
+    return res.status(500).json({
+      success: false,
       error: err.message || 'Failed to generate asset via Content Studio',
     });
   }

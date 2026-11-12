@@ -839,50 +839,62 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
                             {/* Buttons Bar */}
                             <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                onClick={() => handleGenerateTrack(draft.id, 'poster')}
-                                disabled={studio.isGeneratingPoster}
-                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                              >
-                                <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
-                                <span>{studio.isGeneratingPoster ? 'Generating…' : 'Generate Poster'}</span>
-                              </button>
+                              {(() => {
+                                const isAnyGenerating =
+                                  !!studio.isGeneratingPoster ||
+                                  !!studio.isGeneratingCaptions ||
+                                  !!studio.isGeneratingVideoScript ||
+                                  !!studio.isGeneratingKB ||
+                                  !!studio.isGeneratingAll;
+                                return (
+                                  <>
+                                    <button
+                                      onClick={() => handleGenerateTrack(draft.id, 'poster')}
+                                      disabled={isAnyGenerating}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                                      <span>{studio.isGeneratingPoster ? 'Generating…' : 'Generate Poster'}</span>
+                                    </button>
 
-                              <button
-                                onClick={() => handleGenerateTrack(draft.id, 'captions')}
-                                disabled={studio.isGeneratingCaptions}
-                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                              >
-                                <FileText className="w-3.5 h-3.5 text-cyan-400" />
-                                <span>{studio.isGeneratingCaptions ? 'Generating…' : 'Generate Captions'}</span>
-                              </button>
+                                    <button
+                                      onClick={() => handleGenerateTrack(draft.id, 'captions')}
+                                      disabled={isAnyGenerating}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                                      <span>{studio.isGeneratingCaptions ? 'Generating…' : 'Generate Captions'}</span>
+                                    </button>
 
-                              <button
-                                onClick={() => handleGenerateTrack(draft.id, 'video_script')}
-                                disabled={studio.isGeneratingVideoScript}
-                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                              >
-                                <Video className="w-3.5 h-3.5 text-cyan-400" />
-                                <span>{studio.isGeneratingVideoScript ? 'Generating…' : 'Generate Video Script'}</span>
-                              </button>
+                                    <button
+                                      onClick={() => handleGenerateTrack(draft.id, 'video_script')}
+                                      disabled={isAnyGenerating}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <Video className="w-3.5 h-3.5 text-cyan-400" />
+                                      <span>{studio.isGeneratingVideoScript ? 'Generating…' : 'Generate Video Script'}</span>
+                                    </button>
 
-                              <button
-                                onClick={() => handleGenerateTrack(draft.id, 'kb')}
-                                disabled={studio.isGeneratingKB}
-                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                              >
-                                <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-                                <span>{studio.isGeneratingKB ? 'Generating…' : 'Generate KB Draft'}</span>
-                              </button>
+                                    <button
+                                      onClick={() => handleGenerateTrack(draft.id, 'kb')}
+                                      disabled={isAnyGenerating}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                                      <span>{studio.isGeneratingKB ? 'Generating…' : 'Generate KB Draft'}</span>
+                                    </button>
 
-                              <button
-                                onClick={() => handleGenerateTrack(draft.id, 'all')}
-                                disabled={studio.isGeneratingAll}
-                                className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                              >
-                                <Sparkles className="w-3.5 h-3.5" />
-                                <span>{studio.isGeneratingAll ? 'Generating All…' : 'Generate All'}</span>
-                              </button>
+                                    <button
+                                      onClick={() => handleGenerateTrack(draft.id, 'all')}
+                                      disabled={isAnyGenerating}
+                                      className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <Sparkles className="w-3.5 h-3.5" />
+                                      <span>{studio.isGeneratingAll ? 'Generating All…' : 'Generate All'}</span>
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
 
                             {/* Track Error Display */}

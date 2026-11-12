@@ -728,21 +728,21 @@ async function postStudioTrack<T>(endpoint: string, draftId: string): Promise<T>
 }
 
 export async function generateCaptions(draftId: string): Promise<CaptionsResult> {
-  return postStudioTrack<CaptionsResult>('/api/generate-captions', draftId);
+  return postStudioTrack<CaptionsResult>('/api/content-studio?track=captions', draftId);
 }
 
 export async function generateVideoScript(draftId: string): Promise<VideoScriptResult> {
-  return postStudioTrack<VideoScriptResult>('/api/generate-video-script', draftId);
+  return postStudioTrack<VideoScriptResult>('/api/content-studio?track=video-script', draftId);
 }
 
 export async function generateKB(draftId: string): Promise<KBResult> {
-  return postStudioTrack<KBResult>('/api/generate-kb', draftId);
+  return postStudioTrack<KBResult>('/api/content-studio?track=kb', draftId);
 }
 
 export async function generatePoster(draftId: string): Promise<PosterResult> {
-  return postStudioTrack<PosterResult>('/api/generate-poster', draftId);
+  return postStudioTrack<PosterResult>('/api/content-studio?track=poster', draftId);
 }
 
 export async function generateAll(draftId: string): Promise<GenerateAllResult> {
-  return postStudioTrack<GenerateAllResult>('/api/generate-all', draftId);
+  return postStudioTrack<GenerateAllResult>('/api/content-studio?track=all', draftId);
 }

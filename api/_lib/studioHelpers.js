@@ -24,7 +24,7 @@ export function checkForbiddenClaims(text) {
   const str = typeof text === 'string' ? text : JSON.stringify(text);
   for (const pattern of FORBIDDEN_CLAIMS_PATTERNS) {
     if (pattern.test(str)) {
-      return pattern.toString();
+      throw new Error(`Content contains forbidden claim: ${pattern.toString()}`);
     }
   }
   return null;

@@ -4,10 +4,7 @@
     "api/generate-content.js": {
       "maxDuration": 60
     },
-    "api/generate-poster.js": {
-      "maxDuration": 30
-    },
-    "api/generate-all.js": {
+    "api/content-studio.js": {
       "maxDuration": 60
     }
   },

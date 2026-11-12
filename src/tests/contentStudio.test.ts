@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import contentStudioHandler, {
+import contentStudioHandler from '../../api/content-studio.js';
+import {
   processGenerateCaptions,
   processGenerateVideoScript,
   processGenerateKB,
   processGeneratePoster,
   processGenerateAll,
-} from '../../api/content-studio.js';
+} from '../../api/_lib/studioProcessors.js';
 import {
   generateCaptions,
   generateVideoScript,

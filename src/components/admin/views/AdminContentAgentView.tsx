@@ -29,7 +29,14 @@ import {
   SlidersHorizontal,
   CheckSquare,
   Square,
-  Copy
+  Copy,
+  Download,
+  Image as ImageIcon,
+  Video,
+  BookOpen,
+  Layers,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import {
   PILLARS,
@@ -48,7 +55,19 @@ import {
   deleteQueueItem,
   formatLinkedInPost,
   validateLinkedInUrl,
-  markQueueItemAsPosted
+  markQueueItemAsPosted,
+  fetchGeneratedAssets,
+  generateCaptions,
+  generateVideoScript,
+  generateKB,
+  generatePoster,
+  generateAll,
+  CaptionsResult,
+  VideoScriptResult,
+  KBResult,
+  PosterResult,
+  GenerateAllResult,
+  GeneratedAssetRow
 } from '../../../lib/contentAgent';
 
 interface AdminContentAgentViewProps {
@@ -57,6 +76,21 @@ interface AdminContentAgentViewProps {
 
 type TabType = 'ideas' | 'drafts' | 'queue' | 'analytics';
 type TopicMode = 'manual' | 'suggest';
+
+interface StudioState {
+  isGeneratingPoster?: boolean;
+  isGeneratingCaptions?: boolean;
+  isGeneratingVideoScript?: boolean;
+  isGeneratingKB?: boolean;
+  isGeneratingAll?: boolean;
+  posterData?: PosterResult;
+  captionsData?: CaptionsResult;
+  videoScriptData?: VideoScriptResult;
+  kbData?: KBResult;
+  generateAllData?: GenerateAllResult;
+  error?: string;
+  badges?: Record<string, boolean>;
+}
 
 export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
   currentUserEmail
@@ -82,6 +116,10 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
   const [drafts, setDrafts] = useState<ContentDraft[]>([]);
   const [queue, setQueue] = useState<ContentQueueItem[]>([]);
 
+  // Content Studio State per Draft ID
+  const [studioStates, setStudioStates] = useState<Record<string, StudioState>>({});
+  const [expandedStudio, setExpandedStudio] = useState<Record<string, boolean>>({});
+
   // UI States
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -98,628 +136,561 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
 
   // Phase 2b: Manual LinkedIn Posting State
   const [postingQueueItem, setPostingQueueItem] = useState<ContentQueueItem | null>(null);
-  const [linkedinPostUrlInput, setLinkedinPostUrlInput] = useState('');
-  const [isSubmittingPosted, setIsSubmittingPosted] = useState(false);
-  const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
+  const [postingUrl, setPostingUrl] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
 
-  // Initial Load
-  const loadData = async () => {
-    try {
-      const [dList, qList] = await Promise.all([
-        getContentDrafts(),
-        getContentQueue()
-      ]);
-      setDrafts(dList);
-      setQueue(qList);
-    } catch (err) {
-      console.warn('Notice loading content agent data:', err);
-    }
-  };
+  // Copy Feedback Toast
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadDraftsAndQueue();
   }, []);
 
-  const showToast = (msg: string, isError = false) => {
-    if (isError) {
-      setErrorMessage(msg);
-      setSuccessMessage(null);
-    } else {
-      setSuccessMessage(msg);
-      setErrorMessage(null);
-    }
-    setTimeout(() => {
-      setErrorMessage(null);
-      setSuccessMessage(null);
-    }, 4000);
-  };
+  const loadDraftsAndQueue = async () => {
+    try {
+      const loadedDrafts = await getContentDrafts();
+      setDrafts(loadedDrafts);
+      const loadedQueue = await getContentQueue();
+      setQueue(loadedQueue);
 
-  // --- Topic Picker Actions ---
-  const handleTogglePillar = (pillar: string) => {
-    const isSelected = selectedTopics.some((t) => t.toLowerCase() === pillar.toLowerCase());
-    if (isSelected) {
-      setSelectedTopics(selectedTopics.filter((t) => t.toLowerCase() !== pillar.toLowerCase()));
-    } else {
-      if (selectedTopics.length >= 3) {
-        showToast('Maximum 3 topics allowed per generation run.', true);
-        return;
+      // Fetch asset badges for drafts
+      for (const d of loadedDrafts) {
+        if (d.status === 'Approved' || d.status === 'Draft') {
+          const assets = await fetchGeneratedAssets(d.id);
+          if (assets.length > 0) {
+            const badges: Record<string, boolean> = {};
+            for (const a of assets) {
+              badges[a.asset_type] = true;
+            }
+            setStudioStates((prev) => ({
+              ...prev,
+              [d.id]: { ...(prev[d.id] || {}), badges }
+            }));
+          }
+        }
       }
-      setSelectedTopics([...selectedTopics, pillar]);
+    } catch (err) {
+      console.error('Failed to load content drafts/queue:', err);
     }
   };
 
-  const handleAddCustomTopic = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleCopyText = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleDownloadFile = (filename: string, content: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadBase64Image = (filename: string, base64Data: string) => {
+    const a = document.createElement('a');
+    a.href = `data:image/png;base64,${base64Data}`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Studio Track Handlers
+  const handleGenerateTrack = async (
+    draftId: string,
+    track: 'poster' | 'captions' | 'video_script' | 'kb' | 'all'
+  ) => {
+    setStudioStates((prev) => ({
+      ...prev,
+      [draftId]: {
+        ...(prev[draftId] || {}),
+        error: undefined,
+        ...(track === 'poster' ? { isGeneratingPoster: true } : {}),
+        ...(track === 'captions' ? { isGeneratingCaptions: true } : {}),
+        ...(track === 'video_script' ? { isGeneratingVideoScript: true } : {}),
+        ...(track === 'kb' ? { isGeneratingKB: true } : {}),
+        ...(track === 'all' ? { isGeneratingAll: true } : {})
+      }
+    }));
+
+    try {
+      if (track === 'poster') {
+        const res = await generatePoster(draftId);
+        setStudioStates((prev) => ({
+          ...prev,
+          [draftId]: {
+            ...(prev[draftId] || {}),
+            isGeneratingPoster: false,
+            posterData: res,
+            badges: { ...(prev[draftId]?.badges || {}), poster_linkedin: true, poster_instagram: true }
+          }
+        }));
+      } else if (track === 'captions') {
+        const res = await generateCaptions(draftId);
+        setStudioStates((prev) => ({
+          ...prev,
+          [draftId]: {
+            ...(prev[draftId] || {}),
+            isGeneratingCaptions: false,
+            captionsData: res,
+            badges: { ...(prev[draftId]?.badges || {}), captions: true }
+          }
+        }));
+      } else if (track === 'video_script') {
+        const res = await generateVideoScript(draftId);
+        setStudioStates((prev) => ({
+          ...prev,
+          [draftId]: {
+            ...(prev[draftId] || {}),
+            isGeneratingVideoScript: false,
+            videoScriptData: res,
+            badges: { ...(prev[draftId]?.badges || {}), video_script: true }
+          }
+        }));
+      } else if (track === 'kb') {
+        const res = await generateKB(draftId);
+        setStudioStates((prev) => ({
+          ...prev,
+          [draftId]: {
+            ...(prev[draftId] || {}),
+            isGeneratingKB: false,
+            kbData: res,
+            badges: { ...(prev[draftId]?.badges || {}), kb_draft: true }
+          }
+        }));
+      } else if (track === 'all') {
+        const res = await generateAll(draftId);
+        const newBadges = { ...(studioStates[draftId]?.badges || {}) };
+        if (res.results.poster?.ok) {
+          newBadges.poster_linkedin = true;
+          newBadges.poster_instagram = true;
+        }
+        if (res.results.captions?.ok) newBadges.captions = true;
+        if (res.results.video_script?.ok) newBadges.video_script = true;
+        if (res.results.kb?.ok) newBadges.kb_draft = true;
+
+        setStudioStates((prev) => ({
+          ...prev,
+          [draftId]: {
+            ...(prev[draftId] || {}),
+            isGeneratingAll: false,
+            generateAllData: res,
+            posterData: res.results.poster?.ok ? res.results.poster.data : prev[draftId]?.posterData,
+            captionsData: res.results.captions?.ok ? res.results.captions.data : prev[draftId]?.captionsData,
+            videoScriptData: res.results.video_script?.ok ? res.results.video_script.data : prev[draftId]?.videoScriptData,
+            kbData: res.results.kb?.ok ? res.results.kb.data : prev[draftId]?.kbData,
+            badges: newBadges
+          }
+        }));
+      }
+    } catch (err: any) {
+      setStudioStates((prev) => ({
+        ...prev,
+        [draftId]: {
+          ...(prev[draftId] || {}),
+          isGeneratingPoster: false,
+          isGeneratingCaptions: false,
+          isGeneratingVideoScript: false,
+          isGeneratingKB: false,
+          isGeneratingAll: false,
+          error: err.message || 'Generation failed'
+        }
+      }));
+    }
+  };
+
+  // Phase 2a Handlers
+  const handleTogglePillar = (pillar: string) => {
+    if (selectedTopics.includes(pillar)) {
+      setSelectedTopics(selectedTopics.filter((t) => t !== pillar));
+    } else {
+      if (selectedTopics.length < 3) {
+        setSelectedTopics([...selectedTopics, pillar]);
+      }
+    }
+  };
+
+  const handleAddCustomTopic = () => {
     const trimmed = customTopicInput.trim();
     if (!trimmed) return;
     if (trimmed.length > 120) {
-      showToast('Custom topic must be 120 characters or fewer.', true);
+      setErrorMessage('Custom topic must be 120 characters or less.');
+      return;
+    }
+    const exists = selectedTopics.some((t) => t.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      setCustomTopicInput('');
       return;
     }
     if (selectedTopics.length >= 3) {
-      showToast('Maximum 3 topics allowed. Remove one before adding another.', true);
-      return;
-    }
-    const alreadySelected = selectedTopics.some((t) => t.toLowerCase() === trimmed.toLowerCase());
-    if (alreadySelected) {
-      showToast('Topic is already selected.', true);
+      setErrorMessage('You can select a maximum of 3 topics.');
       return;
     }
     setSelectedTopics([...selectedTopics, trimmed]);
     setCustomTopicInput('');
+    setErrorMessage(null);
   };
 
-  const handleRemoveTopic = (topicToRemove: string) => {
-    setSelectedTopics(selectedTopics.filter((t) => t.toLowerCase() !== topicToRemove.toLowerCase()));
+  const handleRemoveTopic = (topic: string) => {
+    setSelectedTopics(selectedTopics.filter((t) => t !== topic));
   };
 
-  const handleFetchSuggestedTopics = async () => {
+  const handleFetchSuggestions = async () => {
     setIsSuggesting(true);
     setErrorMessage(null);
     try {
       const res = await fetchSuggestedTopics();
       setSuggestResult(res);
-      showToast('Suggested 3 topics based on recent coverage.');
     } catch (err: any) {
-      showToast(err.message || 'Failed to suggest topics.', true);
+      setErrorMessage(err.message || 'Failed to fetch topic suggestions.');
     } finally {
       setIsSuggesting(false);
     }
   };
 
-  const handleApplySuggestedTopics = () => {
-    if (!suggestResult || !suggestResult.suggestedTopics || suggestResult.suggestedTopics.length === 0) return;
-    setSelectedTopics(suggestResult.suggestedTopics.slice(0, 3));
-    setTopicMode('manual');
-    showToast('Applied suggested topics to picker.');
+  const handleApplySuggestions = () => {
+    if (suggestResult && suggestResult.suggestedTopics) {
+      setSelectedTopics(suggestResult.suggestedTopics);
+      setSuccessMessage('Applied suggested topics!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
   };
 
-  // --- Ideas Actions ---
   const handleGenerateIdeas = async () => {
     if (selectedTopics.length === 0 || selectedTopics.length > 3) {
-      showToast('Please select between 1 and 3 topics to generate ideas.', true);
+      setErrorMessage('Pick 1 to 3 topics to generate posts.');
       return;
     }
+
     setIsGenerating(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
+
     try {
-      const newIdeas = await generateContentIdeas(selectedTopics);
-      setIdeas(newIdeas);
-      showToast(`Generated ${newIdeas.length} new LinkedIn post ideas via Vertex AI.`);
-    } catch (err: any) {
-      if (err?.retryable || err?.message?.includes('timed out')) {
-        showToast('Taking longer than usual, retrying…');
-        setErrorMessage('Taking longer than usual, retrying…');
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        try {
-          const retriedIdeas = await generateContentIdeas(selectedTopics);
-          setIdeas(retriedIdeas);
-          setErrorMessage(null);
-          showToast(`Generated ${retriedIdeas.length} new LinkedIn post ideas via Vertex AI.`);
-        } catch (retryErr: any) {
-          setErrorMessage(retryErr.message || 'Failed to generate ideas. Please check configuration.');
-        }
+      const res = await generateContentIdeas(selectedTopics);
+      const generated = res.posts || res.ideas || [];
+      if (generated.length > 0) {
+        setIdeas(generated);
+        localStorage.setItem('zaboraa_content_ideas', JSON.stringify(generated));
+        setSuccessMessage(`Successfully generated ${generated.length} fresh content ideas!`);
       } else {
-        setErrorMessage(err.message || 'Failed to generate ideas. Please check configuration.');
+        setErrorMessage('No ideas returned from generation API.');
       }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to generate ideas.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSaveAsDraft = async (idea: ContentIdea, index: number) => {
+  const handleSaveAsDraft = async (idea: ContentIdea, idx: number) => {
     try {
-      const draft: ContentDraft = {
-        id: `draft-${Date.now()}-${index}`,
-        idea_id: idea.id,
-        title: idea.title,
-        hook: idea.hook,
-        body: idea.body,
-        hashtags: idea.hashtags,
-        cta: idea.cta,
-        topic: idea.topic,
-        status: 'Draft',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      await saveContentDraft(draft);
-      
-      // Update ideas state to mark as drafted
-      const updatedIdeas = [...ideas];
-      updatedIdeas[index] = { ...updatedIdeas[index], status: 'drafted' };
+      const draft = await saveContentDraft(idea);
+      const updatedIdeas = ideas.map((item, i) =>
+        i === idx ? { ...item, status: 'drafted' as const } : item
+      );
       setIdeas(updatedIdeas);
-      try {
-        localStorage.setItem('zaboraa_content_ideas', JSON.stringify(updatedIdeas));
-      } catch {}
-
-      await loadData();
-      showToast(`Saved "${idea.title}" as Draft.`);
+      localStorage.setItem('zaboraa_content_ideas', JSON.stringify(updatedIdeas));
+      setDrafts([draft, ...drafts]);
+      setSuccessMessage('Idea saved as draft!');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      showToast('Failed to save draft.', true);
+      setErrorMessage(err.message || 'Failed to save draft.');
     }
   };
 
-  const handleDiscardIdea = (index: number) => {
-    const updatedIdeas = ideas.filter((_, i) => i !== index);
-    setIdeas(updatedIdeas);
-    try {
-      localStorage.setItem('zaboraa_content_ideas', JSON.stringify(updatedIdeas));
-    } catch {}
-    showToast('Idea discarded.');
-  };
-
-  // --- Drafts Actions ---
-  const handleStartEditDraft = (draft: ContentDraft) => {
-    setEditingDraft(draft);
-    setEditTitle(draft.title);
-    setEditBody(draft.body);
-    setEditHashtags(Array.isArray(draft.hashtags) ? draft.hashtags.join(' ') : '');
-    setEditCta(draft.cta);
-    setEditTopic(draft.topic);
-  };
-
-  const handleSaveDraftEdit = async () => {
-    if (!editingDraft) return;
-
-    const hashtagsArr = editHashtags
-      .split(/[\s,]+/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
-      .map((t) => (t.startsWith('#') ? t : `#${t}`));
-
-    const updated: ContentDraft = {
-      ...editingDraft,
-      title: editTitle.trim(),
-      body: editBody.trim(),
-      hashtags: hashtagsArr,
-      cta: editCta.trim(),
-      topic: editTopic.trim() || 'AVS',
-      updated_at: new Date().toISOString()
-    };
-
-    await saveContentDraft(updated);
-    setEditingDraft(null);
-    await loadData();
-    showToast('Draft changes saved successfully.');
+  const handleDiscardIdea = (idx: number) => {
+    const updated = ideas.filter((_, i) => i !== idx);
+    setIdeas(updated);
+    localStorage.setItem('zaboraa_content_ideas', JSON.stringify(updated));
   };
 
   const handleApproveDraft = async (draft: ContentDraft) => {
     try {
-      const qItem = await approveDraftToQueue(draft);
-      await loadData();
-      showToast(`Approved & scheduled for ${qItem.scheduled_day} ${qItem.scheduled_time}.`);
+      await approveDraftToQueue(draft.id, currentUserEmail);
+      await loadDraftsAndQueue();
+      setSuccessMessage('Draft approved and added to queue!');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      showToast('Failed to approve draft.', true);
+      setErrorMessage(err.message || 'Failed to approve draft.');
     }
   };
 
   const handleRejectDraft = async (draft: ContentDraft) => {
     try {
       await saveContentDraft({ ...draft, status: 'Rejected' });
-      await loadData();
-      showToast(`Marked draft "${draft.title}" as Rejected.`);
+      await loadDraftsAndQueue();
     } catch (err: any) {
-      showToast('Failed to reject draft.', true);
+      setErrorMessage(err.message || 'Failed to reject draft.');
     }
   };
 
-  // --- Queue Actions ---
-  const handleCopyForLinkedIn = (item: ContentQueueItem) => {
-    const linkedDraft = drafts.find((d) => d.id === item.draft_id) || item.draft;
-    if (!linkedDraft) {
-      showToast('Could not find draft content for this queue item.', true);
-      return;
-    }
+  const handleStartEditDraft = (draft: ContentDraft) => {
+    setEditingDraft(draft);
+    setEditTitle(draft.title || '');
+    setEditBody(draft.edited_body || draft.body || '');
+    setEditHashtags((draft.hashtags || []).join(' '));
+    setEditCta(draft.cta || '');
+    setEditTopic(draft.topic || 'AVS Migrations');
+  };
 
-    const formatted = formatLinkedInPost(linkedDraft);
-    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(formatted.text);
-      setCopiedItemId(item.id);
-      setTimeout(() => setCopiedItemId(null), 2500);
+  const handleSaveEditDraft = async () => {
+    if (!editingDraft) return;
+    try {
+      const tagsArray = editHashtags
+        .split(' ')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
 
-      if (formatted.overLimit) {
-        showToast(
-          `Copied to clipboard (${formatted.length} chars). Warning: Post exceeds LinkedIn limit of 3,000 chars!`,
-          true
-        );
-      } else {
-        showToast(`Copied formatted post for LinkedIn (${formatted.length} characters).`);
-      }
-    } else {
-      showToast('Clipboard access not available in this environment.', true);
+      await saveContentDraft({
+        ...editingDraft,
+        title: editTitle,
+        body: editBody,
+        edited_body: editBody,
+        hashtags: tagsArray,
+        cta: editCta,
+        topic: editTopic as ContentPillar,
+      });
+
+      setEditingDraft(null);
+      await loadDraftsAndQueue();
+      setSuccessMessage('Draft updated!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to save draft edit.');
     }
   };
 
-  const handleOpenMarkAsPostedModal = (item: ContentQueueItem) => {
+  const handleOpenPostingModal = (item: ContentQueueItem) => {
     setPostingQueueItem(item);
-    setLinkedinPostUrlInput('');
+    setPostingUrl('');
+    setErrorMessage(null);
   };
 
-  const handleConfirmMarkAsPosted = async () => {
+  const handleConfirmMarkPosted = async () => {
     if (!postingQueueItem) return;
-    const trimmed = linkedinPostUrlInput.trim();
-    if (!validateLinkedInUrl(trimmed)) {
-      showToast('Please enter a valid LinkedIn post URL.', true);
-      return;
-    }
+    setIsPosting(true);
+    setErrorMessage(null);
 
-    setIsSubmittingPosted(true);
     try {
-      // 1. Supabase write first + audit_logs row + local cache (handled in markQueueItemAsPosted)
-      await markQueueItemAsPosted(postingQueueItem.id, trimmed, currentUserEmail);
-      // 2. Refresh local component data only after DB succeeds
-      await loadData();
+      await markQueueItemAsPosted(postingQueueItem.id, postingUrl, currentUserEmail);
       setPostingQueueItem(null);
-      setLinkedinPostUrlInput('');
-      showToast('Post successfully marked as posted on LinkedIn!');
+      setPostingUrl('');
+      await loadDraftsAndQueue();
+      setSuccessMessage('Post marked as posted to real LinkedIn page!');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      showToast(err?.message || 'Failed to mark post as posted in database.', true);
+      setErrorMessage(err.message || 'Failed to mark post as posted.');
     } finally {
-      setIsSubmittingPosted(false);
+      setIsPosting(false);
     }
   };
 
-  const handleUnapproveQueueItem = async (item: ContentQueueItem) => {
-    try {
-      await unapproveQueueItem(item.id, item.draft_id);
-      await loadData();
-      showToast('Post unapproved and moved back to Drafts.');
-    } catch (err) {
-      showToast('Failed to unapprove queue item.', true);
-    }
-  };
-
-  const handleDeleteQueueItem = async (item: ContentQueueItem) => {
-    try {
-      await deleteQueueItem(item.id);
-      await loadData();
-      showToast('Post removed from Queue.');
-    } catch (err) {
-      showToast('Failed to delete queue item.', true);
-    }
-  };
-
-  // Filtered Drafts
   const filteredDrafts = drafts.filter((d) => {
     if (draftFilter === 'all') return true;
     return d.status === draftFilter;
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-400">
-            <Bot className="w-3.5 h-3.5" />
-            <span>CONTENT & GROWTH AGENT — PHASE 1</span>
-          </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            LinkedIn Content Engine & Human Approval Pipeline
-          </h1>
-          <p className="text-xs text-slate-400 max-w-xl">
-            Autonomous Gemini AI drafting for enterprise VMware & hyperscaler cloud topics with strict human review, inline editing, and visual scheduling.
-          </p>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
-          <button
-            onClick={() => setActiveTab('ideas')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'ideas'
-                ? 'bg-cyan-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Ideas</span>
-            {ideas.length > 0 && (
-              <span className="ml-1 text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-800 text-cyan-300">
-                {ideas.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('drafts')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'drafts'
-                ? 'bg-cyan-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Drafts</span>
-            {drafts.length > 0 && (
-              <span className="ml-1 text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300">
-                {drafts.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('queue')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'queue'
-                ? 'bg-cyan-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Queue</span>
-            {queue.length > 0 && (
-              <span className="ml-1 text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30">
-                {queue.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'analytics'
-                ? 'bg-cyan-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>Analytics</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Toast Alerts */}
+    <div className="space-y-6">
+      {/* Messages */}
       {errorMessage && (
-        <div className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs flex items-center gap-2 shadow-sm animate-in fade-in">
-          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage(null)} className="hover:text-white cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
       {successMessage && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2 shadow-sm animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{successMessage}</span>
+        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+          <button onClick={() => setSuccessMessage(null)} className="hover:text-white cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 1: IDEAS                                                              */}
-      {/* ========================================================================= */}
+      {/* Tabs Bar */}
+      <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('ideas')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeTab === 'ideas'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>1. Topic & Ideas</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('drafts')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeTab === 'drafts'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>2. Drafts & Content Studio ({drafts.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('queue')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeTab === 'queue'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>3. Publication Queue ({queue.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* TAB 1: IDEAS */}
       {activeTab === 'ideas' && (
         <div className="space-y-6">
-          {/* Topic Picker Container */}
-          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-            {/* Top Bar: Title & Manual / Suggest Toggle */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="space-y-1">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
-                  <span>Topic Picker & Pillar Strategy</span>
-                </h2>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
+                  <span>Select Content Topics (Pick 1 to 3)</span>
+                </h3>
                 <p className="text-xs text-slate-400">
-                  Select 1 to 3 enterprise cloud topics. The AI engine grounds each post in verified enterprise architecture facts.
+                  Pick strategic VMware cloud pillars or type custom engineering topics.
                 </p>
               </div>
 
-              {/* Mode Toggle [Manual | Suggest] */}
               <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
                 <button
                   type="button"
                   onClick={() => setTopicMode('manual')}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                    topicMode === 'manual'
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                    topicMode === 'manual' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span>Manual</span>
+                  Manual Selection
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTopicMode('suggest')}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                    topicMode === 'suggest'
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                  onClick={() => {
+                    setTopicMode('suggest');
+                    handleFetchSuggestions();
+                  }}
+                  className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                    topicMode === 'suggest' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Lightbulb className="w-3.5 h-3.5" />
-                  <span>Suggest</span>
+                  Suggest Topics
                 </button>
               </div>
             </div>
 
-            {/* MANUAL MODE VIEW */}
-            {topicMode === 'manual' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-300">
-                    Standard Content Pillars:
-                  </span>
-                  <span className="text-[11px] font-mono text-cyan-400">
-                    {selectedTopics.length}/3 topics selected
-                  </span>
-                </div>
-
-                {/* 6 Pillar Checkbox Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {PILLARS.map((pillar) => {
-                    const isSelected = selectedTopics.some(
-                      (t) => t.toLowerCase() === pillar.toLowerCase()
-                    );
-                    const isDisabled = !isSelected && selectedTopics.length >= 3;
-                    return (
-                      <button
-                        key={pillar}
-                        type="button"
-                        onClick={() => handleTogglePillar(pillar)}
-                        disabled={isDisabled}
-                        className={`p-3 rounded-xl border text-left text-xs font-medium transition flex items-center gap-2.5 ${
-                          isSelected
-                            ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-200 shadow-sm'
-                            : isDisabled
-                            ? 'bg-slate-950/40 border-slate-800/50 text-slate-600 cursor-not-allowed opacity-50'
-                            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white cursor-pointer'
-                        }`}
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-cyan-400 shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-500 shrink-0" />
-                        )}
-                        <span className="truncate">{pillar}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Custom Topic Input */}
-                <form
-                  onSubmit={handleAddCustomTopic}
-                  className="flex items-center gap-2 pt-2"
-                >
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={customTopicInput}
-                      onChange={(e) => setCustomTopicInput(e.target.value)}
-                      placeholder="Or type custom topic (e.g. AWS vs AVS cost breakdown, max 120 chars)..."
-                      maxLength={120}
-                      disabled={selectedTopics.length >= 3}
-                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
+            {topicMode === 'suggest' && suggestResult && (
+              <div className="p-4 rounded-xl bg-slate-950 border border-cyan-500/30 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-mono font-bold text-cyan-300 flex items-center gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-400" />
+                    <span>AI Suggested Topics:</span>
                   </div>
                   <button
-                    type="submit"
-                    disabled={!customTopicInput.trim() || selectedTopics.length >= 3}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                    type="button"
+                    onClick={handleApplySuggestions}
+                    className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
+                    Use These Topics
                   </button>
-                </form>
-              </div>
-            )}
-
-            {/* SUGGEST MODE VIEW */}
-            {topicMode === 'suggest' && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Lightbulb className="w-4 h-4 text-amber-400" />
-                        <span>AI Pillar Coverage Analyzer</span>
-                      </h3>
-                      <p className="text-[11px] text-slate-400">
-                        Scans recent drafts and queue history to identify under-represented pillars from the core 6 strategy pillars.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleFetchSuggestedTopics}
-                      disabled={isSuggesting}
-                      className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSuggesting ? 'animate-spin' : ''}`} />
-                      <span>{isSuggesting ? 'Analyzing...' : 'Suggest Topics'}</span>
-                    </button>
-                  </div>
-
-                  {suggestResult && (
-                    <div className="pt-3 border-t border-slate-800/80 space-y-3 animate-in fade-in">
-                      <div className="text-[11px] text-slate-400">
-                        <span className="text-amber-400 font-semibold">Recommendation: </span>
-                        <span>{suggestResult.reason}</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {suggestResult.suggestedTopics.map((top, idx) => (
-                          <div
-                            key={idx}
-                            className="p-2.5 rounded-lg bg-slate-900 border border-amber-500/30 text-amber-200 text-xs font-medium flex items-center gap-2"
-                          >
-                            <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono flex items-center justify-center shrink-0">
-                              {idx + 1}
-                            </span>
-                            <span className="truncate">{top}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleApplySuggestedTopics}
-                        className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Use these topics</span>
-                      </button>
-                    </div>
-                  )}
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">{suggestResult.reason}</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {suggestResult.suggestedTopics.map((top, idx) => (
+                    <span key={idx} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                      {top}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Selected Topics Chips Bar & Generate Action */}
-            <div className="pt-4 border-t border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="space-y-1.5 flex-1">
-                <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider block">
-                  Active Selected Topics:
-                </span>
-                {selectedTopics.length === 0 ? (
-                  <p className="text-xs text-rose-400 font-medium">
-                    Pick 1 to 3 topics to enable idea generation.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {selectedTopics.map((topic) => (
-                      <span
-                        key={topic}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-500/30"
-                      >
-                        <span>{topic}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTopic(topic)}
-                          className="hover:text-rose-300 cursor-pointer"
-                          aria-label={`Remove ${topic}`}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </span>
-                    ))}
-                    <span className="text-[11px] text-slate-500 ml-1">
-                      ({selectedTopics.length === 1 && 'will produce 3 posts'}
-                      {selectedTopics.length === 2 && 'will produce 2 + 1 posts'}
-                      {selectedTopics.length === 3 && 'will produce 1 + 1 + 1 posts'})
-                    </span>
-                  </div>
-                )}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+              {PILLARS.map((pillar) => {
+                const isSelected = selectedTopics.includes(pillar);
+                const isDisabled = !isSelected && selectedTopics.length >= 3;
+                return (
+                  <button
+                    key={pillar}
+                    type="button"
+                    onClick={() => handleTogglePillar(pillar)}
+                    disabled={isDisabled}
+                    className={`p-3 rounded-xl border text-xs font-medium text-left transition flex items-center justify-between gap-2 cursor-pointer ${
+                      isSelected
+                        ? 'bg-cyan-950/80 text-cyan-200 border-cyan-500/50 shadow-sm'
+                        : isDisabled
+                        ? 'bg-slate-950/40 text-slate-600 border-slate-800/40 cursor-not-allowed'
+                        : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="truncate">{pillar}</span>
+                    {isSelected ? (
+                      <CheckSquare className="w-4 h-4 text-cyan-400 shrink-0" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-600 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+              <input
+                type="text"
+                value={customTopicInput}
+                onChange={(e) => setCustomTopicInput(e.target.value)}
+                placeholder="Or type a custom engineering topic (e.g. HCX Bulk Migration)..."
+                maxLength={120}
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomTopic}
+                disabled={!customTopicInput.trim() || selectedTopics.length >= 3}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 pt-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-slate-400 font-medium">Selected ({selectedTopics.length}/3):</span>
+                {selectedTopics.map((topic) => (
+                  <span key={topic} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                    <span>{topic}</span>
+                    <button type="button" onClick={() => handleRemoveTopic(topic)} className="hover:text-rose-300 cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
               </div>
 
               <button
@@ -727,9 +698,7 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                 onClick={handleGenerateIdeas}
                 disabled={isGenerating || selectedTopics.length === 0 || selectedTopics.length > 3}
                 className={`px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-md cursor-pointer shrink-0 ${
-                  isGenerating || selectedTopics.length === 0 || selectedTopics.length > 3
-                    ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500'
-                    : ''
+                  isGenerating || selectedTopics.length === 0 || selectedTopics.length > 3 ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500' : ''
                 }`}
               >
                 <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
@@ -738,107 +707,29 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
             </div>
           </div>
 
-          {/* Ideas List or Empty State */}
           {ideas.length === 0 ? (
             <div className="p-12 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 text-slate-400 mx-auto flex items-center justify-center">
-                <Inbox className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white">No ideas yet. Click Generate Ideas.</h3>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Click the button above to prompt Gemini AI for 3 fresh enterprise cloud architecture posts.
-                </p>
-              </div>
+              <Inbox className="w-12 h-12 text-slate-600 mx-auto" />
+              <h3 className="text-sm font-bold text-white">No ideas yet. Click Generate Ideas.</h3>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {ideas.map((idea, idx) => (
-                <div
-                  key={idea.id || idx}
-                  className="rounded-2xl bg-slate-900 border border-slate-800 p-5 flex flex-col justify-between space-y-4 shadow-sm hover:border-slate-700 transition"
-                >
+                <div key={idea.id || idx} className="rounded-2xl bg-slate-900 border border-slate-800 p-5 flex flex-col justify-between space-y-4 shadow-sm hover:border-slate-700 transition">
                   <div className="space-y-3">
-                    {/* Topic Badge & Status */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                        {idea.topic}
-                      </span>
-                      {idea.status === 'drafted' && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Saved as Draft
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="text-sm font-bold text-white leading-snug">
-                      {idea.title}
-                    </h3>
-
-                    {/* Hook */}
-                    {idea.hook && (
-                      <div className="p-3 rounded-xl bg-slate-950 border border-cyan-500/20 text-xs text-cyan-200 font-medium leading-relaxed">
-                        <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider block mb-1">
-                          Hook Preview:
-                        </span>
-                        {idea.hook}
-                      </div>
-                    )}
-
-                    {/* Body Preview */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                        Body Content:
-                      </span>
-                      <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line line-clamp-6">
-                        {idea.body}
-                      </p>
-                    </div>
-
-                    {/* Hashtags */}
-                    {idea.hashtags && idea.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {idea.hashtags.map((tag, tIdx) => (
-                          <span
-                            key={tIdx}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-mono text-slate-400 bg-slate-800/80 border border-slate-700/60"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Call To Action */}
-                    {idea.cta && (
-                      <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300 flex items-start gap-2">
-                        <ArrowRight className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="text-[10px] font-mono text-emerald-400 font-bold block">CTA:</span>
-                          <span>{idea.cta}</span>
-                        </div>
-                      </div>
-                    )}
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                      {idea.topic}
+                    </span>
+                    <h3 className="text-sm font-bold text-white leading-snug">{idea.title}</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line line-clamp-6">{idea.body}</p>
                   </div>
 
-                  {/* Card Action Buttons */}
                   <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <button
-                      onClick={() => handleDiscardIdea(idx)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-300 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                    >
+                    <button onClick={() => handleDiscardIdea(idx)} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-300 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5">
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Discard</span>
                     </button>
-
-                    <button
-                      onClick={() => handleSaveAsDraft(idea, idx)}
-                      disabled={idea.status === 'drafted'}
-                      className={`px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
-                        idea.status === 'drafted' ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400' : ''
-                      }`}
-                    >
+                    <button onClick={() => handleSaveAsDraft(idea, idx)} disabled={idea.status === 'drafted'} className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm">
                       <Save className="w-3.5 h-3.5" />
                       <span>{idea.status === 'drafted' ? 'Draft Saved' : 'Save as Draft'}</span>
                     </button>
@@ -850,12 +741,9 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 2: DRAFTS                                                             */}
-      {/* ========================================================================= */}
+      {/* TAB 2: DRAFTS & CONTENT STUDIO */}
       {activeTab === 'drafts' && (
         <div className="space-y-4">
-          {/* Filter Bar */}
           <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400" />
@@ -866,9 +754,7 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                     key={st}
                     onClick={() => setDraftFilter(st)}
                     className={`px-2.5 py-1 rounded-lg font-mono text-[11px] transition cursor-pointer ${
-                      draftFilter === st
-                        ? 'bg-cyan-600 text-white font-bold'
-                        : 'text-slate-400 hover:text-white'
+                      draftFilter === st ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     {st === 'all' ? `All (${drafts.length})` : `${st} (${drafts.filter((d) => d.status === st).length})`}
@@ -876,141 +762,263 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                 ))}
               </div>
             </div>
-
-            <div className="text-[11px] font-mono text-slate-400">
-              Total Drafts: <span className="text-white font-bold">{drafts.length}</span>
-            </div>
           </div>
 
-          {/* Drafts List */}
           {filteredDrafts.length === 0 ? (
             <div className="p-12 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
               <FileText className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400 font-medium">
-                No drafts found in this category. Generate ideas in the Ideas tab and save them as drafts.
-              </p>
+              <p className="text-xs text-slate-400 font-medium">No drafts found.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredDrafts.map((draft) => (
-                <div
-                  key={draft.id}
-                  className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm hover:border-slate-700 transition"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                          {draft.topic}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                            draft.status === 'Approved'
-                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                              : draft.status === 'Rejected'
-                              ? 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                              : 'bg-amber-950 text-amber-300 border border-amber-500/30'
-                          }`}
-                        >
-                          {draft.status}
-                        </span>
-                        {draft.created_at && (
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {new Date(draft.created_at).toLocaleDateString()}
+            <div className="space-y-4">
+              {filteredDrafts.map((draft) => {
+                const isApprovedOrDraft = draft.status === 'Approved' || draft.status === 'Draft';
+                const studio = studioStates[draft.id] || {};
+                const isExpanded = !!expandedStudio[draft.id];
+
+                return (
+                  <div key={draft.id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                            {draft.topic}
                           </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                            draft.status === 'Approved' ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30' : draft.status === 'Rejected' ? 'bg-rose-950 text-rose-300 border border-rose-500/30' : 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                          }`}>
+                            {draft.status}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-bold text-white">{draft.title}</h3>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => handleStartEditDraft(draft)} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold transition flex items-center gap-1.5">
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                        <button onClick={() => handleApproveDraft(draft)} disabled={draft.status === 'Approved'} className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm disabled:opacity-50">
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                          <span>Approve</span>
+                        </button>
+                        <button onClick={() => handleRejectDraft(draft)} disabled={draft.status === 'Rejected'} className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-300 border border-slate-700 text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50">
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                      {draft.edited_body || draft.body}
+                    </p>
+
+                    {/* CONTENT STUDIO SECTION (Approved or Draft) */}
+                    {isApprovedOrDraft && (
+                      <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedStudio((prev) => ({ ...prev, [draft.id]: !prev[draft.id] }))}
+                            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Layers className="w-4 h-4 text-cyan-400" />
+                            <span>Content Studio (5 Tracks)</span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                            {studio.badges?.poster_linkedin && <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">✓ Poster</span>}
+                            {studio.badges?.captions && <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">✓ Captions</span>}
+                            {studio.badges?.video_script && <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">✓ Script</span>}
+                            {studio.badges?.kb_draft && <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">✓ KB</span>}
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                            {/* Buttons Bar */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={() => handleGenerateTrack(draft.id, 'poster')}
+                                disabled={studio.isGeneratingPoster}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>{studio.isGeneratingPoster ? 'Generating…' : 'Generate Poster'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleGenerateTrack(draft.id, 'captions')}
+                                disabled={studio.isGeneratingCaptions}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>{studio.isGeneratingCaptions ? 'Generating…' : 'Generate Captions'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleGenerateTrack(draft.id, 'video_script')}
+                                disabled={studio.isGeneratingVideoScript}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <Video className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>{studio.isGeneratingVideoScript ? 'Generating…' : 'Generate Video Script'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleGenerateTrack(draft.id, 'kb')}
+                                disabled={studio.isGeneratingKB}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>{studio.isGeneratingKB ? 'Generating…' : 'Generate KB Draft'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleGenerateTrack(draft.id, 'all')}
+                                disabled={studio.isGeneratingAll}
+                                className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>{studio.isGeneratingAll ? 'Generating All…' : 'Generate All'}</span>
+                              </button>
+                            </div>
+
+                            {/* Track Error Display */}
+                            {studio.error && (
+                              <div className="p-3 rounded-lg bg-rose-950/80 border border-rose-500/40 text-xs text-rose-200">
+                                {studio.error}
+                              </div>
+                            )}
+
+                            {/* Poster Output */}
+                            {studio.posterData && (
+                              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                                <span className="text-xs font-bold text-cyan-300 block">Generated Posters</span>
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="space-y-1.5">
+                                    <img src={`data:image/png;base64,${studio.posterData.linkedin}`} alt="LinkedIn Poster" className="max-h-36 rounded-lg border border-slate-700" />
+                                    <button onClick={() => handleDownloadBase64Image(`${draft.title.slice(0, 30)}-linkedin.png`, studio.posterData!.linkedin)} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 flex items-center gap-1 cursor-pointer">
+                                      <Download className="w-3 h-3" /> Download LinkedIn (1200×627)
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <img src={`data:image/png;base64,${studio.posterData.instagram}`} alt="Instagram Poster" className="max-h-36 rounded-lg border border-slate-700" />
+                                    <button onClick={() => handleDownloadBase64Image(`${draft.title.slice(0, 30)}-instagram.png`, studio.posterData!.instagram)} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 flex items-center gap-1 cursor-pointer">
+                                      <Download className="w-3 h-3" /> Download Instagram (1080×1080)
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Captions Output */}
+                            {studio.captionsData && (
+                              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+                                <span className="font-bold text-cyan-300 block">Generated Social Captions</span>
+                                <div className="space-y-2">
+                                  <div>
+                                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono mb-1">
+                                      <span>Instagram Caption (Link in Bio):</span>
+                                      <button onClick={() => handleCopyText(studio.captionsData!.instagram_caption, `ig-${draft.id}`)} className="hover:text-cyan-300 cursor-pointer">
+                                        {copiedKey === `ig-${draft.id}` ? 'Copied!' : 'Copy'}
+                                      </button>
+                                    </div>
+                                    <textarea readOnly value={studio.captionsData.instagram_caption} className="w-full bg-slate-950 p-2 rounded-lg border border-slate-800 text-slate-300 text-xs h-16" />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono mb-1">
+                                      <span>YouTube Title:</span>
+                                      <button onClick={() => handleCopyText(studio.captionsData!.youtube_title, `yt-t-${draft.id}`)} className="hover:text-cyan-300 cursor-pointer">
+                                        {copiedKey === `yt-t-${draft.id}` ? 'Copied!' : 'Copy'}
+                                      </button>
+                                    </div>
+                                    <input readOnly value={studio.captionsData.youtube_title} className="w-full bg-slate-950 p-2 rounded-lg border border-slate-800 text-slate-300 text-xs" />
+                                  </div>
+
+                                  <div>
+                                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono mb-1">
+                                      <span>YouTube Description:</span>
+                                      <button onClick={() => handleCopyText(studio.captionsData!.youtube_description, `yt-d-${draft.id}`)} className="hover:text-cyan-300 cursor-pointer">
+                                        {copiedKey === `yt-d-${draft.id}` ? 'Copied!' : 'Copy'}
+                                      </button>
+                                    </div>
+                                    <textarea readOnly value={studio.captionsData.youtube_description} className="w-full bg-slate-950 p-2 rounded-lg border border-slate-800 text-slate-300 text-xs h-20" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Video Script Output */}
+                            {studio.videoScriptData && (
+                              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-cyan-300">Generated Video Script ({studio.videoScriptData.duration_estimate}s)</span>
+                                  <button onClick={() => handleCopyText(JSON.stringify(studio.videoScriptData, null, 2), `vs-${draft.id}`)} className="text-cyan-400 hover:text-cyan-300 cursor-pointer text-xs flex items-center gap-1">
+                                    <Copy className="w-3 h-3" /> {copiedKey === `vs-${draft.id}` ? 'Copied!' : 'Copy Full Script'}
+                                  </button>
+                                </div>
+                                <div className="space-y-1.5 bg-slate-950 p-3 rounded-lg border border-slate-800 text-slate-300 font-mono text-[11px]">
+                                  <div>{studio.videoScriptData.script.hook}</div>
+                                  <div>{studio.videoScriptData.script.problem}</div>
+                                  <div>{studio.videoScriptData.script.point1}</div>
+                                  <div>{studio.videoScriptData.script.point2}</div>
+                                  <div>{studio.videoScriptData.script.point3}</div>
+                                  <div className="text-emerald-400 font-bold">{studio.videoScriptData.script.cta}</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* KB Draft Output */}
+                            {studio.kbData && (
+                              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-cyan-300">Generated KB Runbook Draft</span>
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => handleCopyText(studio.kbData!.full_markdown, `kb-${draft.id}`)} className="text-cyan-400 hover:text-cyan-300 cursor-pointer text-xs">
+                                      {copiedKey === `kb-${draft.id}` ? 'Copied!' : 'Copy Body'}
+                                    </button>
+                                    <button onClick={() => handleDownloadFile(`${studio.kbData!.slug}.md`, studio.kbData!.full_markdown, 'text/markdown')} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                      <Download className="w-3 h-3" /> Download KB (.md)
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-slate-300 space-y-1 text-xs">
+                                  <p><span className="font-bold text-slate-400">Slug:</span> {studio.kbData.slug}</p>
+                                  <p><span className="font-bold text-slate-400">Meta Title:</span> {studio.kbData.meta_title}</p>
+                                  <p><span className="font-bold text-slate-400">Meta Description:</span> {studio.kbData.meta_description}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <h3 className="text-sm font-bold text-white">{draft.title}</h3>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleStartEditDraft(draft)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleApproveDraft(draft)}
-                        disabled={draft.status === 'Approved'}
-                        className={`px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
-                          draft.status === 'Approved' ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400' : ''
-                        }`}
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                        <span>Approve</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleRejectDraft(draft)}
-                        disabled={draft.status === 'Rejected'}
-                        className={`px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                          draft.status === 'Rejected' ? 'opacity-50 cursor-not-allowed text-slate-500' : ''
-                        }`}
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                        <span>Reject</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Body & Meta Preview */}
-                  <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
-                    {draft.body}
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
-                    {draft.hashtags && draft.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {draft.hashtags.map((tag, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-slate-800"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {draft.cta && (
-                      <div className="text-[11px] text-emerald-400 font-mono">
-                        <span className="text-slate-400 font-normal">CTA:</span> {draft.cta}
-                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 3: QUEUE                                                              */}
-      {/* ========================================================================= */}
+      {/* TAB 3: QUEUE */}
       {activeTab === 'queue' && (
         <div className="space-y-4">
-          {/* Queue Notice Header */}
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
             <div className="flex items-center gap-2 text-xs font-mono font-bold text-emerald-400">
               <Clock className="w-4 h-4" />
               <span>SCHEDULED PUBLICATION SLOTS (MON / WED / FRI 09:30 AM IST)</span>
             </div>
-            <p className="text-xs text-slate-400">
-              Approved posts scheduled for LinkedIn publication. Copy formatted copy to post manually, or mark as posted after publication.
-            </p>
           </div>
 
-          {/* Queue List */}
           {queue.length === 0 ? (
             <div className="p-12 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
               <Calendar className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400 font-medium">
-                No posts currently in the queue. Approve posts from the Drafts tab to assign scheduled slots.
-              </p>
+              <p className="text-xs text-slate-400 font-medium">No posts currently in queue.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1021,173 +1029,46 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
                 const formatted = linkedDraft ? formatLinkedInPost(linkedDraft) : null;
 
                 return (
-                  <div
-                    key={item.id || idx}
-                    className={`p-5 rounded-2xl bg-slate-900 border transition shadow-sm ${
-                      isPosted ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-800'
-                    }`}
-                  >
+                  <div key={item.id || idx} className={`p-5 rounded-2xl bg-slate-900 border transition shadow-sm ${
+                    isPosted ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-800'
+                  }`}>
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          {/* Time Slot Badge */}
                           <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                             <span>{item.scheduled_day} {item.scheduled_time}</span>
                           </span>
-
                           <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-slate-800 text-cyan-300 border border-slate-700">
                             {linkedDraft?.topic || 'Cloud Architecture'}
                           </span>
-
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                              isPosted
-                                ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-500/50'
-                                : 'bg-emerald-950/80 text-emerald-400'
-                            }`}
-                          >
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                            isPosted ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-500/50' : 'bg-emerald-950/80 text-emerald-400'
+                          }`}>
                             {item.status}
                           </span>
-
-                          {isPosted && item.posted_at && (
-                            <span className="text-[10px] font-mono text-emerald-400/80">
-                              Posted: {new Date(item.posted_at).toLocaleDateString()} {new Date(item.posted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-
-                          {isQueued && formatted && (
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                                formatted.overLimit
-                                  ? 'bg-rose-950 text-rose-300 border border-rose-500/40'
-                                  : 'bg-slate-800 text-slate-400'
-                              }`}
-                              title={formatted.overLimit ? 'Exceeds LinkedIn 3,000 character limit' : 'Formatted character count'}
-                            >
-                              {formatted.length} / 3000 chars{formatted.overLimit ? ' ⚠️ (Over limit)' : ''}
-                            </span>
-                          )}
                         </div>
-
-                        <h3 className="text-sm font-bold text-white truncate">
-                          {linkedDraft?.title || 'Approved Architecture Post'}
-                        </h3>
-
-                        {linkedDraft && (
-                          <p className="text-xs text-slate-300 line-clamp-2">
-                            {linkedDraft.edited_body || linkedDraft.body}
-                          </p>
-                        )}
-
-                        {isPosted && item.linkedin_url && (
-                          <div className="pt-1">
-                            <a
-                              href={item.linkedin_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 underline font-mono"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>View on LinkedIn</span>
-                            </a>
-                          </div>
-                        )}
-
-                        {linkedDraft?.hashtags && linkedDraft.hashtags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {linkedDraft.hashtags.map((tag, tIdx) => (
-                              <span
-                                key={tIdx}
-                                className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-slate-950"
-                              >
-                                {tag.startsWith('#') ? tag : `#${tag}`}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <h3 className="text-sm font-bold text-white truncate">{linkedDraft?.title || 'Approved Post'}</h3>
                       </div>
 
-                      {/* Queue Actions */}
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {isQueued && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isQueued && formatted && (
                           <>
-                            {/* Copy for LinkedIn */}
-                            <button
-                              onClick={() => handleCopyForLinkedIn(item)}
-                              className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                              title="Copy formatted post with hook, body, CTA, and hashtags"
-                            >
-                              {copiedItemId === item.id ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 text-emerald-200" />
-                                  <span>Copied!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3.5 h-3.5" />
-                                  <span>Copy for LinkedIn</span>
-                                </>
-                              )}
+                            <button onClick={() => handleCopyText(formatted.text, `queue-${item.id}`)} className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>{copiedKey === `queue-${item.id}` ? 'Copied!' : 'Copy for LinkedIn'}</span>
                             </button>
 
-                            {/* Live character count display */}
-                            {formatted && (
-                              <span className="text-xs text-slate-500 font-mono">
-                                {formatted.length.toLocaleString()} chars
-                              </span>
-                            )}
-
-                            {/* Open Zaboraa LinkedIn Page */}
-                            <a
-                              href="https://www.linkedin.com/company/zaboraa/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-                              <span>Open Zaboraa Page</span>
+                            <a href="https://www.linkedin.com/company/zaboraa/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold transition flex items-center gap-1.5">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Open LinkedIn</span>
                             </a>
 
-                            {/* Mark as Posted */}
-                            <button
-                              onClick={() => handleOpenMarkAsPostedModal(item)}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                            >
+                            <button onClick={() => handleOpenPostingModal(item)} className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>Mark as Posted</span>
                             </button>
-
-                            {/* Unapprove */}
-                            <button
-                              onClick={() => handleUnapproveQueueItem(item)}
-                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>Unapprove</span>
-                            </button>
-
-                            {/* Delete */}
-                            <button
-                              onClick={() => handleDeleteQueueItem(item)}
-                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-200 border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete</span>
-                            </button>
                           </>
-                        )}
-
-                        {isPosted && item.linkedin_url && (
-                          <a
-                            href={item.linkedin_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>View on LinkedIn</span>
-                          </a>
                         )}
                       </div>
                     </div>
@@ -1199,215 +1080,40 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 4: ANALYTICS                                                          */}
-      {/* ========================================================================= */}
-      {activeTab === 'analytics' && (
-        <div className="p-12 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 text-cyan-400 mx-auto flex items-center justify-center">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-white">
-              Analytics coming in Phase 3 — Sunday review will show impressions, likes, comments, CTR.
-            </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Real LinkedIn API performance metrics and audience telemetry will automatically populate here after Phase 3 deployment.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* INLINE / MODAL DRAFT EDITOR                                               */}
-      {/* ========================================================================= */}
-      {editingDraft && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-bold text-white">Edit LinkedIn Post Draft</h2>
-              </div>
-              <button
-                onClick={() => setEditingDraft(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              {/* Topic */}
-              <div className="space-y-1.5">
-                <label className="font-mono text-slate-400 uppercase tracking-wider block">
-                  Cloud Topic:
-                </label>
-                <input
-                  type="text"
-                  value={editTopic}
-                  onChange={(e) => setEditTopic(e.target.value)}
-                  placeholder="AVS | hyperscaler migration | cloud sizing"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-cyan-500 font-mono text-xs"
-                />
-              </div>
-
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="font-mono text-slate-400 uppercase tracking-wider block">
-                  Post Title:
-                </label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-cyan-500 font-semibold text-xs"
-                />
-              </div>
-
-              {/* Body */}
-              <div className="space-y-1.5">
-                <label className="font-mono text-slate-400 uppercase tracking-wider block">
-                  Body Content:
-                </label>
-                <textarea
-                  rows={8}
-                  value={editBody}
-                  onChange={(e) => setEditBody(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-cyan-500 text-xs leading-relaxed"
-                />
-              </div>
-
-              {/* Hashtags */}
-              <div className="space-y-1.5">
-                <label className="font-mono text-slate-400 uppercase tracking-wider block">
-                  Hashtags (Space separated):
-                </label>
-                <input
-                  type="text"
-                  value={editHashtags}
-                  onChange={(e) => setEditHashtags(e.target.value)}
-                  placeholder="#VMware #AzureAVS #CloudMigration"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-cyan-500 font-mono text-xs"
-                />
-              </div>
-
-              {/* CTA */}
-              <div className="space-y-1.5">
-                <label className="font-mono text-slate-400 uppercase tracking-wider block">
-                  Call to Action (CTA):
-                </label>
-                <input
-                  type="text"
-                  value={editCta}
-                  onChange={(e) => setEditCta(e.target.value)}
-                  placeholder="👉 Test migration readiness at zaboraa.com/tools/rvtools-analyzer"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-cyan-500 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setEditingDraft(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveDraftEdit}
-                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Changes</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL: MARK AS POSTED (Phase 2b)                                          */}
-      {/* ========================================================================= */}
+      {/* MODAL: MARK AS POSTED */}
       {postingQueueItem && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <h2 className="text-sm font-bold text-white">Mark Post as Published</h2>
-              </div>
-              <button
-                onClick={() => {
-                  setPostingQueueItem(null);
-                  setLinkedinPostUrlInput('');
-                }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
+                <span>Mark Post as Published</span>
+              </h3>
+              <button onClick={() => setPostingQueueItem(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
-              <p className="text-slate-300 leading-relaxed">
-                Paste the live URL of the post published on the Zaboraa LinkedIn Company page to complete the publication record.
-              </p>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Paste the live LinkedIn URL after manually publishing to verify publication.
+            </p>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono text-slate-400 uppercase font-semibold block">
-                  LinkedIn Post URL
-                </label>
-                <input
-                  type="url"
-                  value={linkedinPostUrlInput}
-                  onChange={(e) => setLinkedinPostUrlInput(e.target.value)}
-                  placeholder="https://www.linkedin.com/feed/update/urn:li:activity:7123456789... or /posts/..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-cyan-500 text-white text-xs outline-none transition"
-                  autoFocus
-                />
-                {linkedinPostUrlInput.trim().length > 0 && !validateLinkedInUrl(linkedinPostUrlInput.trim()) && (
-                  <p className="text-[11px] text-rose-400 font-medium">
-                    Please enter a valid LinkedIn URL (e.g. https://www.linkedin.com/feed/update/urn:li:activity:... or https://www.linkedin.com/posts/...)
-                  </p>
-                )}
-                {validateLinkedInUrl(linkedinPostUrlInput.trim()) && (
-                  <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-                    <Check className="w-3 h-3" /> Valid LinkedIn post URL format
-                  </p>
-                )}
-              </div>
+            <input
+              type="url"
+              value={postingUrl}
+              onChange={(e) => setPostingUrl(e.target.value)}
+              placeholder="https://www.linkedin.com/feed/update/urn:li:activity:..."
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+            />
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  onClick={() => {
-                    setPostingQueueItem(null);
-                    setLinkedinPostUrlInput('');
-                  }}
-                  disabled={isSubmittingPosted}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleConfirmMarkAsPosted}
-                  disabled={!validateLinkedInUrl(linkedinPostUrlInput.trim()) || isSubmittingPosted}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  {isSubmittingPosted ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Recording Publication...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Yes, I posted this to the real Zaboraa LinkedIn page</span>
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+              <button onClick={() => setPostingQueueItem(null)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold cursor-pointer">
+                Cancel
+              </button>
+              <button onClick={handleConfirmMarkPosted} disabled={isPosting || !validateLinkedInUrl(postingUrl)} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-2 disabled:opacity-50 cursor-pointer">
+                <Check className="w-4 h-4" />
+                <span>{isPosting ? 'Saving...' : 'Yes, I posted this to the real Zaboraa LinkedIn page'}</span>
+              </button>
             </div>
           </div>
         </div>

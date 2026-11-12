@@ -61,6 +61,75 @@ export interface ContentQueueItem {
   draft?: ContentDraft;
 }
 
+export interface CaptionsResult {
+  success: boolean;
+  draftId: string;
+  linkedin_caption: string;
+  instagram_caption: string;
+  youtube_title: string;
+  youtube_description: string;
+  briefing_cta: string;
+}
+
+export interface VideoScriptResult {
+  success: boolean;
+  draftId: string;
+  script: {
+    hook: string;
+    problem: string;
+    point1: string;
+    point2: string;
+    point3: string;
+    cta: string;
+  };
+  shot_list: { second_mark: string; action: string }[];
+  duration_estimate: number;
+}
+
+export interface KBResult {
+  success: boolean;
+  draftId: string;
+  slug: string;
+  meta_title: string;
+  meta_description: string;
+  outline: { h2: string; summary: string }[];
+  body: string;
+  frontmatter: string;
+  full_markdown: string;
+}
+
+export interface PosterResult {
+  success: boolean;
+  draftId: string;
+  linkedin: string; // base64 PNG
+  instagram: string; // base64 PNG
+}
+
+export interface TrackStatus<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface GenerateAllResult {
+  success: boolean;
+  partial?: boolean;
+  results: {
+    captions: TrackStatus<CaptionsResult>;
+    video_script: TrackStatus<VideoScriptResult>;
+    kb: TrackStatus<KBResult>;
+    poster: TrackStatus<PosterResult>;
+  };
+}
+
+export interface GeneratedAssetRow {
+  id: string;
+  draft_id: string;
+  asset_type: 'poster_linkedin' | 'poster_instagram' | 'video_script' | 'kb_draft' | 'captions';
+  content: string;
+  created_at?: string;
+}
+
 export interface SuggestedTopicsResponse {
   success: boolean;
   suggestedTopics: string[];
@@ -617,4 +686,63 @@ export async function markQueueItemAsPosted(
   } catch (err) {
     console.warn('Notice updating local storage queue:', err);
   }
+}
+
+export async function fetchGeneratedAssets(draftId: string): Promise<GeneratedAssetRow[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('generated_assets')
+      .select('*')
+      .eq('draft_id', draftId);
+    if (error || !data) return [];
+    return data as GeneratedAssetRow[];
+  } catch {
+    return [];
+  }
+}
+
+async function postStudioTrack<T>(endpoint: string, draftId: string): Promise<T> {
+  let token: string | null = null;
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token || null;
+    } catch {}
+  }
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ draftId }),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error || `Failed request to ${endpoint}`);
+  }
+  return body as T;
+}
+
+export async function generateCaptions(draftId: string): Promise<CaptionsResult> {
+  return postStudioTrack<CaptionsResult>('/api/generate-captions', draftId);
+}
+
+export async function generateVideoScript(draftId: string): Promise<VideoScriptResult> {
+  return postStudioTrack<VideoScriptResult>('/api/generate-video-script', draftId);
+}
+
+export async function generateKB(draftId: string): Promise<KBResult> {
+  return postStudioTrack<KBResult>('/api/generate-kb', draftId);
+}
+
+export async function generatePoster(draftId: string): Promise<PosterResult> {
+  return postStudioTrack<PosterResult>('/api/generate-poster', draftId);
+}
+
+export async function generateAll(draftId: string): Promise<GenerateAllResult> {
+  return postStudioTrack<GenerateAllResult>('/api/generate-all', draftId);
 }

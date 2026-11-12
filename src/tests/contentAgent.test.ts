@@ -72,7 +72,7 @@ import {
   ContentQueueItem
 } from '../lib/contentAgent';
 
-// Import backend pillar helpers directly for unit testing
+// Import backend pillar and vertex helpers directly for unit testing
 // @ts-ignore
 import {
   PILLARS as BACKEND_PILLARS,
@@ -82,6 +82,13 @@ import {
   normalizeTopicToPillar,
   RANKED_PILLARS
 } from '../../api/_lib/contentPillars.js';
+// @ts-ignore
+import {
+  validateModel,
+  deriveVertexHost,
+  sanitizeErrorMessage,
+  callVertex
+} from '../../api/generate-content.js';
 
 describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
   beforeEach(() => {
@@ -782,6 +789,159 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
 
           (supabase as any).from = originalFrom;
         }
+      });
+    });
+  });
+
+  describe('8. Vertex AI Location, Model Validation & Error Redaction Suite', () => {
+    describe('Model Name Validation & Security Guardrails', () => {
+      it('accepts valid gemini model identifiers', () => {
+        expect(validateModel('gemini-3.7-flash')).toEqual({
+          valid: true,
+          model: 'gemini-3.7-flash',
+        });
+        expect(validateModel('gemini-2.5-pro')).toEqual({
+          valid: true,
+          model: 'gemini-2.5-pro',
+        });
+        expect(validateModel('gemini-1.5-flash-8b')).toEqual({
+          valid: true,
+          model: 'gemini-1.5-flash-8b',
+        });
+      });
+
+      it('hard-rejects forbidden model gemini-4-argon', () => {
+        const res = validateModel('gemini-4-argon');
+        expect(res.valid).toBe(false);
+        expect(res.error).toBe('Model gemini-4-argon is not supported.');
+      });
+
+      it('rejects invalid model name formats and non-gemini models', () => {
+        expect(validateModel('gpt-4').valid).toBe(false);
+        expect(validateModel('claude-3-5-sonnet').valid).toBe(false);
+        expect(validateModel('gemini_flash').valid).toBe(false);
+        expect(validateModel('').valid).toBe(false);
+        // @ts-ignore
+        expect(validateModel(null).valid).toBe(false);
+      });
+    });
+
+    describe('Location to Vertex AI Host Mapping', () => {
+      it('maps global location to aiplatform.googleapis.com', () => {
+        expect(deriveVertexHost('global')).toBe('aiplatform.googleapis.com');
+        expect(deriveVertexHost('')).toBe('aiplatform.googleapis.com');
+        // @ts-ignore
+        expect(deriveVertexHost(null)).toBe('aiplatform.googleapis.com');
+      });
+
+      it('maps regional and multi-region locations to prefixed hostnames', () => {
+        expect(deriveVertexHost('us-central1')).toBe('us-central1-aiplatform.googleapis.com');
+        expect(deriveVertexHost('europe-west1')).toBe('europe-west1-aiplatform.googleapis.com');
+        expect(deriveVertexHost('asia-northeast1')).toBe('asia-northeast1-aiplatform.googleapis.com');
+      });
+    });
+
+    describe('Error Message Sanitization & Redaction', () => {
+      it('redacts sensitive API keys and project IDs from error messages', () => {
+        const secretKey = 'AIzaSySecretApiKey12345';
+        const secretProject = 'prime-bridge-511404-a3';
+        const rawMessage = `Error 404 from Vertex at projects/${secretProject}/locations/global with key ${secretKey}`;
+
+        const sanitized = sanitizeErrorMessage(rawMessage, [secretKey, secretProject]);
+        expect(sanitized).not.toContain(secretKey);
+        expect(sanitized).not.toContain(secretProject);
+        expect(sanitized).toContain('[REDACTED]');
+      });
+    });
+
+    describe('callVertex() Mock Invariant & Error Surfacing', () => {
+      it('surfaces upstream 404 error with correct upstreamStatus and sanitized message', async () => {
+        const originalFetch = global.fetch;
+        const fakeKey = 'test-fake-key-999';
+        const fakeProject = 'secret-proj-123';
+
+        global.fetch = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          json: async () => ({
+            error: {
+              code: 404,
+              message: `Publisher model projects/${fakeProject}/locations/us-central1/publishers/google/models/gemini-3.7-flash was not found`,
+            },
+          }),
+        });
+
+        await expect(
+          callVertex({
+            prompt: 'Reply OK',
+            apiKey: fakeKey,
+            projectId: fakeProject,
+            location: 'us-central1',
+            model: 'gemini-3.7-flash',
+          })
+        ).rejects.toMatchObject({
+          upstreamStatus: 404,
+          statusText: 'Not Found',
+        });
+
+        // Ensure fake project was redacted from the error message
+        try {
+          await callVertex({
+            prompt: 'Reply OK',
+            apiKey: fakeKey,
+            projectId: fakeProject,
+            location: 'us-central1',
+            model: 'gemini-3.7-flash',
+          });
+        } catch (err: any) {
+          expect(err.message).toContain('Vertex request failed (HTTP 404 Not Found)');
+          expect(err.message).not.toContain(fakeProject);
+          expect(err.message).not.toContain(fakeKey);
+        }
+
+        global.fetch = originalFetch;
+      });
+
+      it('correctly passes x-goog-api-key header and formats v1 endpoint URL', async () => {
+        const originalFetch = global.fetch;
+        let capturedUrl = '';
+        let capturedHeaders: any = {};
+
+        global.fetch = vi.fn().mockImplementation(async (url: string, init: any) => {
+          capturedUrl = url;
+          capturedHeaders = init?.headers;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: JSON.stringify([{ title: 'A', hook: 'B', body: 'C', hashtags: ['#D'], cta: 'E', topic: 'F' }]) }],
+                  },
+                },
+              ],
+            }),
+          };
+        });
+
+        const result = await callVertex({
+          prompt: 'Generate post',
+          apiKey: 'test-api-key',
+          projectId: 'my-project',
+          location: 'global',
+          model: 'gemini-3.7-flash',
+        });
+
+        expect(capturedUrl).toBe(
+          'https://aiplatform.googleapis.com/v1/projects/my-project/locations/global/publishers/google/models/gemini-3.7-flash:generateContent'
+        );
+        expect(capturedHeaders['x-goog-api-key']).toBe('test-api-key');
+        expect(capturedHeaders['Content-Type']).toBe('application/json');
+        expect(result.candidates).toBeDefined();
+
+        global.fetch = originalFetch;
       });
     });
   });

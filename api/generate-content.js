@@ -1,9 +1,54 @@
-import { GoogleGenAI } from '@google/genai';
 import { requireAdmin } from './_lib/requireAdmin.js';
 import { validateTopics, allocatePosts } from './_lib/contentPillars.js';
 
-const MODEL = 'gemini-3.7-flash';
+const DEFAULT_MODEL = 'gemini-3.7-flash';
 const REQUEST_TIMEOUT_MS = 25000;
+
+/**
+ * Validates the Gemini model string according to strict security and naming rules.
+ */
+export function validateModel(model) {
+  if (!model || typeof model !== 'string') {
+    return { valid: false, error: 'Model name must be a non-empty string.' };
+  }
+  const trimmed = model.trim();
+  if (trimmed === 'gemini-4-argon') {
+    return { valid: false, error: 'Model gemini-4-argon is not supported.' };
+  }
+  if (!/^gemini-[a-z0-9.\-]+$/.test(trimmed)) {
+    return {
+      valid: false,
+      error: `Invalid model format: "${trimmed}". Must match /^gemini-[a-z0-9.\\-]+$/`,
+    };
+  }
+  return { valid: true, model: trimmed };
+}
+
+/**
+ * Derives the correct Vertex AI endpoint hostname from the location.
+ * 'global' -> 'aiplatform.googleapis.com'
+ * regional / multi-region -> '{location}-aiplatform.googleapis.com'
+ */
+export function deriveVertexHost(location) {
+  if (!location || location === 'global') {
+    return 'aiplatform.googleapis.com';
+  }
+  return `${location}-aiplatform.googleapis.com`;
+}
+
+/**
+ * Redacts sensitive tokens or identifiers (API keys, project IDs) from error messages.
+ */
+export function sanitizeErrorMessage(message, secrets = []) {
+  if (!message || typeof message !== 'string') return '';
+  let sanitized = message;
+  for (const secret of secrets) {
+    if (secret && typeof secret === 'string' && secret.length > 2) {
+      sanitized = sanitized.split(secret).join('[REDACTED]');
+    }
+  }
+  return sanitized;
+}
 
 /**
  * Builds the complete system instruction at request time with exact canonical grounding,
@@ -198,15 +243,11 @@ function validateAndNormalizePosts(items, topics, allocation) {
 }
 
 /**
- * Calls Vertex AI Express with a strict timeout.
+ * Calls Vertex AI REST endpoint with strict timeout and authentication header.
  */
-async function callVertex(prompt, apiKey, projectId, location) {
-  const ai = new GoogleGenAI({
-    vertexai: true,
-    apiKey,
-    project: projectId,
-    location,
-  });
+export async function callVertex({ prompt, apiKey, projectId, location, model }) {
+  const host = deriveVertexHost(location);
+  const url = `https://${host}/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
   const abortController = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -214,19 +255,61 @@ async function callVertex(prompt, apiKey, projectId, location) {
   }, REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.7,
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
       },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.7,
+        },
+      }),
+      signal: abortController.signal,
     });
-    return response;
+
+    const status = res.status;
+    const statusText = res.statusText || '';
+
+    if (!res.ok) {
+      let rawErrorBody = '';
+      try {
+        const jsonBody = await res.json();
+        rawErrorBody = jsonBody?.error?.message || JSON.stringify(jsonBody?.error || jsonBody);
+      } catch {
+        try {
+          rawErrorBody = await res.text();
+        } catch {
+          rawErrorBody = statusText;
+        }
+      }
+
+      const sanitizedError = sanitizeErrorMessage(rawErrorBody, [apiKey, projectId]).slice(0, 300);
+      const errorObj = new Error(
+        `Vertex request failed (HTTP ${status} ${statusText}): ${sanitizedError}`.trim()
+      );
+      errorObj.upstreamStatus = status;
+      errorObj.statusText = statusText;
+      errorObj.upstreamMessage = sanitizedError;
+      throw errorObj;
+    }
+
+    const data = await res.json();
+    return data;
   } catch (err) {
     if (abortController.signal.aborted) {
-      throw new Error(`Vertex AI request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      const timeoutErr = new Error(`Vertex AI request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      timeoutErr.isTimeout = true;
+      throw timeoutErr;
     }
     throw err;
   } finally {
@@ -302,6 +385,16 @@ export default async function handler(req, res) {
     });
   }
 
+  const rawModel = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const modelValidation = validateModel(rawModel);
+  if (!modelValidation.valid) {
+    return res.status(400).json({
+      success: false,
+      error: modelValidation.error,
+    });
+  }
+  const model = modelValidation.model;
+
   const topics = validation.topics;
   const allocation = allocatePosts(topics);
   const systemInstruction = buildSystemInstruction(allocation);
@@ -328,21 +421,22 @@ export default async function handler(req, res) {
     process.env.GOOGLE_CLOUD_LOCATION ||
     process.env.VERTEX_LOCATION ||
     process.env.VITE_GOOGLE_CLOUD_LOCATION ||
-    'us-central1';
+    'global';
 
   const userPrompt = `${systemInstruction}\n\nExecute post generation for the specified topics now. Return only the JSON array conforming to the schema.`;
 
   let finalPosts = null;
 
-  // Single retry on validation error or model failure
+  // Single retry on transient failure (429 or 5xx)
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const response = await callVertex(
-        userPrompt,
+      const response = await callVertex({
+        prompt: userPrompt,
         apiKey,
         projectId,
-        configuredLocation
-      );
+        location: configuredLocation,
+        model,
+      });
 
       const parts =
         response.candidates?.flatMap(
@@ -381,17 +475,41 @@ export default async function handler(req, res) {
       }
     } catch (err) {
       console.error(`Attempt ${attempt} generation error:`, err?.message || err);
-      if (err?.message?.includes('timed out')) {
+
+      if (err?.isTimeout || err?.message?.includes('timed out')) {
         return res.status(504).json({
           success: false,
           error: 'Content generation timed out after 25 seconds. Please try again.',
         });
       }
-      if (attempt >= 2) {
-        return res.status(502).json({
-          success: false,
-          error: 'Failed to generate content ideas. Please try again.',
-        });
+
+      // If upstream error has status code
+      if (err?.upstreamStatus) {
+        const upstreamStatus = err.upstreamStatus;
+        // Do not retry 4xx errors except 429
+        if (upstreamStatus >= 400 && upstreamStatus < 500 && upstreamStatus !== 429) {
+          return res.status(502).json({
+            success: false,
+            error: err.message,
+            upstreamStatus,
+          });
+        }
+
+        if (attempt >= 2) {
+          return res.status(502).json({
+            success: false,
+            error: err.message,
+            upstreamStatus,
+          });
+        }
+      } else {
+        if (attempt >= 2) {
+          const sanitized = sanitizeErrorMessage(err?.message || 'Failed to generate content ideas. Please try again.', [apiKey, projectId]);
+          return res.status(502).json({
+            success: false,
+            error: sanitized,
+          });
+        }
       }
     }
   }
@@ -417,7 +535,7 @@ export default async function handler(req, res) {
           metadata: {
             topics,
             postCount: finalPosts.length,
-            model: MODEL,
+            model,
           },
         },
       ]);
@@ -430,6 +548,6 @@ export default async function handler(req, res) {
     success: true,
     posts: finalPosts,
     ideas: finalPosts,
-    model: MODEL,
+    model,
   });
 }

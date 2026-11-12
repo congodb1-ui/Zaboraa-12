@@ -189,7 +189,10 @@ export async function generateContentIdeas(topicsInput?: string[] | string): Pro
       const errData = await resp.json().catch(() => ({}));
       const errorMsg =
         errData?.error || `Generation failed with HTTP status ${resp.status}.`;
-      throw new Error(errorMsg);
+      const errObj: any = new Error(errorMsg);
+      if (errData?.retryable) errObj.retryable = true;
+      if (errData?.upstreamStatus) errObj.upstreamStatus = errData.upstreamStatus;
+      throw errObj;
     }
 
     const data = await resp.json();

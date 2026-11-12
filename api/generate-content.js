@@ -2,7 +2,32 @@ import { requireAdmin } from './_lib/requireAdmin.js';
 import { validateTopics, allocatePosts } from './_lib/contentPillars.js';
 
 const DEFAULT_MODEL = 'gemini-3.7-flash';
-const REQUEST_TIMEOUT_MS = 25000;
+const DEFAULT_TIMEOUT_MS = 55000;
+
+/**
+ * Resolves and validates the Vertex AI request timeout in milliseconds.
+ * Clamps values outside [10000, 58000] to 55000 and logs appropriate warnings.
+ */
+export function getVertexTimeoutMs(envValue = process.env.VERTEX_TIMEOUT_MS) {
+  if (envValue === undefined || envValue === null || String(envValue).trim() === '') {
+    return DEFAULT_TIMEOUT_MS;
+  }
+  const str = String(envValue).trim();
+  const parsed = parseInt(str, 10);
+  if (isNaN(parsed) || !/^\d+$/.test(str)) {
+    console.warn('VERTEX_TIMEOUT_MS invalid or absent, using 55000');
+    return DEFAULT_TIMEOUT_MS;
+  }
+  if (parsed < 10000) {
+    console.warn('VERTEX_TIMEOUT_MS too low, using 55000');
+    return DEFAULT_TIMEOUT_MS;
+  }
+  if (parsed > 58000) {
+    console.warn('VERTEX_TIMEOUT_MS too high, using 55000');
+    return DEFAULT_TIMEOUT_MS;
+  }
+  return parsed;
+}
 
 /**
  * Validates the Gemini model string according to strict security and naming rules.
@@ -411,14 +436,21 @@ function validateAndNormalizePosts(items, topics, allocation) {
 /**
  * Calls Vertex AI REST endpoint with strict timeout and authentication header.
  */
-export async function callVertex({ prompt, apiKey, projectId, location, model }) {
+export async function callVertex({ prompt, apiKey, projectId, location, model, attempt = 1, timeoutMs }) {
+  const effectiveTimeout = timeoutMs !== undefined ? timeoutMs : getVertexTimeoutMs();
   const host = deriveVertexHost(location);
   const url = `https://${host}/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+
+  const resolvedLocation = typeof location === 'string' && location ? location : 'global';
+  const resolvedModel = typeof model === 'string' && model ? model : DEFAULT_MODEL;
+
+  console.log(`Vertex call started (attempt ${attempt}, location: ${resolvedLocation}, model: ${resolvedModel})`);
+  const startTime = Date.now();
 
   const abortController = new AbortController();
   const timeoutId = setTimeout(() => {
     abortController.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, effectiveTimeout);
 
   try {
     const res = await fetch(url, {
@@ -437,6 +469,7 @@ export async function callVertex({ prompt, apiKey, projectId, location, model })
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
+          maxOutputTokens: 4000,
           temperature: 0.7,
         },
       }),
@@ -470,10 +503,12 @@ export async function callVertex({ prompt, apiKey, projectId, location, model })
     }
 
     const data = await res.json();
+    const elapsed = Date.now() - startTime;
+    console.log(`Vertex call finished in ${elapsed}ms`);
     return data;
   } catch (err) {
     if (abortController.signal.aborted) {
-      const timeoutErr = new Error(`Vertex AI request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      const timeoutErr = new Error(`Vertex AI request timed out after ${effectiveTimeout / 1000}s`);
       timeoutErr.isTimeout = true;
       throw timeoutErr;
     }
@@ -591,9 +626,10 @@ export default async function handler(req, res) {
 
   const userPrompt = `${systemInstruction}\n\nExecute post generation for the specified topics now. Return only the JSON array conforming to the schema.`;
 
+  const effectiveTimeout = getVertexTimeoutMs();
   let finalPosts = null;
 
-  // Attempt generation with single retry on validator rejection or transient failure
+  // Attempt generation with single retry on timeout or validator rejection
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const response = await callVertex({
@@ -602,6 +638,8 @@ export default async function handler(req, res) {
         projectId,
         location: configuredLocation,
         model,
+        attempt,
+        timeoutMs: effectiveTimeout,
       });
 
       const parts =
@@ -667,41 +705,44 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error(`Attempt ${attempt} generation error:`, err?.message || err);
 
-      if (err?.isTimeout || err?.message?.includes('timed out')) {
+      const isTimeoutErr =
+        err?.isTimeout ||
+        err?.message?.includes('timed out') ||
+        err?.upstreamStatus === 504 ||
+        err?.upstreamStatus === 408;
+
+      if (isTimeoutErr) {
+        if (attempt === 1) {
+          console.warn(`Attempt 1 timed out after ${effectiveTimeout / 1000}s. Retrying in 1s...`);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
         return res.status(504).json({
           success: false,
-          error: 'Content generation timed out after 25 seconds. Please try again.',
+          error: 'Vertex request timed out after 55s, please retry',
+          upstreamStatus: 504,
+          retryable: true,
         });
       }
 
-      // If upstream error has status code
+      // Non-timeout errors: do NOT retry
       if (err?.upstreamStatus) {
         const upstreamStatus = err.upstreamStatus;
-        // Do not retry 4xx errors except 429
-        if (upstreamStatus >= 400 && upstreamStatus < 500 && upstreamStatus !== 429) {
-          return res.status(502).json({
-            success: false,
-            error: err.message,
-            upstreamStatus,
-          });
-        }
-
-        if (attempt >= 2) {
-          return res.status(502).json({
-            success: false,
-            error: err.message,
-            upstreamStatus,
-          });
-        }
-      } else {
-        if (attempt >= 2) {
-          const sanitized = sanitizeErrorMessage(err?.message || 'Failed to generate content ideas. Please try again.', [apiKey, projectId]);
-          return res.status(502).json({
-            success: false,
-            error: sanitized,
-          });
-        }
+        return res.status(502).json({
+          success: false,
+          error: err.message,
+          upstreamStatus,
+        });
       }
+
+      const sanitized = sanitizeErrorMessage(
+        err?.message || 'Failed to generate content ideas. Please try again.',
+        [apiKey, projectId]
+      );
+      return res.status(502).json({
+        success: false,
+        error: sanitized,
+      });
     }
   }
 

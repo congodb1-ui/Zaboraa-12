@@ -207,7 +207,21 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
       setIdeas(newIdeas);
       showToast(`Generated ${newIdeas.length} new LinkedIn post ideas via Vertex AI.`);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to generate ideas. Please check configuration.');
+      if (err?.retryable || err?.message?.includes('timed out')) {
+        showToast('Taking longer than usual, retrying…');
+        setErrorMessage('Taking longer than usual, retrying…');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        try {
+          const retriedIdeas = await generateContentIdeas(selectedTopics);
+          setIdeas(retriedIdeas);
+          setErrorMessage(null);
+          showToast(`Generated ${retriedIdeas.length} new LinkedIn post ideas via Vertex AI.`);
+        } catch (retryErr: any) {
+          setErrorMessage(retryErr.message || 'Failed to generate ideas. Please check configuration.');
+        }
+      } else {
+        setErrorMessage(err.message || 'Failed to generate ideas. Please check configuration.');
+      }
     } finally {
       setIsGenerating(false);
     }

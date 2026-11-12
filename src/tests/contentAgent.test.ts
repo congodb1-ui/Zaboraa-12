@@ -87,7 +87,11 @@ import {
   validateModel,
   deriveVertexHost,
   sanitizeErrorMessage,
-  callVertex
+  callVertex,
+  normalizeNewlines,
+  ensureHttpsUrls,
+  normalizeHashtags,
+  validatePostQualityAndClaims
 } from '../../api/generate-content.js';
 
 describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
@@ -942,6 +946,217 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
         expect(result.candidates).toBeDefined();
 
         global.fetch = originalFetch;
+      });
+    });
+  });
+
+  describe('9. LinkedIn Copy Formatting, Forbidden Claims & Post Quality Guardrails Suite', () => {
+    describe('Literal Newline Normalisation & Safety Net', () => {
+      it('converts literal \\n and \\r\\n strings to real newline characters', () => {
+        const raw = 'Paragraph one.\\n\\nParagraph two.\\r\\nParagraph three.';
+        const normalized = normalizeNewlines(raw);
+        expect(normalized).not.toContain('\\n');
+        expect(normalized).not.toContain('\\r');
+        expect(normalized).toBe('Paragraph one.\n\nParagraph two.\nParagraph three.');
+      });
+
+      it('formatLinkedInPost unescapes literal \\n and formats before/after screenshot example', () => {
+        const rawDraft: ContentDraft = {
+          id: 'test-unescape-draft',
+          title: 'AVS Storage Insights',
+          hook: 'Are your VMware clusters compute-bound or storage-bound in Azure?',
+          body: 'workloads.\\n\\nFirst, events.\\n\\nThird, verify HCX interconnects and stretched clusters across enterprise availability zones.',
+          cta: 'Explore sizing on zaboraa.com/tools',
+          hashtags: ['#Azure,#NC2,#NutanixCloud'],
+          topic: 'Azure VMware Solution (AVS)',
+          status: 'Approved',
+        };
+
+        const result = formatLinkedInPost(rawDraft);
+
+        // BEFORE (raw escaped): contains literal \n
+        expect(rawDraft.body).toContain('\\n\\n');
+
+        // AFTER (clean output): contains real newlines, no literal \n
+        expect(result.text).not.toContain('\\n');
+        expect(result.text).toContain('workloads.\n\nFirst, events.\n\nThird, verify HCX');
+        expect(result.text).toContain('#Azure #NC2 #NutanixCloud');
+        expect(result.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Hashtag Cleaning & Formatting', () => {
+      it('splits comma/quote joined tags and formats space-separated without commas', () => {
+        const raw = ['#Azure,#NC2,#NutanixCloud', "#CloudMigration','#HybridCloud"];
+        const cleaned = normalizeHashtags(raw);
+
+        expect(cleaned).toContain('#Azure');
+        expect(cleaned).toContain('#NC2');
+        expect(cleaned).toContain('#NutanixCloud');
+        expect(cleaned).toContain('#CloudMigration');
+        expect(cleaned).toContain('#HybridCloud');
+        expect(cleaned.join(' ')).not.toContain(',');
+        expect(cleaned.join(' ')).not.toContain("'");
+      });
+
+      it('limits to max 7 hashtags and guarantees at least 3 fallback tags', () => {
+        const excessive = ['#One', '#Two', '#Three', '#Four', '#Five', '#Six', '#Seven', '#Eight', '#Nine'];
+        const limited = normalizeHashtags(excessive);
+        expect(limited.length).toBeLessThanOrEqual(7);
+
+        const empty = normalizeHashtags([]);
+        expect(empty.length).toBeGreaterThanOrEqual(3);
+      });
+    });
+
+    describe('URL Prefixing & Normalisation', () => {
+      it('silently prefixes bare domains with https:// and updates http://', () => {
+        expect(ensureHttpsUrls('Visit zaboraa.com/tools for sizing')).toBe(
+          'Visit https://zaboraa.com/tools for sizing'
+        );
+        expect(ensureHttpsUrls('Check out http://zaboraa.com/docs')).toBe(
+          'Check out https://zaboraa.com/docs'
+        );
+        expect(ensureHttpsUrls('Already secure https://zaboraa.com/tools')).toBe(
+          'Already secure https://zaboraa.com/tools'
+        );
+      });
+    });
+
+    describe('Post Quality & Structure Validator (validatePostQualityAndClaims)', () => {
+      const validBasePost = {
+        title: 'Enterprise VMware Cloud Architecture Strategy',
+        hook: 'Are your VMware clusters compute-bound or storage-bound in Azure?',
+        body: 'Migrating legacy virtualization to Azure VMware Solution requires careful compute and storage decoupling.\n\nFirst, evaluate NFS datastores to avoid excessive node provisioning.\n\nSecond, test HCX network extension throughput and MTU constraints across data centers.',
+        cta: 'Test your architecture parameters on https://zaboraa.com/tools',
+        hashtags: ['#VMware', '#AzureAVS', '#CloudArchitecture', '#FinOps'],
+      };
+
+      it('accepts compliant enterprise post', () => {
+        const res = validatePostQualityAndClaims(validBasePost);
+        expect(res.valid).toBe(true);
+      });
+
+      // Forbidden Claims
+      it('rejects Pattern 1 numeric proof claims (13+ years, 25+ migrations, 6 certifications, 500 TB)', () => {
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nWe have 13+ years of experience.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nDelivered 25+ migrations.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nManaging 500 TB of storage.',
+        }).valid).toBe(false);
+      });
+
+      it('rejects Pattern 2 spelled-out proof claims (thirteen years, six certifications)', () => {
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nOver thirteen years of enterprise virtualization advisory.',
+        }).valid).toBe(false);
+      });
+
+      it('rejects forbidden flat strings (zaboraa technologies, masterclass, video, zero-downtime)', () => {
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nContact Zaboraa Technologies today.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nWatch our migration masterclass video.',
+        }).valid).toBe(false);
+
+        expect(validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + '\n\nGuaranteed zero-downtime cutover.',
+        }).valid).toBe(false);
+      });
+
+      // Hook Checks
+      it('rejects hook with fewer than 6 words', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'AVS cloud migration tips',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('fewer than 6 words');
+      });
+
+      it('rejects hook containing a URL', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'Check out https://zaboraa.com for the best cloud migration advice',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('contains a URL');
+      });
+
+      it('rejects hook containing a hashtag', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'Why #Azure VMware Solution changes your data center cost model completely',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('contains a hashtag');
+      });
+
+      it('rejects hook starting with "I"', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          hook: 'I believe most enterprise VMware architects over-provision ESXi compute nodes',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('starts with "I"');
+      });
+
+      // Structure Checks
+      it('rejects body with fewer than 2 paragraph breaks', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          body: 'Single long paragraph without any paragraph breaks describing cloud architecture in great detail with lots of technical explanations.',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('fewer than 2 paragraph breaks');
+      });
+
+      // Emoji Checks
+      it('rejects post containing emojis (🚀, 💡, 🔥)', () => {
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          body: validBasePost.body + ' 🚀',
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('forbidden emoji');
+      });
+
+      // Length Checks
+      it('rejects post with total length under 300 characters', () => {
+        const res = validatePostQualityAndClaims({
+          title: 'Short',
+          hook: 'Short hook with at least six words here',
+          body: 'P1\n\nP2\n\nP3',
+          cta: 'CTA',
+          hashtags: ['#A', '#B', '#C'],
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('under 300 characters');
+      });
+
+      it('rejects post with total length over 3000 characters', () => {
+        const longBody = 'A'.repeat(3050) + '\n\n' + 'B'.repeat(50) + '\n\n' + 'C'.repeat(50);
+        const res = validatePostQualityAndClaims({
+          ...validBasePost,
+          body: longBody,
+        });
+        expect(res.valid).toBe(false);
+        expect(res.reason).toContain('over 3000 characters');
       });
     });
   });

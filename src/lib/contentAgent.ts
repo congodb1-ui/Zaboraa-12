@@ -233,10 +233,19 @@ export async function fetchSuggestedTopics(): Promise<SuggestedTopicsResponse> {
   };
 }
 
+export interface GenerateContentIdeasResult {
+  success: boolean;
+  posts: ContentIdea[];
+  ideas: ContentIdea[];
+  model?: string;
+}
+
 /**
  * Generate 3 LinkedIn content ideas using Vertex AI serverless endpoint (§16.2 / Phase 2a)
  */
-export async function generateContentIdeas(topicsInput?: string[] | string): Promise<ContentIdea[]> {
+export async function generateContentIdeas(
+  topicsInput?: string[] | string
+): Promise<ContentIdea[] & GenerateContentIdeasResult> {
   try {
     let topics: string[] = [];
     if (Array.isArray(topicsInput)) {
@@ -269,7 +278,7 @@ export async function generateContentIdeas(topicsInput?: string[] | string): Pro
       throw new Error(data.error || 'Failed to generate content ideas.');
     }
 
-    const rawList = data.posts || data.ideas;
+    const rawList = data.posts ?? data.ideas ?? [];
     if (!Array.isArray(rawList) || rawList.length === 0) {
       throw new Error('Invalid posts format received from server.');
     }
@@ -314,7 +323,15 @@ export async function generateContentIdeas(topicsInput?: string[] | string): Pro
       }
     }
 
-    return ideas;
+    // Attach posts and ideas properties to array for backwards compatibility with UI callers
+    const resultObj = Object.assign(ideas, {
+      success: true,
+      posts: ideas,
+      ideas: ideas,
+      model: data.model,
+    });
+
+    return resultObj as ContentIdea[] & GenerateContentIdeasResult;
   } catch (err: any) {
     console.error('generateContentIdeas error:', err);
     throw new Error(err.message || 'Failed to generate. Please try again.');

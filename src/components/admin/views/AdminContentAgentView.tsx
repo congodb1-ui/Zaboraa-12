@@ -374,7 +374,7 @@ export const AdminContentAgentView: React.FC<AdminContentAgentViewProps> = ({
 
     try {
       const res = await generateContentIdeas(selectedTopics);
-      const generated = res.posts || res.ideas || [];
+      const generated = Array.isArray(res) ? res : (res.posts ?? res.ideas ?? []);
       if (generated.length > 0) {
         setIdeas(generated);
         localStorage.setItem('zaboraa_content_ideas', JSON.stringify(generated));

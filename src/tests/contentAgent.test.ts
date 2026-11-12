@@ -124,6 +124,36 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
       global.fetch = originalFetch;
     });
 
+    it('normalizes response with posts-only or ideas-only fields correctly', async () => {
+      const mockPostItem = {
+        title: 'Enterprise AVS Architecture',
+        hook: 'Are you overprovisioning host nodes for storage?',
+        body: 'Decoupled storage with ANF reduces host node counts dramatically.',
+        hashtags: ['#VMware', '#AVS'],
+        cta: 'Explore sizing at https://zaboraa.com',
+        topic: 'AVS Migrations',
+      };
+
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async () => {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            posts: [mockPostItem],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      });
+
+      const res = await generateContentIdeas(['AVS Migrations']);
+      expect(res.length).toBe(1);
+      expect(res.posts.length).toBe(1);
+      expect(res.ideas.length).toBe(1);
+      expect(res[0].title).toBe('Enterprise AVS Architecture');
+
+      global.fetch = originalFetch;
+    });
+
     it('returns structured JSON ideas when Vertex AI responds with valid posts array', async () => {
       const mockIdeas = [
         {

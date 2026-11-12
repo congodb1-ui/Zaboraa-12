@@ -87,6 +87,7 @@ import {
   validateModel,
   deriveVertexHost,
   sanitizeErrorMessage,
+  getVertexTimeoutMs,
   callVertex,
   normalizeNewlines,
   ensureHttpsUrls,
@@ -1157,6 +1158,100 @@ describe('§16.2 Content & Growth Agent — Phase 1 Test Suite', () => {
         });
         expect(res.valid).toBe(false);
         expect(res.reason).toContain('over 3000 characters');
+      });
+    });
+  });
+
+  describe('10. Vertex AI Timeout, Vercel Function Config & Auto-Retry UX Suite', () => {
+    describe('VERTEX_TIMEOUT_MS Configuration & Sanity Clamping', () => {
+      it('accepts valid numeric timeout override within [10000, 58000]', () => {
+        expect(getVertexTimeoutMs('30000')).toBe(30000);
+        expect(getVertexTimeoutMs('15000')).toBe(15000);
+        expect(getVertexTimeoutMs('58000')).toBe(58000);
+      });
+
+      it('clamps VERTEX_TIMEOUT_MS < 10000 to 55000 and logs warning', () => {
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(getVertexTimeoutMs('5000')).toBe(55000);
+        expect(consoleSpy).toHaveBeenCalledWith('VERTEX_TIMEOUT_MS too low, using 55000');
+        consoleSpy.mockRestore();
+      });
+
+      it('clamps VERTEX_TIMEOUT_MS > 58000 to 55000 and logs warning', () => {
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(getVertexTimeoutMs('60000')).toBe(55000);
+        expect(consoleSpy).toHaveBeenCalledWith('VERTEX_TIMEOUT_MS too high, using 55000');
+        consoleSpy.mockRestore();
+      });
+
+      it('defaults to 55000 when VERTEX_TIMEOUT_MS is absent, empty or non-numeric string', () => {
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(getVertexTimeoutMs(undefined)).toBe(55000);
+        expect(getVertexTimeoutMs('')).toBe(55000);
+        
+        expect(getVertexTimeoutMs('invalid-string')).toBe(55000);
+        expect(consoleSpy).toHaveBeenCalledWith('VERTEX_TIMEOUT_MS invalid or absent, using 55000');
+        
+        expect(getVertexTimeoutMs('55s')).toBe(55000);
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('Vercel Function maxDuration Verification', () => {
+      it('verifies vercel.json contains maxDuration: 60 for api/generate-content.js only', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const vercelJsonPath = path.resolve(process.cwd(), 'vercel.json');
+        
+        expect(fs.existsSync(vercelJsonPath)).toBe(true);
+        const vercelConfig = JSON.parse(fs.readFileSync(vercelJsonPath, 'utf-8'));
+        
+        expect(vercelConfig.functions).toBeDefined();
+        expect(vercelConfig.functions['api/generate-content.js']).toEqual({
+          maxDuration: 60,
+        });
+      });
+    });
+
+    describe('Call Invariants & Log Redaction', () => {
+      it('logs start and finish timing without leaking API keys or project IDs', async () => {
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        
+        // Mock fetch success
+        const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({ candidates: [] }),
+        } as Response);
+
+        const secretKey = 'AIzaSySecretApiKey12345';
+        const secretProject = 'prime-bridge-511404-a3';
+
+        await callVertex({
+          prompt: 'test prompt',
+          apiKey: secretKey,
+          projectId: secretProject,
+          location: 'global',
+          model: 'gemini-3.7-flash',
+          timeoutMs: 10000,
+        });
+
+        const startLogCall = logSpy.mock.calls.find((call) =>
+          call[0]?.includes('Vertex call started')
+        );
+        expect(startLogCall).toBeDefined();
+        expect(startLogCall![0]).toContain('location: global');
+        expect(startLogCall![0]).toContain('model: gemini-3.7-flash');
+        expect(startLogCall![0]).not.toContain(secretKey);
+        expect(startLogCall![0]).not.toContain(secretProject);
+
+        const finishLogCall = logSpy.mock.calls.find((call) =>
+          call[0]?.includes('Vertex call finished')
+        );
+        expect(finishLogCall).toBeDefined();
+
+        logSpy.mockRestore();
+        fetchSpy.mockRestore();
       });
     });
   });

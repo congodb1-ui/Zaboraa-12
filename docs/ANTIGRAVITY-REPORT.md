@@ -212,6 +212,51 @@ Antigravity has prepared the branch and verified all local builds and invariants
 
 ---
 
-## 7. Conclusion
+## 7. Content Agent Implementation & Quality Guardrails (Phase 2a & 2b)
 
-The Zaboraa website is now fully optimized, hardened, and expanded. The platform boasts 53 indexable static pages, comprehensive schema hierarchy, modern WebP image delivery, self-hosted typography, and zero conflicting or retired claims.
+### 7.1 Milestones Completed
+1. **Phase 2a — Topic Picker & Suggestion Engine (`feature/content-agent-phase2a-topic-picker`)**:
+   - `api/_lib/contentPillars.js`: Implemented the 6 content pillars, priority ranking, allocation engine (`allocatePosts`), topic validation (`validateTopics`), and suggestion selector (`pickSuggestedTopics`).
+   - `api/_lib/requireAdmin.js`: Implemented bearer token validation via server-side Supabase client with admin role checking.
+   - `api/suggest-topics.js`: Created dedicated GET endpoint providing 3 intelligent suggestions based on past 7-day draft/queue usage.
+   - Frontend: Implemented 6-pillar checkbox picker + custom topic input chip manager + Manual/Suggest toggle in `AdminContentAgentView.tsx`.
+   - Rate limiting: 20 generations per user/hour enforced in `public.audit_logs`.
+
+2. **Phase 2b — Manual LinkedIn Copy-Paste Workflow (`feature/content-agent-phase2b-manual-posting`)**:
+   - `src/lib/contentAgent.ts`: Implemented `formatLinkedInPost` (hook + double linebreaks + body + CTA + normalized space-separated hashtags, excluding title) and `validateLinkedInUrl`.
+   - UI: Added `[Copy for LinkedIn]` with real-time character count label, `[Open Zaboraa LinkedIn Page]` direct launcher, and `[Mark as Posted]` workflow.
+   - Modal: Confirmation dialog validating real LinkedIn post URLs (`/feed/update/urn:li:(activity|share|ugcPost):...` or `/posts/...`) with single confirmation button (*"Yes, I posted this to the real Zaboraa LinkedIn page"*).
+   - Write Order: Supabase `content_queue` first, `audit_logs` second, local React state third.
+   - Posted row gating: Actions `Unapprove` and `Delete` are completely hidden for `Posted` rows.
+
+3. **Vertex AI Location, Model Validation & Error Redaction (`fix/content-agent-vertex-location-and-errors`)**:
+   - Upstream location routing: mapped `global` to `aiplatform.googleapis.com` and regional/multi-region to `${location}-aiplatform.googleapis.com`.
+   - Model validation: validated `gemini-3.7-flash` (GA model on v1 endpoint `https://${host}/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`); fail-closed rejection of `gemini-4-argon`.
+   - Header authentication: Passed API key via `x-goog-api-key` header without query parameters.
+   - Error redaction: Sanitized all upstream 502 messages to strip API keys, project IDs, and sensitive tokens.
+
+4. **Admin Allowlist Hotfix (`fix/admin-allowlist-hotfix`)**:
+   - Trimmed `ADMIN_ALLOWLIST_EMAILS` in `api/_lib/requireAdmin.js` to single authoritative administrator: `congodb1@gmail.com`.
+
+5. **Post Quality Guardrails & Forbidden Claims Validator (`fix/content-agent-copy-formatting`)**:
+   - `api/generate-content.js`: Implemented `validatePostQualityAndClaims`, `normalizeNewlines`, `ensureHttpsUrls`, and `normalizeHashtags`.
+   - System prompt additions: Strictly forbids numeric proof claims, certification counts, migration numbers, TB figures, and emojis.
+   - Server-side validator:
+     - Pattern 1 numeric claims regex (`\d+\+?\s*(years?|certifications?|migrations?|clients?|TB)`)
+     - Pattern 2 spelled-out claims regex (`(thirteen|fourteen|twenty[- ]?five|forty|six)\s*(years?|certifications?|migrations?)`)
+     - Forbidden flat strings (`"zaboraa technologies"`, `"masterclass"`, `"video"`, `"zero-downtime"`, `"zero downtime"`, `"zero unplanned rollback"`)
+     - Hook validation ($\ge 6$ words, no URLs/domains, no `#`, no leading `"I"`)
+     - Structure validation ($\ge 2$ paragraph breaks `\n\n`)
+     - Emoji prohibition (`\p{Emoji_Presentation}` / `\p{Extended_Pictographic}`)
+     - Total length bounds (300 to 3,000 characters)
+     - URL prefixing (`https://`)
+     - Hashtag format (space-separated, max 7, min 3 fallback)
+   - Single regeneration retry before fail-closed HTTP 502 response.
+   - Character count display in Admin UI next to "Copy for LinkedIn".
+   - Vitest suite expanded to 54 dedicated tests in `src/tests/contentAgent.test.ts`.
+
+---
+
+## 8. Conclusion
+
+The Zaboraa website is now fully optimized, hardened, and expanded. The platform boasts 53 indexable static pages, comprehensive schema hierarchy, modern WebP image delivery, self-hosted typography, enterprise Content Agent generation and copy-paste pipeline, and zero conflicting or retired claims.

@@ -10,8 +10,8 @@
 
 | Field | Value |
 |---|---|
-| Version | **v2.1 — 10 Nov 2026** (supersedes v2.0 and v1; founder decisions D1–D9 applied) |
-| Audited against | `Zaboraa-Website-Project-Folder.zip` (247 files, built 10 Nov 2026) |
+| Version | **v2.2 — 12 Nov 2026** (supersedes v2.1; adds Content Agent Phase 2a/2b and quality guardrails specifications) |
+| Audited against | `Zaboraa-Website-Project-Folder.zip` (247 files, built 10 Nov 2026) + Git commits on `congodb1-ui/Zaboraa-12` through 12 Nov 2026 |
 | Not in the zip | `.env*`, `README`, `.git`. The founder confirmed on 10 Nov 2026 that `vercel.json`, `tsconfig.json` and `.gitignore` **exist in the real repo and work** (they were only missing from the audit zip) |
 
 ---
@@ -459,6 +459,14 @@ The site is still a client-side React app, but every route is **prerendered to s
 
 **Brand do's:** dark, cyan-accent, technical/executive voice, evidence-first proof, "runbook-driven", "minimal downtime", "zero business-hour downtime" (phrase used in code).
 **Brand don'ts:** playful slang, stock "AI magic" language, consumer-app framing, any "100% zero-downtime" superlative.
+
+## 9.1 Content Agent Invariants & Guardrails (Phase 2a & 2b)
+- **Model Grounding:** Vertex AI `gemini-3.7-flash` (GA v1 endpoint, location `global` via `aiplatform.googleapis.com`). Fail-closed rejection of `gemini-4-argon`.
+- **System Instructions:** Strictly limited to approved facts. Zero numeric claims (no "13+ years", "25+ migrations", "6 certs", "500 TB", etc. inside AI-generated post copy).
+- **Post Structure:** Hook ($\ge 6$ words, no URL, no #, no "I") + $\ge 2$ paragraph breaks (`\n\n`) + single CTA line + space-separated hashtags as final line (max 7 tags, min 3 tags).
+- **Emoji Policy:** Zero emojis anywhere in the post (`\p{Emoji_Presentation}` / `\p{Extended_Pictographic}` rejected).
+- **Length Bounds:** 300 to 3,000 characters total.
+- **Workflow:** Manual copy-paste to real LinkedIn Company page (`/company/145341200/`). Zero automated posting. Write-order: Supabase DB first, audit log second, local state last. Single authoritative admin: `congodb1@gmail.com`.
 
 ---
 

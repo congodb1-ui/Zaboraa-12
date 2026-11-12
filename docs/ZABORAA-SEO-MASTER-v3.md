@@ -34,6 +34,7 @@
 | **v2.1** | **10 Nov 2026** | **Founder decisions D1–D9 recorded and applied to the plan:** 13+ years · 25+ migrations · 6 certifications · Principal VMware Architect · "100% Runbook-Driven Cutovers" · latest case-study outcomes on /about · brand = Zaboraa · public disclosure approved · videos not available yet (new tasks P1-07 and P1-08; `/resources/videos` → `noindex`, sitemap 30 → 29 URLs). `vercel.json`, `tsconfig.json` and `.gitignore` confirmed present and working. Antigravity runbook rewritten as a fully autonomous, no-questions run (§20). |
 | **v2.2** | **10 Nov 2026** | **Autonomous execution of Phase 0 through Phase 4 completed by Antigravity CLI:** P0-01 to P0-05 baseline & security guardrails; P1-01 to P1-08 content integrity & founder decisions D1–D9 applied (zero retired claims across codebase); P2-01 to P2-11 technical SEO, favicons, OG image, de-duplication, soft-404 hygiene, vercel.json hardening, IndexNow, llms.txt, Vitest invariants; P3-01 to P3-03 WebP image optimization (-88% size to 2.68 MB), self-hosted variable fonts, route-level code splitting (58% initial bundle reduction); P4-01 to P4-05 rich prerendered semantic HTML on all 53 routes (450–1,658 words/page), dedicated pages for 18 KB runbooks and 5 tutorials, SoftwareApplication schema for 7 tools, Person schema with 6 verified credentials for founder, and universal BreadcrumbList and contextual cross-linking (>= 3 links/page). 53 manifest routes, 52 indexable sitemap URLs. P4-06 remains ON HOLD per D9. |
 | **v2.3 / v3.0** | **10 Nov 2026** | **Content & Growth Agent — Phase 1 specified (§16.2).** v2.3: PR #3 media fix merged (`0136436` → Production `117c960`) — missing profile portraits in `public/assets/images/` fixed, `resolveMediaUrl` fixed, recursive `onError` loops (blinking avatar) removed, `vite.config.ts` fallback to `.webp` fixed; Phase 1 started on `feature/content-agent-phase1`. v3.0: new §16.2 (Ideas / Drafts / Queue / Analytics tabs, `generateContentIdeas()`, data model, env-var rules, acceptance criteria, Phases 2–5 roadmap); previous §16.2 YouTube moved to §16.2b (kept, still ON HOLD per D9). All other sections unchanged. |
+| **v3.1** | **12 Nov 2026** | **Content Agent Phase 2a, Phase 2b, Vertex Location Fix, and Quality Guardrails Hotfix Completed:** Phase 2a topic picker & 6-pillar allocation implemented (`api/_lib/contentPillars.js`, `api/suggest-topics.js`, `requireAdmin.js`); Phase 2b manual LinkedIn posting workflow (`formatLinkedInPost`, character count, URL validation, audit logging, Supabase DB write-order); Vertex AI GA v1 host routing & model validation (`gemini-3.7-flash` validated, fail-closed `gemini-4-argon` rejection, API key header passing via `x-goog-api-key`, sanitized upstream 502 errors); Admin allowlist hotfix (trimmed to single active admin `congodb1@gmail.com`); Post Quality Guardrails & Forbidden Claims Validator implemented (`validatePostQualityAndClaims`: Pattern 1 & 2 numeric regex, forbidden flat strings, hook $\ge 6$ words / no URL / no # / no "I", $\ge 2$ paragraph breaks, emoji rejection, 300–3000 char bounds, URL `https://` prefixing, max 7 / min 3 hashtags). Vitest suite expanded to 54 tests; all 53 routes prerendered. |
 
 **v1.1 statements corrected in v2.0:**
 | v1.1 said | Code reality (evidence) |
@@ -880,6 +881,94 @@ Phase 1 is generation + approval only. No auto-posting, no LinkedIn API posting,
 
 ### 16.2.11 Changelog Link
 - v2.3 — 10 Nov 2026 — PR #3 media fix merged (`0136436` → Production `117c960`). Fixed missing profile portraits in `public/assets/images/`, fixed `resolveMediaUrl`, removed recursive `onError` loops causing blinking avatar, fixed `vite.config.ts` fallback to `.webp`. Phase 1 started on `feature/content-agent-phase1`.
+- v3.1 — 12 Nov 2026 — Phase 2a (topic picker/suggestion engine), Phase 2b (manual LinkedIn copy-paste posting & validation), Vertex location & error redaction, admin allowlist trim, and post-quality guardrails + forbidden claims validator merged.
+
+### 16.2.12 Phase 2a: Multi-Topic Picker & Intelligent Suggestion Engine
+- **Module:** `api/_lib/contentPillars.js` and `api/suggest-topics.js`
+- **6 Core Content Pillars:**
+  1. `Broadcom / VMware Licensing` (Priority 1)
+  2. `AVS Migrations` (Priority 2)
+  3. `Cloud Sizing / FinOps` (Priority 3)
+  4. `Multi-Hyperscaler Strategy` (Priority 4)
+  5. `Modernization Without Rewrite` (Priority 5)
+  6. `Zaboraa Proof / Case Studies` (Priority 6)
+- **Legacy Topic Aliases:** Automatically normalized (`"AVS"` $\to$ `"AVS Migrations"`, `"hyperscaler migration"` $\to$ `"Multi-Hyperscaler Strategy"`, `"cloud sizing"` $\to$ `"Cloud Sizing / FinOps"`).
+- **Post Allocation Logic (`allocatePosts`):**
+  - Always produces exactly 3 posts.
+  - 1 selected topic: allocation `[3]`
+  - 2 selected topics: allocation `[2, 1]` (first topic prioritized)
+  - 3 selected topics: allocation `[1, 1, 1]`
+- **Topic Validation (`validateTopics`):**
+  - Requires 1 to 3 non-empty string topics.
+  - Strips control characters, collapses whitespace, trims, dedupes case-insensitively.
+  - Rejects topics $> 120$ characters.
+- **Suggestion Engine (`pickSuggestedTopics`):**
+  - Analyzes recent topics used in `content_ideas` (status `idea` / `drafted`) and `content_drafts` created in the last 7 days.
+  - Suggests top-ranked unrepresented pillars. If fewer than 3 available, fills with least-recently used pillars.
+  - Returns `{ topics: string[], excluded: Array<{ pillar: string, lastUsed: string }>, reason: string, fallback: boolean }`.
+- **Admin Rate Limiting & Audit Logging:**
+  - Enforces a maximum of 20 generation runs per user per hour via `public.audit_logs`.
+  - Returns HTTP 429 when rate limit is exceeded.
+
+### 16.2.13 Phase 2b: Manual LinkedIn Posting, Code Point Counting & Lifecycle Gating
+- **Module:** `src/lib/contentAgent.ts` and `src/components/admin/views/AdminContentAgentView.tsx`
+- **Pure Formatter (`formatLinkedInPost`):**
+  - Combines: `hook` + `\n\n` + (`edited_body` ?? `body`) + `\n\n` + `cta` + `\n\n` + `hashtags`.
+  - Excludes post title (LinkedIn text posts have no title).
+  - Unescapes literal `\r\n` and `\n` character escape sequences into real newline characters.
+  - Cleans hashtags: splits comma/quote/whitespace joined tokens, prefixes `#`, removes internal spaces, caps at 6 tags.
+  - Plain text formatting with zero HTML or URL escaping for 1:1 manual clipboard paste.
+  - Measures length using `Array.from(text).length` to accurately count Unicode/emojis as single code points.
+  - Flags `overLimit: true` when length exceeds 3,000 characters.
+- **Queue Tab Actions:**
+  - For `Queued` posts: `[Copy for LinkedIn]` with live character count indicator, `[Open Zaboraa LinkedIn Page]` (`https://www.linkedin.com/company/zaboraa/`, new tab, `rel="noopener noreferrer"`), and `[Mark as Posted]`.
+  - Modal confirmation: Validates real LinkedIn post URL (`https://www.linkedin.com/feed/update/urn:li:(activity|share|ugcPost):\d+` or `https://www.linkedin.com/posts/...`) before enabling single confirmation button: *"Yes, I posted this to the real Zaboraa LinkedIn page"*.
+  - Write order: (1) Write update to Supabase `content_queue` (`status = 'Posted'`, `posted_at = now()`, `linkedin_url`), (2) Insert row in `audit_logs`, (3) Update local React state. If DB update fails, local state remains untouched and error is surfaced.
+- **Posted Row Lifecycle Gating:**
+  - Displays "View on LinkedIn" external link and formatted posted timestamp.
+  - Completely hides (conditional render) `Unapprove` and `Delete` action buttons.
+
+### 16.2.14 Vertex AI Architecture, GA v1 Endpoints & Security Guardrails
+- **Endpoint:** `POST /api/generate-content` (Vercel Serverless Function & Vite dev middleware)
+- **Model Invariant:** Uses `gemini-3.7-flash` (GA model). Validated via `/^gemini-[a-z0-9.\-]+$/`.
+- **Hard Rejections:** Model `gemini-4-argon` is strictly forbidden and rejected fail-closed.
+- **Location Routing & Host Derivation (`deriveVertexHost`):**
+  - `global` $\to$ `aiplatform.googleapis.com`
+  - Regional / Multi-Region (`us-central1`, `us`, `europe-west4`, etc.) $\to$ `${location}-aiplatform.googleapis.com`
+  - GA v1 Endpoint URL: `https://${host}/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`
+- **Authentication & Headers:**
+  - API key passed via standard `x-goog-api-key: ${apiKey}` HTTP header.
+  - API key and project ID are strictly stripped and redacted from all error messages and logs.
+- **Upstream Error Handling:**
+  - Upstream non-2xx failures return HTTP 502 with `{ success: false, error: "Vertex request failed (HTTP <code> <status>): <sanitized message, max 300 chars>", upstreamStatus: <code> }`.
+  - 4xx client errors (except 429) fail-closed without blind retries.
+
+### 16.2.15 Post Quality Guardrails, Structure Normalization & Forbidden Claims Validator
+- **Module:** `api/generate-content.js` (`validatePostQualityAndClaims`, `normalizeNewlines`, `ensureHttpsUrls`, `normalizeHashtags`)
+- **Execution:** Runs server-side immediately after Gemini JSON parsing and newline normalisation, prior to any database write.
+- **Validation Rules & Regex:**
+  1. **Pattern 1 Numeric Claims:** `/\d+\+?\s*(years?|certifications?|migrations?|clients?|TB)/gi` (rejected).
+  2. **Pattern 2 Spelled-Out Claims:** `/\b(thirteen|fourteen|twenty[- ]?five|forty|six)\s*(years?|certifications?|migrations?)/gi` (rejected).
+  3. **Forbidden Flat Strings:** `"zaboraa technologies"`, `"masterclass"`, `"video"`, `"zero-downtime"`, `"zero downtime"`, `"zero unplanned rollback"` (rejected).
+  4. **Hook Constraints:** First line (split on first `\n`) must have $\ge 6$ words, no URLs/bare domains, no `#` characters, and cannot start with `^I\b`.
+  5. **Body Structure:** Must contain $\ge 2$ double-newline paragraph breaks (`\n\n`).
+  6. **Emoji Prohibition:** Body + hook + cta must contain zero characters matching `[\p{Emoji_Presentation}\p{Extended_Pictographic}]`.
+  7. **Length Bounds:** Full formatted post character count must be between 300 and 3,000 characters.
+  8. **URL Safety:** Bare domains or `http://` links in body/cta are automatically normalized to `https://`.
+  9. **Hashtags:** Placed as very last line, space-separated, max 7 tags, min 3 fallback tags.
+- **Retry & Fail-Closed Logic:**
+  - On validation match/failure: logs pattern type and post index (never logs sensitive payload in prod) and regenerates post once.
+  - If second attempt fails: returns HTTP 502 with `{ success: false, error: "Content validator rejected post (claims/structure). Try different topics.", upstreamStatus: 502 }`.
+
+### 16.2.16 Administrative Access & Allowlist Governance
+- **Module:** `api/_lib/requireAdmin.js`
+- **Security Invariant:** Trimmed to single authoritative enterprise admin:
+  - `congodb1@gmail.com`
+- **Token Verification:**
+  - Requires `Authorization: Bearer <token>`.
+  - Verifies session token with server Supabase client (`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`).
+  - Confirms user profile has `role === 'admin'` and email matches allowlist (case-insensitive, trimmed).
+  - Returns HTTP 401 for missing/invalid tokens, HTTP 403 for unauthorized non-admin callers.
 
 ### 16.2b YouTube (4 Masterclasses — ON HOLD until the videos are produced, D9)
 - **The videos do not exist yet (D9).** Create and publish the 4 masterclasses first; until then do not plan, post or link YouTube videos.

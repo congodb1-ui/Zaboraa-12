@@ -12,7 +12,7 @@ import { processGeneratePoster } from './posterBuilder.js';
 const VERTEX_LOCATION = 'global';
 const GEMINI_MODEL = 'gemini-3.7-flash';
 
-async function callVertexGemini(prompt, systemInstruction, timeoutMs = 25000) {
+async function callVertexGemini(prompt, systemInstruction, timeoutMs = 25000, responseMimeType = 'application/json', maxOutputTokens = 4000) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured');
@@ -32,8 +32,8 @@ async function callVertexGemini(prompt, systemInstruction, timeoutMs = 25000) {
     },
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 4000,
-      responseMimeType: 'application/json',
+      maxOutputTokens,
+      responseMimeType,
     },
   };
 
@@ -56,13 +56,15 @@ async function callVertexGemini(prompt, systemInstruction, timeoutMs = 25000) {
     }
 
     const responseData = await response.json();
-    const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const candidate = responseData.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const rawText = candidate?.content?.parts?.[0]?.text;
 
-    if (!rawText) {
+    if (!rawText && finishReason !== 'MAX_TOKENS') {
       throw new Error('Empty response from Vertex AI');
     }
 
-    return rawText;
+    return { rawText: rawText || '', finishReason };
   } catch (err) {
     clearTimeout(timer);
     if (err.name === 'AbortError') {
@@ -98,16 +100,16 @@ Return ONLY a JSON object matching this schema:
 
 HARD RULES:
 - briefing_cta MUST be EXACTLY: "${BRIEFING_CTA}"
-- Approved claims: 13+ years, 25+ migrations, 6 certifications, 100% Runbook-Driven Cutovers, Principal VMware Architect, Zaboraa, 6 tools, 8 disciplines, 7 anonymised case studies.
-- Forbidden claims: 12+ years, 40+ migrations, 1240 TB, 4500 TB, 820 TB, $1.4M, Zaboraa Technologies, 100% zero-downtime, pricing, client names, masterclass.`;
+- Approved claims: 13+ years, 6 certifications, 100% Runbook-Driven Cutovers, Principal VMware Architect, Zaboraa, 6 tools, 8 disciplines, 7 anonymised case studies.
+- Forbidden claims: 12+ years, 40+ migrations, 25+ migrations, 25+ clients, 1240 TB, 4500 TB, 820 TB, $1.4M, Zaboraa Technologies, 100% zero-downtime, pricing, client names, masterclass.`;
 
   const prompt = `Draft Title: ${draft.title}
 Draft Hook: ${draft.hook || ''}
 Draft Body: ${draft.body}
 Topic: ${draft.topic}`;
 
-  const rawJson = await callVertexGemini(prompt, systemInstruction, timeoutMs);
-  const parsed = JSON.parse(rawJson);
+  const { rawText } = await callVertexGemini(prompt, systemInstruction, timeoutMs, 'application/json', 4000);
+  const parsed = JSON.parse(rawText);
 
   checkForbiddenClaims(parsed.linkedin_caption);
   checkForbiddenClaims(parsed.instagram_caption);
@@ -170,7 +172,7 @@ Return ONLY a JSON object matching this schema:
   "hook_options": [
     "Most enterprise cloud migrations fail because...",
     "The #1 mistake when migrating VMware to NC2...",
-    "After 25+ VMware-to-cloud cutovers, here is what changed..."
+    "What actually breaks when AHV replaces ESXi — and how to prevent it"
   ],
   "problem": "string (8-20s mark)",
   "point1": "string (20-32s mark: NC2/AHV + VNet fabric)",
@@ -206,16 +208,17 @@ HARD RULES:
 - Architect-to-architect tone: no "Hey guys", no "game-changer", no "revolutionary".
 - ${toolContext}
 - CTA MUST be verbatim: "${BRIEFING_CTA}"
-- Forbidden claims: 12+ years, 40+ migrations, 1240 TB, 4500 TB, 820 TB, $1.4M, Zaboraa Technologies, 100% zero-downtime, pricing, client names, masterclass.`;
+- Forbidden claims: 12+ years, 40+ migrations, 25+ migrations, 25+ clients, 1240 TB, 4500 TB, 820 TB, $1.4M, Zaboraa Technologies, 100% zero-downtime, pricing, client names, masterclass.`;
 
   const prompt = `Draft Title: ${draft.title}
 Draft Hook: ${draft.hook || ''}
 Draft Body: ${draft.body}
 Topic: ${draft.topic}`;
 
-  const rawJson = await callVertexGemini(prompt, systemInstruction, timeoutMs);
-  const parsed = JSON.parse(rawJson);
+  const { rawText } = await callVertexGemini(prompt, systemInstruction, timeoutMs, 'application/json', 4000);
+  const parsed = JSON.parse(rawText);
 
+  checkForbiddenClaims(parsed.hook_options);
   const scriptText = Object.values(parsed.script || {}).join(' ');
   checkForbiddenClaims(scriptText);
 
@@ -228,7 +231,7 @@ Topic: ${draft.topic}`;
     parsed.hook_options = [
       parsed.hook || parsed.script?.hook || "Most enterprise cloud migrations fail because...",
       `The #1 mistake when migrating ${draft.topic} to cloud...`,
-      `After 25+ VMware-to-cloud cutovers, here is what changed...`
+      "What actually breaks when AHV replaces ESXi — and how to prevent it"
     ];
   }
 
@@ -256,64 +259,116 @@ export async function processGenerateKB(draftId, timeoutMs = 35000) {
     ? (VALID_PUBLIC_ROUTES[draft.topic] || '/tools/sizing')
     : '/tools/sizing';
 
-  const systemInstruction = `You are a principal technical documenter for Zaboraa Knowledge Base.
-Generate a comprehensive, production-grade Knowledge Base article in Markdown format based on a content draft.
-
-Required Sections (in exact order):
-1. Frontmatter block (slug, title, meta_title, meta_description, tags, date, cta)
-2. ## TL;DR (3 bullet points: what this covers, why it matters, concrete outcome)
-3. ## Prerequisites ([ ] Azure bare-metal quota, [ ] ExpressRoute circuit >= 1 Gbps, [ ] Prism Central 2023.x, [ ] AHV version checked)
-4. Time + Risk line: "Estimated time: 2.5 hours | Risk level: Medium — test in non-prod first"
-5. ## Contents (TOC anchor links)
-6. ## 1. Architecture Overview (text description + ASCII art diagram showing On-Prem VMware -> ExpressRoute -> Azure Bare-Metal NC2 Cluster -> VNet)
-7. ## 2. Network Fabric (2-column markdown table: Flow Overlay vs Native VNet)
-8. ## 3. MTU & ExpressRoute Configuration (Numbered checklist: MTU 1500 vs 9000, Geneve/VXLAN overhead, ping + DF bit test, Route Server BGP check)
-9. ## 4. Storage Tiering Strategy (Table: DSF NVMe tier vs Azure Blob cold tier vs Azure NetApp Files)
-10. ## 5. Step-by-Step Migration Execution (5-7 numbered steps, each with Step name, Command block \`\`\`bash, and Validate line)
-11. ## 6. Validation Checklist ([ ] ping between NC2 AHV host and Azure VM, [ ] MTU 8972 test, [ ] DSF replication lag, [ ] failover test)
-12. ## 7. Troubleshooting (Table covering Packet fragmentation, Route propagation failure, DSF over-provisioning)
-13. ## 8. Next Steps (CTA blockquote: "${BRIEFING_CTA}", link to /tools/sizing, link to /briefing)
-
-Return ONLY a JSON object matching this schema:
+  // Call 1: Header metadata JSON (max 800 tokens)
+  const headerSystemInstruction = `You are a technical documenter for Zaboraa KB.
+Generate metadata JSON for a Knowledge Base article based on a draft.
+Return ONLY a JSON object:
 {
   "slug": "string (kebab-case <= 60 chars)",
   "meta_title": "string (<= 60 chars)",
-  "meta_description": "string (<= 156 chars)",
-  "outline": [
-    { "h2": "string", "summary": "string" }
-  ],
-  "body": "string (Full Markdown content containing all 13 sections, 1000-1400 words)",
-  "frontmatter": "string (YAML format)",
-  "full_markdown": "string"
-}
+  "meta_description": "string (<= 156 chars)"
+}`;
+
+  const headerPrompt = `Draft Title: ${draft.title}\nTopic: ${draft.topic}`;
+  let headerObj = null;
+
+  try {
+    const { rawText: rawHeader } = await callVertexGemini(headerPrompt, headerSystemInstruction, 10000, 'application/json', 800);
+    try {
+      headerObj = JSON.parse(rawHeader);
+    } catch (e1) {
+      const match = rawHeader.match(/\{[\s\S]*\}/);
+      if (match) {
+        headerObj = JSON.parse(match[0]);
+      }
+    }
+  } catch (err) {
+    console.warn('[processGenerateKB] Header JSON generation or parsing failed, using fallbacks:', err?.message);
+  }
+
+  if (!headerObj || !headerObj.slug) {
+    const fallbackSlug = (draft.title || 'kb-article')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60);
+    headerObj = {
+      slug: fallbackSlug,
+      meta_title: (draft.title || 'Knowledge Base Article').slice(0, 60),
+      meta_description: (draft.hook || draft.body || 'Comprehensive technical migration guide by Zaboraa.').slice(0, 156),
+    };
+  }
+
+  // Call 2: Body Markdown ONLY (max 6000 tokens)
+  const bodySystemInstruction = `You are a principal technical documenter for Zaboraa Knowledge Base.
+Generate a comprehensive, production-grade Knowledge Base article in Markdown format based on a content draft.
+
+Return ONLY the markdown body. No JSON wrapper. No code fences around the entire response. Start directly with ## TL;DR.
+
+Required Sections (in exact order):
+1. ## TL;DR (3 bullet points: what this covers, why it matters, concrete outcome)
+2. ## Prerequisites ([ ] Azure bare-metal quota, [ ] ExpressRoute circuit >= 1 Gbps, [ ] Prism Central 2023.x, [ ] AHV version checked)
+3. Time + Risk line: "Estimated time: 2.5 hours | Risk level: Medium — test in non-prod first"
+4. ## Contents (TOC anchor links)
+5. ## 1. Architecture Overview (text description + ASCII art diagram showing On-Prem VMware -> ExpressRoute -> Azure Bare-Metal NC2 Cluster -> VNet)
+6. ## 2. Network Fabric (2-column markdown table: Flow Overlay vs Native VNet)
+7. ## 3. MTU & ExpressRoute Configuration (Numbered checklist: MTU 1500 vs 9000, Geneve/VXLAN overhead, ping + DF bit test, Route Server BGP check)
+8. ## 4. Storage Tiering Strategy (Table: DSF NVMe tier vs Azure Blob cold tier vs Azure NetApp Files)
+9. ## 5. Step-by-Step Migration Execution (5-7 numbered steps, each with Step name, Command block \`\`\`bash, and Validate line)
+10. ## 6. Validation Checklist ([ ] ping between NC2 AHV host and Azure VM, [ ] MTU 8972 test, [ ] DSF replication lag, [ ] failover test)
+11. ## 7. Troubleshooting (Table covering Packet fragmentation, Route propagation failure, DSF over-provisioning)
+12. ## 8. Next Steps (CTA blockquote: "${BRIEFING_CTA}", link to /tools/sizing, link to /briefing)
 
 HARD RULES:
 - Include at least ONE internal link to a real Zaboraa public route, e.g. ${matchedRoute}
 - Must end with the Briefing CTA: "${BRIEFING_CTA}"
 - Word count target: 1000-1400 words.
-- Forbidden claims: 12+ years, 40+ migrations, 1240 TB, 4500 TB, 820 TB, $1.4M, Zaboraa Technologies, 100% zero-downtime, pricing, client names, masterclass.`;
+- Forbidden claims: 12+ years, 40+ migrations, 25+ migrations, 25+ clients, 1240 TB, 4500 TB, 820 TB, $1.4M, Zaboraa Technologies, 100% zero-downtime, pricing, client names, masterclass.`;
 
-  const prompt = `Draft Title: ${draft.title}
+  const bodyPrompt = `Draft Title: ${draft.title}
 Draft Hook: ${draft.hook || ''}
 Draft Body: ${draft.body}
 Topic: ${draft.topic}`;
 
-  const rawJson = await callVertexGemini(prompt, systemInstruction, timeoutMs);
-  const parsed = JSON.parse(rawJson);
+  const { rawText: markdownBody, finishReason } = await callVertexGemini(
+    bodyPrompt,
+    bodySystemInstruction,
+    Math.min(timeoutMs - 10000, 30000),
+    'text/plain',
+    6000
+  );
 
-  checkForbiddenClaims(parsed.body || '');
-  checkForbiddenClaims(parsed.full_markdown || '');
-
-  if (parsed.full_markdown && !parsed.full_markdown.includes(BRIEFING_CTA)) {
-    parsed.full_markdown += `\n\n---\n${BRIEFING_CTA}`;
+  if (finishReason === 'MAX_TOKENS') {
+    return {
+      success: false,
+      track: 'kb',
+      error: 'KB body was truncated by the model. Please retry.',
+      retryable: true,
+    };
   }
 
-  await safeSaveGeneratedAsset(draftId, 'kb_draft', 'kb_draft', JSON.stringify(parsed));
+  checkForbiddenClaims(markdownBody);
+
+  let finalMarkdown = markdownBody.trim();
+  if (!finalMarkdown.includes(BRIEFING_CTA)) {
+    finalMarkdown += `\n\n---\n> **Architect Briefing:** ${BRIEFING_CTA}`;
+  }
+
+  const resultData = {
+    slug: headerObj.slug,
+    meta_title: headerObj.meta_title,
+    meta_description: headerObj.meta_description,
+    markdown: finalMarkdown,
+    body: finalMarkdown,
+    full_markdown: finalMarkdown,
+  };
+
+  await safeSaveGeneratedAsset(draftId, 'kb_draft', 'kb_draft', JSON.stringify(resultData));
 
   return {
     success: true,
     draftId,
-    ...parsed,
+    ...resultData,
   };
 }
 
@@ -323,7 +378,7 @@ export async function processGenerateAll(draftId) {
   const [captionsRes, videoRes, kbRes, posterRes] = await Promise.allSettled([
     processGenerateCaptions(draftId, 18000),
     processGenerateVideoScript(draftId, 22000),
-    processGenerateKB(draftId, 32000),
+    processGenerateKB(draftId, 50000),
     processGeneratePoster(draftId),
   ]);
 

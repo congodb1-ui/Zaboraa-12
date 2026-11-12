@@ -17,6 +17,8 @@ export const FORBIDDEN_CLAIMS_PATTERNS = [
   /\bPrincipal\s+Cloud\s+Architect\b/i,
   /\bpricing\b/i,
   /\bmasterclass\b/i,
+  /\b25\+|\d+\+?\s*(clients|cutovers|migrations|projects|customers)\b/i,
+  /\bafter\s+\d+\+?\s*(cutovers|migrations)\b/i,
 ];
 
 export function checkForbiddenClaims(text) {

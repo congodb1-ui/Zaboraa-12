@@ -1,37 +1,44 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { BRIEFING_CTA, saveGeneratedAsset, fetchDraftById } from './studioHelpers.js';
 
-let fontStyleBlock = '';
+function ensureFontsInTmp() {
+  const tmpDir = os.tmpdir();
+  const fontFiles = ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'];
+  const srcDir = path.join(process.cwd(), 'api', '_lib', 'fonts');
 
-try {
-  const regPath = path.join(process.cwd(), 'api', '_lib', 'fonts', 'DejaVuSans.ttf');
-  const boldPath = path.join(process.cwd(), 'api', '_lib', 'fonts', 'DejaVuSans-Bold.ttf');
+  for (const fontName of fontFiles) {
+    const srcPath = path.join(srcDir, fontName);
+    if (!fs.existsSync(srcPath)) continue;
 
-  if (fs.existsSync(regPath) && fs.existsSync(boldPath)) {
-    const regB64 = fs.readFileSync(regPath).toString('base64');
-    const boldB64 = fs.readFileSync(boldPath).toString('base64');
-    fontStyleBlock = `
-    <style>
-      @font-face {
-        font-family: 'DejaVu Sans';
-        src: url('data:font/ttf;charset=utf-8;base64,${regB64}') format('truetype');
-        font-weight: normal;
-        font-style: normal;
+    const stats = fs.statSync(srcPath);
+    const destPath = path.join(tmpDir, `DejaVuSans-${stats.size}-${fontName}`);
+
+    if (!fs.existsSync(destPath)) {
+      try {
+        fs.copyFileSync(srcPath, destPath);
+      } catch (err) {
+        console.warn(`[posterBuilder] Could not copy font ${fontName} to ${tmpDir}:`, err?.message);
       }
-      @font-face {
-        font-family: 'DejaVu Sans';
-        src: url('data:font/ttf;charset=utf-8;base64,${boldB64}') format('truetype');
-        font-weight: bold;
-        font-style: normal;
-      }
-      text {
-        font-family: 'DejaVu Sans', sans-serif;
-      }
-    </style>`;
+    }
   }
-} catch (e) {
-  console.warn('[posterBuilder] Failed to load local TTF fonts, falling back to system fonts:', e?.message);
+
+  try {
+    process.env.FONTCONFIG_PATH = tmpDir;
+    const fontsConfPath = path.join(tmpDir, 'fonts.conf');
+    if (!fs.existsSync(fontsConfPath)) {
+      const fontsConfContent = `<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>${tmpDir}</dir>
+  <dir>${srcDir}</dir>
+</fontconfig>`;
+      fs.writeFileSync(fontsConfPath, fontsConfContent, 'utf-8');
+    }
+  } catch (err) {
+    console.warn(`[posterBuilder] Failed setting up fontconfig in ${tmpDir}:`, err?.message);
+  }
 }
 
 function escapeXml(unsafe) {
@@ -62,7 +69,6 @@ function wrapText(text, maxCharsPerLine, maxLines = 2) {
     lines.push(currentLine);
   }
 
-  // If words remaining or lines truncated, add ellipsis to last line if needed
   if (lines.length === maxLines && words.length > 0) {
     const lastLine = lines[lines.length - 1];
     if (!lastLine.endsWith('…') && !lastLine.endsWith('...')) {
@@ -97,7 +103,11 @@ export function buildPosterSvg(title, subtitle, size, topic = 'AVS Migrations') 
 
   return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    ${fontStyleBlock}
+    <style>
+      text {
+        font-family: 'DejaVu Sans', sans-serif;
+      }
+    </style>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0F172A" />
       <stop offset="100%" stop-color="#1E293B" />
@@ -163,6 +173,7 @@ async function safeSaveGeneratedAsset(draftId, assetType, subtype, content) {
 }
 
 export async function processGeneratePoster(draftId) {
+  ensureFontsInTmp();
   const draft = await fetchDraftById(draftId);
 
   const linkedinSvg = buildPosterSvg(draft.title, draft.hook || draft.body.slice(0, 100), '1200x627', draft.topic);

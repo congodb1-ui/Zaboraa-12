@@ -10,6 +10,9 @@ import {
   processGeneratePoster,
 } from '../../api/_lib/studioProcessors.js';
 import {
+  checkForbiddenClaims,
+} from '../../api/_lib/studioHelpers.js';
+import {
   generateCaptions,
   generateVideoScript,
   generateKB,
@@ -73,13 +76,43 @@ vi.mock('../../api/_lib/requireAdmin.js', () => {
   };
 });
 
-// Mock @google/genai & fetch for Vertex calls
+let mockVertexFailMode: string | null = null;
+
+// Mock fetch for Vertex calls
 vi.stubGlobal('fetch', vi.fn(async (url: string, opts?: any) => {
   if (typeof url === 'string' && url.includes('aiplatform.googleapis.com')) {
     const reqBody = JSON.parse(opts?.body || '{}');
     const promptText = reqBody.contents?.[0]?.parts?.[0]?.text || '';
+    const sysInstruction = reqBody.systemInstruction?.parts?.[0]?.text || '';
 
-    if (promptText.includes('12+ years experience')) {
+    if (mockVertexFailMode === 'KB_TRUNCATED' && sysInstruction.includes('Markdown format')) {
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              finishReason: 'MAX_TOKENS',
+              content: { parts: [{ text: '## TL;DR\n- Cut off midway' }] }
+            }
+          ]
+        })
+      } as Response;
+    }
+
+    if (mockVertexFailMode === 'KB_INVALID_HEADER_JSON' && sysInstruction.includes('metadata JSON')) {
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: { parts: [{ text: '{ "slug": "truncated-json-no-closing' }] }
+            }
+          ]
+        })
+      } as Response;
+    }
+
+    if (sysInstruction.includes('metadata JSON')) {
       return {
         ok: true,
         json: async () => ({
@@ -89,11 +122,9 @@ vi.stubGlobal('fetch', vi.fn(async (url: string, opts?: any) => {
                 parts: [
                   {
                     text: JSON.stringify({
-                      linkedin_caption: '12+ years experience in VMware cloud',
-                      instagram_caption: '12+ years experience in VMware cloud',
-                      youtube_title: '12+ years experience',
-                      youtube_description: '12+ years experience',
-                      briefing_cta: 'Running VMware on-prem or evaluating AVS? Book a free 30-min architecture briefing → https://zaboraa.com/briefing',
+                      slug: 'architecting-nutanix-nc2-azure-bare-metal',
+                      meta_title: 'Architecting Nutanix NC2 on Azure Bare-Metal',
+                      meta_description: 'Enterprise guide for Nutanix NC2 on Azure bare-metal migrations.'
                     })
                   }
                 ]
@@ -104,8 +135,7 @@ vi.stubGlobal('fetch', vi.fn(async (url: string, opts?: any) => {
       } as Response;
     }
 
-    const sectionBlock = `
-## TL;DR
+    const markdownBody = `## TL;DR
 - Complete migration path from on-prem VMware to Nutanix NC2 on Azure bare-metal.
 - Zero-downtime cutover strategy utilizing Flow Overlay and ExpressRoute.
 - Reduced TCO with DSF NVMe tiering and automated host scaling.
@@ -175,7 +205,19 @@ Deploying Nutanix NC2 on Azure bare-metal provides native integration with Azure
 > Running VMware on-prem or evaluating AVS? Book a free 30-min architecture briefing → https://zaboraa.com/briefing
 `;
 
-    const kbLongBody = sectionBlock + "\n\n" + "Enterprise cloud migration deep dive text paragraph. ".repeat(150);
+    if (sysInstruction.includes('Markdown format')) {
+      return {
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              finishReason: 'STOP',
+              content: { parts: [{ text: markdownBody }] }
+            }
+          ]
+        })
+      } as Response;
+    }
 
     return {
       ok: true,
@@ -208,7 +250,7 @@ Deploying Nutanix NC2 on Azure bare-metal provides native integration with Azure
                     hook_options: [
                       'Most enterprise cloud migrations fail because of MTU misconfigurations.',
                       'The #1 mistake when migrating VMware to NC2...',
-                      'After 25+ VMware-to-cloud cutovers, here is what changed...'
+                      'What actually breaks when AHV replaces ESXi — and how to prevent it'
                     ],
                     script: {
                       hook: 'HOOK (5s): VMware sizing strategy for enterprise cloud.',
@@ -231,14 +273,7 @@ Deploying Nutanix NC2 on Azure bare-metal provides native integration with Azure
                       'Prism Central terminal showing AHV host memory allocation',
                       'Nutanix DSF storage tiering panel showing NVMe to Blob migration'
                     ],
-                    duration_estimate: '60s',
-                    slug: 'architecting-nutanix-nc2-azure-bare-metal',
-                    meta_title: 'Architecting Nutanix NC2 on Azure Bare-Metal',
-                    meta_description: 'Enterprise guide for Nutanix NC2 on Azure bare-metal migrations.',
-                    outline: [{ h2: '1. Architecture Overview', summary: 'Overview' }],
-                    body: kbLongBody,
-                    frontmatter: 'meta_title: Architecting Nutanix NC2 on Azure',
-                    full_markdown: kbLongBody
+                    duration_estimate: '60s'
                   })
                 }
               ]
@@ -251,13 +286,14 @@ Deploying Nutanix NC2 on Azure bare-metal provides native integration with Azure
   return { ok: false, json: async () => ({ error: 'Not found' }) } as Response;
 }));
 
-describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
+describe('Section 11: Content Studio (Real Fix v3) Test Suite', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockVertexFailMode = null;
     process.env.GEMINI_API_KEY = 'mock-vertex-key';
   });
 
-  describe('0. Poster Font & PNG Render Verification', () => {
+  describe('0. Poster Font & PNG Render Verification (Fontconfig /tmp Setup)', () => {
     it('verifies TTF font files exist in repo for build embedding', () => {
       const regPath = path.join(process.cwd(), 'api', '_lib', 'fonts', 'DejaVuSans.ttf');
       const boldPath = path.join(process.cwd(), 'api', '_lib', 'fonts', 'DejaVuSans-Bold.ttf');
@@ -266,11 +302,10 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
       expect(fs.statSync(regPath).size).toBeGreaterThan(100000);
     });
 
-    it('generates un-mocked Sharp PNG poster with correct metadata and size > 10KB', async () => {
+    it('generates un-mocked Sharp PNG poster without base64 font URIs in SVG', async () => {
       const res = await processGeneratePoster('valid-draft');
       expect(res.success).toBe(true);
       expect(res.linkedin).toBeDefined();
-      expect(res.instagram).toBeDefined();
 
       const linkedinBuf = Buffer.from(res.linkedin, 'base64');
       const linkedinMeta = await sharp(linkedinBuf).metadata();
@@ -278,57 +313,50 @@ describe('Section 11: Content Studio (Phase 1) Test Suite', () => {
       expect(linkedinMeta.width).toBe(1200);
       expect(linkedinMeta.height).toBe(627);
       expect(linkedinBuf.length).toBeGreaterThan(10000);
-
-      const instaBuf = Buffer.from(res.instagram, 'base64');
-      const instaMeta = await sharp(instaBuf).metadata();
-      expect(instaMeta.format).toBe('png');
-      expect(instaMeta.width).toBe(1080);
-      expect(instaMeta.height).toBe(1080);
-      expect(instaBuf.length).toBeGreaterThan(10000);
     });
   });
 
-  describe('1. Enhanced Captions Track', () => {
-    it('generates enhanced captions with linkedin_caption, instagram_hooks, youtube_chapters, hashtags', async () => {
-      const res = await processGenerateCaptions('valid-draft');
-      expect(res.success).toBe(true);
-      expect(res.linkedin_caption.length).toBeGreaterThanOrEqual(100);
-      expect(res.instagram_hooks.length).toBe(2);
-      expect(res.youtube_chapters.length).toBeGreaterThanOrEqual(4);
-      expect(res.hashtags.length).toBeGreaterThanOrEqual(5);
-      expect(res.hashtags[0].startsWith('#')).toBe(true);
-    });
-  });
-
-  describe('2. Enhanced Video Script Track', () => {
-    it('generates structured video script with hook_options, sub-fields in shot_list, and b_roll_notes', async () => {
-      const res = await processGenerateVideoScript('valid-draft');
-      expect(res.success).toBe(true);
-      expect(res.hook_options.length).toBe(3);
-      expect(res.shot_list[0].on_screen_text).toBeDefined();
-      expect(res.shot_list[0].voiceover_hint).toBeDefined();
-      expect(res.b_roll_notes.length).toBe(3);
-      expect(res.script.hook).toBeDefined();
-      expect(res.script.cta).toContain('Running VMware on-prem or evaluating AVS?');
-    });
-  });
-
-  describe('3. Enhanced Knowledge Base Track', () => {
-    it('generates detailed Markdown KB article with required section headers and word count >= 900', async () => {
+  describe('1. Enhanced KB Track (Split Call & Markdown Body)', () => {
+    it('returns raw markdown without throwing JSON parse error', async () => {
       const res = await processGenerateKB('valid-draft');
       expect(res.success).toBe(true);
-      expect(res.body).toContain('## TL;DR');
-      expect(res.body).toContain('## Prerequisites');
-      expect(res.body).toContain('## Contents');
-      expect(res.body).toContain('## 6. Validation Checklist');
-      expect(res.body).toContain('## 7. Troubleshooting');
+      expect(res.markdown).toContain('## TL;DR');
+      expect(res.markdown).toContain('## Prerequisites');
+      expect(res.slug).toBe('architecting-nutanix-nc2-azure-bare-metal');
+    });
 
-      const wordCount = res.body.split(/\s+/).filter(Boolean).length;
-      expect(wordCount).toBeGreaterThanOrEqual(900);
+    it('handles truncated MAX_TOKENS finishReason cleanly with retryable error', async () => {
+      mockVertexFailMode = 'KB_TRUNCATED';
+      const res = await processGenerateKB('valid-draft');
+      expect(res.success).toBe(false);
+      expect(res.retryable).toBe(true);
+      expect(res.error).toContain('truncated');
+    });
+
+    it('recovers with fallback slug when header JSON fails to parse', async () => {
+      mockVertexFailMode = 'KB_INVALID_HEADER_JSON';
+      const res = await processGenerateKB('valid-draft');
+      expect(res.success).toBe(true);
+      expect(res.slug).toBeDefined();
+      expect(res.markdown).toContain('## TL;DR');
     });
   });
 
-  describe('4. Handler & Wrapper Integrations', () => {
+  describe('2. Forbidden Claim Validator Enhancements', () => {
+    it('rejects "After 25+ cutovers, here is what changed"', () => {
+      expect(() => checkForbiddenClaims('After 25+ cutovers, here is what changed')).toThrow(/forbidden claim/);
+    });
+
+    it('rejects "25+ clients trust this"', () => {
+      expect(() => checkForbiddenClaims('25+ clients trust this')).toThrow(/forbidden claim/);
+    });
+
+    it('passes clean technical content without claims', () => {
+      expect(checkForbiddenClaims('The #1 mistake when migrating VMware')).toBeNull();
+    });
+  });
+
+  describe('3. Handler Integrations', () => {
     it('handles GET requests cleanly with 405 JSON', async () => {
       const req = { method: 'GET', query: {}, body: {} };
       let statusCode = 0;

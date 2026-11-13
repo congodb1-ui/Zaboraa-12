@@ -48,6 +48,8 @@ export interface AuthContextType {
   setIsCommercializeModalOpen: (open: boolean) => void;
   authError: string | null;
   clearAuthError: () => void;
+  renderGoogleButton?: (element: HTMLElement) => () => void;
+  handleSignInWithIdToken?: (token: string, rawNonce: string) => Promise<AuthUserProfile | null>;
 
   // Offline Emergency Recovery Mode
   isOfflineAdminSession: boolean;
@@ -87,6 +89,80 @@ export const ADMIN_EMAILS = [
   'wasim.sayyed@zaboraa-cloud.com',
   'anansari678@gmail.com'
 ];
+export const ALLOWED_EMAILS = ADMIN_EMAILS;
+
+let scriptLoadingPromise: Promise<void> | null = null;
+let scriptLoadedFlag = false;
+
+export function loadGoogleGsiScript(): Promise<void> {
+  if (scriptLoadedFlag || (typeof window !== 'undefined' && (window as any).google?.accounts?.id)) {
+    scriptLoadedFlag = true;
+    return Promise.resolve();
+  }
+  if (scriptLoadingPromise) {
+    return scriptLoadingPromise;
+  }
+  if (typeof document !== 'undefined') {
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (existingScript) {
+      scriptLoadingPromise = new Promise((resolve, reject) => {
+        if ((window as any).google?.accounts?.id) {
+          scriptLoadedFlag = true;
+          resolve();
+        } else {
+          existingScript.addEventListener('load', () => {
+            scriptLoadedFlag = true;
+            resolve();
+          });
+          existingScript.addEventListener('error', (err) => reject(err));
+        }
+      });
+      return scriptLoadingPromise;
+    }
+  }
+
+  scriptLoadingPromise = new Promise((resolve, reject) => {
+    if (typeof document === 'undefined') return resolve();
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      scriptLoadedFlag = true;
+      resolve();
+    };
+    script.onerror = (err) => {
+      scriptLoadingPromise = null;
+      reject(err);
+    };
+    document.head.appendChild(script);
+  });
+
+  return scriptLoadingPromise;
+}
+
+export function base64urlEncode(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+export async function generateNoncePair(): Promise<{ rawNonce: string; hashedNonce: string }> {
+  const array = new Uint8Array(32);
+  const cryptoObj = typeof window !== 'undefined' && window.crypto ? window.crypto : globalThis.crypto;
+  cryptoObj.getRandomValues(array);
+  const rawNonce = base64urlEncode(array);
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(rawNonce);
+  const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
+  const hashedNonce = base64urlEncode(new Uint8Array(hashBuffer));
+
+  return { rawNonce, hashedNonce };
+}
 
 /**
  * SECURITY: an email address must never grant admin rights. Anyone can sign up with
@@ -368,77 +444,134 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogle = async (): Promise<AuthUserProfile> => {
+  const handleSignInWithIdToken = useCallback(async (token: string, rawNonce: string): Promise<AuthUserProfile | null> => {
     setAuthError(null);
     try {
-      if (supabase && isSupabaseConfigured) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: getAuthRedirectUrl()
-          }
-        });
-        if (error) {
-          setAuthError(error.message);
-          throw error;
-        }
-        if (data?.url && typeof window !== 'undefined') {
-          window.location.href = data.url;
-          // Halt execution so no fallback is created before redirecting
-          return new Promise(() => {});
-        }
-        throw new Error('Google OAuth did not return a valid authentication URL.');
+      if (!supabase || !isSupabaseConfigured) {
+        setAuthError('Supabase authentication is not configured.');
+        return null;
       }
-      throw new Error('Supabase authentication is not configured.');
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: token,
+        nonce: rawNonce
+      });
+
+      if (error) {
+        const errMsg = error.message || '';
+        const lowerMsg = errMsg.toLowerCase();
+        if (
+          lowerMsg.includes('signup') ||
+          lowerMsg.includes('not allowed') ||
+          lowerMsg.includes('nonce') ||
+          lowerMsg.includes('allow')
+        ) {
+          setAuthError('not on allow list');
+        } else {
+          setAuthError(errMsg || 'not on allow list');
+        }
+        return null;
+      }
+
+      const email = data.session?.user?.email;
+      if (!email) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setAuthError('not on allow list');
+        return null;
+      }
+
+      const lowerEmail = email.toLowerCase().trim();
+      const allowedLower = ALLOWED_EMAILS.map(e => e.toLowerCase().trim());
+
+      if (!allowedLower.includes(lowerEmail)) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setAuthError('not on allow list');
+        return null;
+      }
+
+      const profile = await mapSupabaseUserToProfile(data.session.user);
+      setUser(profile);
+      setSubscriptionTierState(profile.licenseTier);
+      saveLocalStoredUser(profile);
+
+      if (typeof window !== 'undefined') {
+        window.location.href = '/admin';
+      }
+      return profile;
     } catch (err: any) {
-      const msg = err.message || 'Unable to sign in with Google. Please try again.';
-      setAuthError(msg);
-      throw err;
+      const msg = err?.message || '';
+      const lowerMsg = msg.toLowerCase();
+      if (
+        lowerMsg.includes('signup') ||
+        lowerMsg.includes('not allowed') ||
+        lowerMsg.includes('nonce') ||
+        lowerMsg.includes('allow')
+      ) {
+        setAuthError('not on allow list');
+      } else {
+        setAuthError(msg || 'not on allow list');
+      }
+      return null;
     }
+  }, [mapSupabaseUserToProfile]);
+
+  const renderGoogleButton = useCallback((element: HTMLElement) => {
+    let isMounted = true;
+    loadGoogleGsiScript().then(async () => {
+      if (!isMounted || !element) return;
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        console.warn('VITE_GOOGLE_CLIENT_ID is not configured');
+        return;
+      }
+
+      const { rawNonce, hashedNonce } = await generateNoncePair();
+
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+        (window as any).google.accounts.id.initialize({
+          client_id: clientId,
+          callback: async (response: any) => {
+            if (response?.credential) {
+              await handleSignInWithIdToken(response.credential, rawNonce);
+            }
+          },
+          nonce: hashedNonce,
+          auto_select: false
+        });
+
+        element.innerHTML = '';
+        (window as any).google.accounts.id.renderButton(element, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          width: 320
+        });
+      }
+    }).catch((err) => {
+      console.error('Failed to load Google Identity Services script:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [handleSignInWithIdToken]);
+
+  const signInWithGoogle = async (): Promise<AuthUserProfile> => {
+    setAuthError(null);
+    throw new Error('Please use the Google Sign-In button.');
   };
 
   const signInWithGoogleRedirect = async (): Promise<void> => {
     setAuthError(null);
-    try {
-      if (supabase) {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: getAuthRedirectUrl()
-          }
-        });
-        if (error) throw error;
-      }
-    } catch (err: any) {
-      const msg = err.message || 'Google OAuth redirect failed.';
-      setAuthError(msg);
-      throw err;
-    }
+    throw new Error('Please use the Google Sign-In button.');
   };
 
   const signInWithMicrosoft = async (): Promise<void> => {
     setAuthError(null);
-    try {
-      if (supabase && isSupabaseConfigured) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'azure',
-          options: {
-            redirectTo: getAuthRedirectUrl(),
-            scopes: 'email openid profile'
-          }
-        });
-        if (error) throw error;
-        if (data?.url && typeof window !== 'undefined') {
-          window.location.href = data.url;
-          return;
-        }
-      }
-      throw new Error('Microsoft authentication service is not configured.');
-    } catch (err: any) {
-      const msg = err.message || 'Microsoft authentication failed.';
-      setAuthError(msg);
-      throw err;
-    }
+    throw new Error('Microsoft authentication service is not configured.');
   };
 
   const loginWithEmail = async (email: string, pass: string): Promise<AuthUserProfile> => {
@@ -662,6 +795,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsCommercializeModalOpen,
         authError,
         clearAuthError,
+        renderGoogleButton,
+        handleSignInWithIdToken,
 
         // Offline Emergency Mode
         isOfflineAdminSession,

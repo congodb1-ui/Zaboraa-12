@@ -293,20 +293,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           // Profile does not exist yet (e.g. first Google sign in) - Persist immediately to Supabase
           try {
-            await supabase.from('profiles').upsert({
+            const isEmailAdmin = sbUser.email?.toLowerCase().trim() === 'congodb1@gmail.com';
+            const initialRole = (isEmailAdmin || role === 'admin') ? 'admin' : (role || 'user');
+            const initialTier = (isEmailAdmin || role === 'admin') ? 'enterprise' : tier;
+
+            const { error: upsertError } = await supabase.from('profiles').upsert({
               id: sbUser.id,
-              email: sbUser.email,
-              full_name: metaFullName,
-              avatar_url: metaAvatarUrl,
-              role: isUserAdminEmail(sbUser.email) ? 'admin' : role,
-              subscription_tier: isUserAdminEmail(sbUser.email) ? 'enterprise' : tier,
+              email: sbUser.email || 'user@zaboraa.com',
+              full_name: metaFullName || displayName,
+              avatar_url: metaAvatarUrl || photoURL || null,
+              role: initialRole,
+              subscription_tier: initialTier,
               status: 'active',
               last_sign_in_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }, { onConflict: 'id' });
-          } catch (insertErr) {
-            console.warn('Notice creating initial user profile in Supabase:', insertErr);
+
+            if (upsertError) {
+              console.warn('Notice creating initial user profile in Supabase:', upsertError.message);
+            }
+          } catch (insertErr: any) {
+            console.warn('Notice: Unable to upsert public.profiles:', insertErr?.message || insertErr);
           }
         }
       } catch (err) {
@@ -477,7 +485,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      const profile = await mapSupabaseUserToProfile(data.session.user);
+      let profile: AuthUserProfile | null = null;
+      try {
+        profile = await mapSupabaseUserToProfile(data.session.user);
+      } catch (profileErr: any) {
+        console.warn('Notice: Error building profile, returning fallback session profile:', profileErr);
+        const lower = lowerEmail;
+        const isEmailAdmin = lower === 'congodb1@gmail.com';
+        profile = {
+          uid: data.session.user.id,
+          email: data.session.user.email || lower,
+          displayName: data.session.user.user_metadata?.full_name || lower.split('@')[0],
+          photoURL: data.session.user.user_metadata?.avatar_url || null,
+          licenseTier: isEmailAdmin ? 'enterprise' : 'free',
+          role: isEmailAdmin ? 'admin' : 'public',
+          provider: 'google'
+        };
+      }
+
       setUser(profile);
       setSubscriptionTierState(profile.licenseTier);
       saveLocalStoredUser(profile);

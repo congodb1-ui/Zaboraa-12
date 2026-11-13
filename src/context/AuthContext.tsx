@@ -490,6 +490,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile = await mapSupabaseUserToProfile(data.session.user);
       } catch (profileErr: any) {
         console.warn('Notice: Error building profile, returning fallback session profile:', profileErr);
+        setAuthError('Profile load failed');
         const lower = lowerEmail;
         const isEmailAdmin = lower === 'congodb1@gmail.com';
         profile = {

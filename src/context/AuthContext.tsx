@@ -84,6 +84,7 @@ function saveLocalStoredUser(profile: AuthUserProfile | null) {
 
 export const ADMIN_EMAILS = [
   'admin@zaboraa.com',
+  'congodb1@gmail.com',
   'congodb4@gmail.com',
   'congodb1992@gmail.com',
   'wasim.sayyed@zaboraa-cloud.com',
@@ -467,18 +468,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      const email = data.session?.user?.email;
+      const rawEmail = data.session?.user?.email ?? data.user?.email ?? "";
+      const email = rawEmail.trim().toLowerCase();
+
       if (!email) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setAuthError('not on allow list');
+        setAuthError('Sign-in failed: missing email');
         return null;
       }
 
-      const lowerEmail = email.toLowerCase().trim();
-      const allowedLower = ALLOWED_EMAILS.map(e => e.toLowerCase().trim());
+      let allowedList = ALLOWED_EMAILS.map(e => e.trim().toLowerCase()).filter(Boolean);
+      if (allowedList.length === 0) {
+        console.error("ALLOWED_EMAILS is empty");
+        allowedList = ["congodb1@gmail.com"];
+      }
 
-      if (!allowedLower.includes(lowerEmail)) {
+      console.log("[auth] allowlist check", { email, allowed: allowedList, sessionHasUser: !!data.session?.user });
+
+      if (!allowedList.includes(email)) {
         await supabase.auth.signOut();
         setUser(null);
         setAuthError('not on allow list');

@@ -1,17 +1,17 @@
-# ZABORAA MASTER BIBLE — v2.1
+# ZABORAA MASTER BIBLE — v2.2
 **Single source of truth for Zaboraa — for AI video, content and marketing prompts**
 
 > **READ THIS FIRST (accuracy note for any AI using this file).**
 > Zaboraa is **NOT** a consumer AI-tools platform. It is a **founder-led enterprise VMware / hyperscaler cloud-architecture advisory** with a free **engineering workbench of 6 calculators/assessment tools**. There is **no pricing page, no credits system, no billing and no generation history** in the codebase. Do not invent them.
-> **Source precedence (v2.1):** (0) the founder's decisions **D1–D9** (SEO Master §19.2) → (1) the codebase as uploaded on **10 Nov 2026** → (2) this file → (3) older documents / v1.x. Founder decisions override any code value they contradict; Phase 1 of the SEO Master brings the code in line. Where the code contradicts itself it is tagged **[CONFLICT-IN-CODE]** and the founder must decide before the claim is used in marketing.
+> **Source precedence (v2.2):** (0) the founder's decisions **D1–D9** (SEO Master §19.2) → (1) the codebase as updated on **13 Nov 2026** (Normalized Template Refactor) → (2) this file → (3) older documents / v1.x. Founder decisions override any code value they contradict; Phase 1 of the SEO Master brings the code in line. Where the code contradicts itself it is tagged **[CONFLICT-IN-CODE]** and the founder must decide before the claim is used in marketing.
 > Tags: **[NOT IN CODEBASE]** supply from founder · **[DERIVED]** reasoned summary, not a quote · **[CONFLICT-IN-CODE]** two places disagree · **[HOLD]** do not publish yet · **[VERIFY]** could not be confirmed from the zip.
-> Companion file: `ZABORAA-SEO-MASTER-V2.md` (SEO / GEO status, implementation plan and Antigravity runbook).
-> **v2.1 (10 Nov 2026):** the founder answered **D1–D9**. The old **[HOLD]** / **[CONFLICT-IN-CODE]** tags that mention D1–D9 are **resolved** — the approved values are in §9. Where this file says "the code still shows …", the code is brought in line by SEO Master Phase 1 (P1-02 … P1-08).
+> Companion file: `ZABORAA-SEO-MASTER-v3.1.md` (SEO / GEO status, implementation plan and Antigravity runbook).
+> **v2.2 (13 Nov 2026):** Updated to reflect the normalized 6 Enterprise Architecture Blueprint Generator templates, string constants SSOT (`templateStrings.ts`), pure ref-backed state handler (`wizardStateRef`), and dynamic target/source array synchronization.
 
 | Field | Value |
 |---|---|
-| Version | **v2.1 — 10 Nov 2026** (supersedes v2.0 and v1; founder decisions D1–D9 applied) |
-| Audited against | `Zaboraa-Website-Project-Folder.zip` (247 files, built 10 Nov 2026) |
+| Version | **v2.2 — 13 Nov 2026** (supersedes v2.1, v2.0 and v1; includes Template Normalization & Validation SSOT) |
+| Audited against | Repository codebase (`Zaboraa-12-Fresh`, 13 Nov 2026) |
 | Not in the zip | `.env*`, `README`, `.git`. The founder confirmed on 10 Nov 2026 that `vercel.json`, `tsconfig.json` and `.gitignore` **exist in the real repo and work** (they were only missing from the audit zip) |
 
 ---
@@ -297,7 +297,14 @@ All 6 are listed on `/tools`, free, run mostly **in the browser** (client-side c
 - **Category:** Architecture design / document & image generation (AI-assisted)
 - **1-line:** Turns sizing inputs or an RVTools assessment into a verified bill of materials, multi-tier architecture diagram and advisory dossier.
 - **Detailed:** A **5-step enterprise wizard** produces visual multi-panel topology cards (on-prem → transit → landing zone → security → target & DR) with an SLA footer (e.g., "DR SLA: 15-min RPO | 60-min RTO"). Optionally calls Google Gemini to render an AI "cloud 3D blueprint" image. Deliverables are presentation-ready and watermarked with the brand.
-- **Templates (5):** VMware → AVS · VMware → NC2 on Azure · Nutanix → NC2 on Azure · VMware → GCVE · VMware → VMC on AWS.
+- **Canonical Architecture Templates (6):**
+  1. **VMware to AVS**: VMware vSphere to Azure VMware Solution (AVS Gen 2 bare-metal AV64 nodes, 4 nodes, ExpressRoute FastPath, Palo Alto Networks VM-Series, VMware HCX, SRM DR).
+  2. **VMware to NC2 on Azure**: VMware vSphere to Nutanix NC2 on Azure (AN36P bare-metal nodes, 3 nodes, ExpressRoute Standard, Native Nutanix DSF storage, Nutanix Move, Nutanix Protection Domains DR).
+  3. **Nutanix to NC2 on Azure**: Nutanix AHV on-premises to Nutanix NC2 on Azure (AN36P nodes, 3 nodes, Nutanix Move, Nutanix Leap DR).
+  4. **VMware to GCVE**: VMware vSphere to Google Cloud VMware Engine (ve1-standard-72 nodes, 3 nodes, Google Cloud Interconnect, Google Cloud NetApp Volumes, VMware HCX, Zerto CDP DR).
+  5. **VMware to VMC on AWS**: VMware vSphere to VMware Cloud on AWS (i4i.metal nodes, 3 nodes, AWS Direct Connect, Amazon FSx for NetApp ONTAP, AWS TGW Hub, VMware HCX, AWS Elastic DR).
+  6. **Hybrid Extension & Burst**: On-premises vSphere to Azure VMware Solution Gen 2 with L2 stretch enabled (`layer2Extension: true`, 4 nodes, RPO 15 / RTO 45 min, Warm Standby DR).
+- **Single Source of Truth (SSOT):** String options centralized in `src/data/templateStrings.ts` and validated via pure ref-backed updates (`wizardStateRef`) with dynamic compatibility fallback guards across all dropdowns.
 - **Input:** Customer name, objective/strategy, source infrastructure, landing-zone & VDI choices, security (NVA/WAF/perimeter), target SDDC sizing, DR RPO/RTO; can import from Tools 1/2.
 - **Output:** Topology blueprint, **BOM Excel** (`<Customer>_Cloud_Architecture_BOM.xlsx`), **4K PNG/JPEG export**, **Blueprint JSON**, shareable save-link, executive summary / dossier, AI-generated blueprint image (downloadable), Google Drive workspace sync.
 - **Technology:** React wizard + client calculators; `xlsx`, `jszip`, `jsPDF`; **Google Gemini image model** via server route `/api/generate-blueprint` (model `gemini-3.1-flash-image`); Supabase for saved blueprints/feature controls.

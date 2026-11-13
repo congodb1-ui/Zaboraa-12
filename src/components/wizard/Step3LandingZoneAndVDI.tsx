@@ -119,7 +119,13 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
     return options;
   };
 
-  const landingZoneOptions = getLandingZoneOptions();
+  // Discover active target platform compatibility allowed landing zones
+  const allowedLandingZones = (compat as any).allowedLandingZones || (compat as any).landingZones || [];
+  const landingZoneOptions = allowedLandingZones.map((lz: string) => ({
+    value: lz,
+    label: lz,
+    provider: ((compat as any).provider || 'Cloud').toUpperCase()
+  }));
 
   // Filtered Cloud-Native Services categorized by provider
   const getProviderServices = () => {
@@ -254,11 +260,21 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
               }}
               className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-cyan-400 font-medium"
             >
-              {landingZoneOptions.map((opt) => (
+              {landingZoneOptions.map((opt: any) => (
                 <option key={opt.value} value={opt.value}>
                   [{opt.provider}] {opt.label}
                 </option>
               ))}
+              {!landingZoneOptions.some((o: any) => o.value === wizardState.landingZonePattern) && wizardState.landingZonePattern && (
+                (() => {
+                  console.warn('Dropdown value not in list', 'landingZonePattern', wizardState.landingZonePattern);
+                  return (
+                    <option key={wizardState.landingZonePattern} value={wizardState.landingZonePattern}>
+                      {wizardState.landingZonePattern} (custom)
+                    </option>
+                  );
+                })()
+              )}
             </select>
           </div>
 
@@ -381,6 +397,16 @@ export const Step3LandingZoneAndVDI: React.FC<Step3LandingZoneAndVDIProps> = ({
                     {plat}
                   </option>
                 ))}
+                {!allowedVdiPlatforms.includes(wizardState.vdiConfig.platform) && wizardState.vdiConfig.platform && (
+                  (() => {
+                    console.warn('Dropdown value not in list', 'vdiPlatform', wizardState.vdiConfig.platform);
+                    return (
+                      <option key={wizardState.vdiConfig.platform} value={wizardState.vdiConfig.platform}>
+                        {wizardState.vdiConfig.platform} (custom)
+                      </option>
+                    );
+                  })()
+                )}
               </select>
             </div>
 

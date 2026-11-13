@@ -205,13 +205,28 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
         ? 'Disaster Recovery'
         : 'Production';
 
-    const defaultPlatform =
-      activeTargets[0]?.platform === 'avs-gen2' ? 'avs-gen2' : 'avs-gen2';
+    const primaryPlatform = activeTargets[0]?.platform || (wizardState.targetPlatform as SupportedTargetPlatform) || 'avs-gen2';
+    const primarySkus = TARGET_NODE_SKU_CATALOGUE.filter((s) => s.platform === primaryPlatform);
+    const primarySku = primarySkus[0]?.sku || 'AV64';
+
+    const defaultRegion = primaryPlatform.includes('vmc')
+      ? 'us-east-1'
+      : primaryPlatform.includes('gcve')
+      ? 'us-central1'
+      : role === 'Disaster Recovery'
+      ? 'East US 2'
+      : 'East US';
 
     const newTarget = createDefaultTargetItem(
       role,
       role === 'Disaster Recovery' ? 'Disaster Recovery SDDC' : `Production Target ${activeTargets.length + 1}`,
-      defaultPlatform
+      primaryPlatform,
+      {
+        nodeSku: primarySku,
+        region: defaultRegion,
+        decoupledStorageProvider: wizardState.decoupledStorageProvider,
+        migrationTool: wizardState.otherServicesConfig?.migrationAppliance || 'VMware HCX Enterprise'
+      }
     );
 
     const updated = [...activeTargets, newTarget];
@@ -527,6 +542,16 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
                         ) : (
                           <option value={target.nodeSku}>{target.nodeSku}</option>
                         )}
+                        {!availableSkus.some((s) => s.sku === target.nodeSku) && target.nodeSku && (
+                          (() => {
+                            console.warn('Dropdown value not in list', 'targetNodeSku', target.nodeSku);
+                            return (
+                              <option key={target.nodeSku} value={target.nodeSku}>
+                                {target.nodeSku} (custom)
+                              </option>
+                            );
+                          })()
+                        )}
                       </select>
                     </div>
 
@@ -676,6 +701,16 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
                             {tool}
                           </option>
                         ))}
+                        {!targetCompat.allowedMigrationTools.includes(target.migrationTool as any) && target.migrationTool && (
+                          (() => {
+                            console.warn('Dropdown value not in list', 'migrationTool', target.migrationTool);
+                            return (
+                              <option key={target.migrationTool} value={target.migrationTool}>
+                                {target.migrationTool} (custom)
+                              </option>
+                            );
+                          })()
+                        )}
                       </select>
                       <p className="text-[10px] text-slate-500">
                         Compatible with {target.platform.toUpperCase()}
@@ -700,6 +735,16 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
                             {circuit}
                           </option>
                         ))}
+                        {target.interconnectCircuitType && !targetCompat.allowedInterconnects.includes(target.interconnectCircuitType) && (
+                          (() => {
+                            console.warn('Dropdown value not in list', 'interconnectCircuitType', target.interconnectCircuitType);
+                            return (
+                              <option key={target.interconnectCircuitType} value={target.interconnectCircuitType}>
+                                {target.interconnectCircuitType} (custom)
+                              </option>
+                            );
+                          })()
+                        )}
                       </select>
                       <div className="flex items-center gap-1.5 pt-1 text-[11px] text-slate-300">
                         <input
@@ -738,9 +783,19 @@ export const Step5TargetAndDR: React.FC<Step5TargetAndDRProps> = ({
                             className="w-full px-2.5 py-1.5 rounded bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-purple-400"
                           >
                             <option value="VMware SRM + vSphere Replication">VMware SRM + vSphere Replication</option>
-                            <option value="Nutanix Metro Availability / Leap">Nutanix Metro Availability / Leap</option>
+                            <option value="Nutanix Disaster Recovery (Leap)">Nutanix Disaster Recovery (Leap)</option>
                             <option value="Zerto Continuous Data Protection (CDP)">Zerto Continuous Data Protection (CDP)</option>
                             <option value="Veeam Backup & Replication v12">Veeam Backup & Replication</option>
+                            {target.drEngine && !['VMware SRM + vSphere Replication', 'Nutanix Disaster Recovery (Leap)', 'Zerto Continuous Data Protection (CDP)', 'Veeam Backup & Replication v12'].includes(target.drEngine) && (
+                              (() => {
+                                console.warn('Dropdown value not in list', 'drEngine', target.drEngine);
+                                return (
+                                  <option key={target.drEngine} value={target.drEngine}>
+                                    {target.drEngine} (custom)
+                                  </option>
+                                );
+                              })()
+                            )}
                           </select>
                         </div>
 

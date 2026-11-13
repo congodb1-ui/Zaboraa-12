@@ -7,6 +7,9 @@
 import {
   WizardState,
   ArchitectureTemplateChoice,
+  CHOICE_TO_TEMPLATE_ID_MAP,
+  createDefaultSourceItem,
+  createDefaultTargetItem,
   getTargetConstraintsForObjective
 } from '../types/wizardStateAdapter';
 import { parseAndValidateCidr } from './cidrUtils';
@@ -29,6 +32,10 @@ export interface TemplateDefinition {
   defaultFirewall: string;
   defaultLandingZone: string;
   defaultDrEngine: string;
+  drRpoMinutes?: number;
+  drRtoMinutes?: number;
+  strategy?: string;
+  drStrategy?: string;
 }
 
 export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
@@ -48,7 +55,10 @@ export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
     defaultStorageTB: 120,
     defaultFirewall: 'Palo Alto Networks VM-Series',
     defaultLandingZone: 'Azure Virtual WAN Hub-and-Spoke',
-    defaultDrEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication'
+    defaultDrEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
+    drRpoMinutes: 5,
+    drRtoMinutes: 20,
+    drStrategy: 'Pilot Light (3-Node Minimum)'
   },
   {
     id: 'vmware-to-nc2',
@@ -66,7 +76,10 @@ export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
     defaultStorageTB: 80,
     defaultFirewall: 'Azure Firewall Premium / Native',
     defaultLandingZone: 'Azure Virtual WAN Hub-and-Spoke',
-    defaultDrEngine: 'Nutanix Protection Domains (NearSync & Metro Availability)'
+    defaultDrEngine: 'Nutanix Protection Domains (NearSync & Metro Availability)',
+    drRpoMinutes: 15,
+    drRtoMinutes: 60,
+    drStrategy: 'Pilot Light (3-Node Minimum)'
   },
   {
     id: 'nutanix-to-nc2',
@@ -84,7 +97,10 @@ export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
     defaultStorageTB: 80,
     defaultFirewall: 'Azure Firewall Premium / Native',
     defaultLandingZone: 'Azure Virtual WAN Hub-and-Spoke',
-    defaultDrEngine: 'Nutanix Protection Domains (NearSync & Metro Availability)'
+    defaultDrEngine: 'Nutanix Protection Domains (NearSync & Metro Availability)',
+    drRpoMinutes: 15,
+    drRtoMinutes: 60,
+    drStrategy: 'Pilot Light (3-Node Minimum)'
   },
   {
     id: 'vmware-to-gcve',
@@ -102,7 +118,10 @@ export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
     defaultStorageTB: 100,
     defaultFirewall: 'Palo Alto Networks VM-Series',
     defaultLandingZone: 'Google Cloud Shared VPC + Cloud NCC',
-    defaultDrEngine: 'Zerto Continuous Data Protection (CDP)'
+    defaultDrEngine: 'Zerto Continuous Data Protection (CDP)',
+    drRpoMinutes: 15,
+    drRtoMinutes: 30,
+    drStrategy: 'Pilot Light (3-Node Minimum)'
   },
   {
     id: 'vmware-to-vmc',
@@ -120,7 +139,10 @@ export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
     defaultStorageTB: 150,
     defaultFirewall: 'Fortinet FortiGate-VM',
     defaultLandingZone: 'AWS Transit Gateway (TGW) Hub',
-    defaultDrEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication'
+    defaultDrEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
+    drRpoMinutes: 15,
+    drRtoMinutes: 30,
+    drStrategy: 'Pilot Light (3-Node Minimum)'
   },
   {
     id: 'custom-path',
@@ -138,7 +160,10 @@ export const CANONICAL_TEMPLATES: TemplateDefinition[] = [
     defaultStorageTB: 80,
     defaultFirewall: 'Palo Alto Networks VM-Series',
     defaultLandingZone: 'Azure Virtual WAN Hub-and-Spoke',
-    defaultDrEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication'
+    defaultDrEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
+    drRpoMinutes: 15,
+    drRtoMinutes: 45,
+    drStrategy: 'Warm Standby (Full Cluster)'
   }
 ];
 
@@ -314,6 +339,182 @@ export function getCompatibilityForPlatform(platform: string): CompatibilityFilt
 /**
  * Sanitizes state when switching templates or platforms to purge stale, incompatible selections.
  */
+/**
+ * Applies a template to the wizard state, ALWAYS updating template-owned fields,
+ * rebuilding sources[] and targets[], preserving user non-template fields, and running
+ * compatibility sanitization as a second pass.
+ */
+export function applyTemplateToWizardState(
+  state: WizardState,
+  newTemplateId: ArchitectureTemplateChoice
+): { state: WizardState; notices: string[] } {
+  let template: TemplateDefinition | undefined = undefined;
+
+  if (typeof window !== 'undefined') {
+    try {
+      const adminState = getAdminControlState();
+      const adminMatch = adminState.templates.find((t) => t.id === newTemplateId);
+      if (adminMatch) {
+        template = {
+          id: adminMatch.id as any,
+          title: adminMatch.title,
+          badge: adminMatch.badge,
+          description: adminMatch.description,
+          targetProvider:
+            adminMatch.targetPlatform === 'gcve' ? 'gcp' :
+            adminMatch.targetPlatform === 'vmc-aws' ? 'aws' : 'azure',
+          targetPlatform: (adminMatch.targetPlatform || 'avs-gen2') as any,
+          sourcePlatform: (adminMatch.sourcePlatform || 'vmware') as any,
+          defaultSku: adminMatch.nodeSku,
+          defaultNodeCount: adminMatch.recommendedNodes,
+          recommendedMigrationTool: (adminMatch.recommendedMigrationTool || 'VMware HCX Enterprise') as any,
+          defaultInterconnect: adminMatch.interconnect,
+          defaultStorage: adminMatch.storage,
+          defaultStorageTB: adminMatch.storageTB || 100,
+          defaultFirewall: adminMatch.firewall || adminMatch.security,
+          defaultLandingZone: adminMatch.landingZone,
+          defaultDrEngine: adminMatch.drEngine,
+          drRpoMinutes: adminMatch.drRpoMinutes,
+          drRtoMinutes: adminMatch.drRtoMinutes,
+          drStrategy: adminMatch.drStrategy || adminMatch.strategy
+        };
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  if (!template) {
+    template = CANONICAL_TEMPLATES.find((t) => t.id === newTemplateId);
+  }
+
+  if (!template) {
+    return { state: { ...state, templateChoice: newTemplateId }, notices: [] };
+  }
+
+  // Cloud-appropriate WAF solution helper
+  const wafSolution = template.targetPlatform === 'vmc-aws'
+    ? 'AWS WAF'
+    : template.targetPlatform === 'gcve'
+    ? 'Google Cloud Armor'
+    : 'Azure WAF on Application Gateway';
+
+  const isDefaultSddcCidr = !state.sddcMgmtCidr || state.sddcMgmtCidr === '10.240.0.0/22';
+  const newSddcCidr = isDefaultSddcCidr ? '10.240.0.0/22' : state.sddcMgmtCidr;
+
+  const targetPlatform = template.targetPlatform;
+  const sourcePlatform = template.sourcePlatform;
+
+  // Active template ID mapping
+  const activeTemplate = CHOICE_TO_TEMPLATE_ID_MAP[newTemplateId] || 'avs';
+
+  // 1. Rebuild primary source and target
+  const newPrimarySource = createDefaultSourceItem(
+    sourcePlatform === 'nutanix' ? 'nutanix-onprem' : 'vmware-onprem'
+  );
+
+  const newPrimaryTarget = createDefaultTargetItem(
+    'Production',
+    'Primary Production SDDC',
+    targetPlatform,
+    {
+      nodeSku: template.defaultSku,
+      nodeCount: template.defaultNodeCount,
+      decoupledStorageTB: template.defaultStorageTB,
+      decoupledStorageProvider: template.defaultStorage,
+      migrationTool: template.recommendedMigrationTool,
+      drEngine: template.defaultDrEngine,
+      drRpoMinutes: template.drRpoMinutes ?? 15,
+      drRtoMinutes: template.drRtoMinutes ?? 30,
+      drStrategy: template.drStrategy || 'Pilot Light (3-Node Minimum)',
+      interconnectCircuitType: template.defaultInterconnect,
+      layer2Extension: newTemplateId === 'custom-path' ? true : false
+    }
+  );
+
+  let newTargets = [newPrimaryTarget];
+  if (state.drEnabled) {
+    const newDrTarget = createDefaultTargetItem(
+      'Disaster Recovery',
+      'Secondary Disaster Recovery SDDC',
+      targetPlatform,
+      {
+        nodeSku: template.defaultSku,
+        nodeCount: Math.max(3, template.defaultNodeCount - 1),
+        decoupledStorageTB: Math.round(template.defaultStorageTB / 2),
+        decoupledStorageProvider: template.defaultStorage,
+        migrationTool: 'None',
+        drEngine: template.defaultDrEngine,
+        drRpoMinutes: template.drRpoMinutes ?? 5,
+        drRtoMinutes: template.drRtoMinutes ?? 20,
+        drStrategy: template.drStrategy || 'Pilot Light (3-Node Minimum)',
+        interconnectCircuitType: template.defaultInterconnect,
+        layer2Extension: newTemplateId === 'custom-path' ? true : false
+      }
+    );
+    newTargets.push(newDrTarget);
+  }
+
+  // Preserve user non-template fields: customerName, architectName, projectDate, clusters, objective, etc.
+  const updatedState: WizardState = {
+    ...state,
+    templateChoice: newTemplateId,
+    activeTemplate,
+    sourcePlatform,
+    targetPlatform,
+    targetNodeSku: template.defaultSku,
+    targetNodeCount: template.defaultNodeCount, // Overwrite exact value
+    landingZonePattern: template.defaultLandingZone,
+    connectivityCarrier: template.defaultInterconnect,
+    firewallProvider: template.defaultFirewall,
+    sddcMgmtCidr: newSddcCidr,
+    objective: newTemplateId === 'custom-path' ? 'extend-dc' : state.objective,
+
+    interconnectConfig: {
+      ...state.interconnectConfig,
+      type: template.defaultInterconnect,
+      bandwidthGbps: 10,
+      fastPathEnabled: template.defaultInterconnect.includes('FastPath'),
+      layer2Extension: newTemplateId === 'custom-path' ? true : state.interconnectConfig.layer2Extension
+    },
+
+    securityNvaConfig: {
+      ...state.securityNvaConfig,
+      firewall: template.defaultFirewall,
+      wafSolution: wafSolution
+    },
+    wafSolution: wafSolution,
+
+    decoupledStorageProvider: template.defaultStorage,
+    decoupledStorageTB: template.defaultStorageTB,
+
+    otherServicesConfig: {
+      ...state.otherServicesConfig,
+      decoupledStorageProvider: template.defaultStorage,
+      decoupledStorageTB: template.defaultStorageTB,
+      migrationAppliance: template.recommendedMigrationTool
+    },
+
+    drConfig: {
+      ...state.drConfig,
+      engine: template.defaultDrEngine,
+      rpoMinutes: template.drRpoMinutes ?? 15,
+      rtoMinutes: template.drRtoMinutes ?? 30,
+      strategy: template.drStrategy || 'Pilot Light (3-Node Minimum)'
+    },
+
+    sources: [newPrimarySource],
+    targets: newTargets
+  };
+
+  // Run compatibility sanitizer pass
+  const sanitizeResult = sanitizeWizardStateForTemplate(updatedState, newTemplateId);
+  return {
+    state: sanitizeResult.state,
+    notices: sanitizeResult.clearedNotices
+  };
+}
+
 export function sanitizeWizardStateForTemplate(
   state: WizardState,
   newTemplateId: ArchitectureTemplateChoice
@@ -575,7 +776,7 @@ export function validateWizardStep(
     case 5:
       if (state.targets && state.targets.length > 0) {
         for (const tgt of state.targets) {
-          const minNodes = tgt.platform === 'vmc-aws' || tgt.platform === 'azure-native' ? 2 : 3;
+          const minNodes = tgt.platform === 'vmc-aws' ? 2 : 3;
           if (!tgt.nodeCount || tgt.nodeCount < minNodes) {
             errors.push(`Target "${tgt.name}": Requires a minimum cluster quorum of at least ${minNodes} dedicated nodes.`);
           }
@@ -584,8 +785,9 @@ export function validateWizardStep(
           }
         }
       } else {
-        if (!state.targetNodeCount || state.targetNodeCount < 3) {
-          errors.push('Target SDDC requires a minimum cluster quorum of at least 3 dedicated bare-metal nodes.');
+        const legacyMinNodes = state.targetPlatform === 'vmc-aws' ? 2 : 3;
+        if (!state.targetNodeCount || state.targetNodeCount < legacyMinNodes) {
+          errors.push(`Target SDDC requires a minimum cluster quorum of at least ${legacyMinNodes} dedicated bare-metal nodes.`);
         }
         if (!state.targetNodeSku) {
           errors.push('Please select a target bare-metal node SKU.');

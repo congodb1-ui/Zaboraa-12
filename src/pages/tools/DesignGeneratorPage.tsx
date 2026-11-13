@@ -101,6 +101,7 @@ import {
 import {
   WizardState,
   ArchitectureTemplateChoice,
+  CHOICE_TO_TEMPLATE_ID_MAP,
   createDefaultWizardState,
   mapLegacyToWizard,
   mapWizardToLegacy,
@@ -114,7 +115,8 @@ import { Step4SecurityAndWAF } from '../../components/wizard/Step4SecurityAndWAF
 import { Step5TargetAndDR } from '../../components/wizard/Step5TargetAndDR';
 import {
   CANONICAL_TEMPLATES,
-  sanitizeWizardStateForTemplate
+  sanitizeWizardStateForTemplate,
+  applyTemplateToWizardState
 } from '../../utils/architectureCompatibilityRules';
 
 interface VlanSubsegment {
@@ -1248,100 +1250,192 @@ export const DesignGeneratorPage: React.FC = () => {
     }
   };
 
-  // Synchronize wizard updates across canonical topology and legacy variables
-  const handleWizardStateChange = (updater: (prev: WizardState) => WizardState) => {
-    setWizardState((prev) => {
-      const next = updater(prev);
-      setCustomerName(next.customerName);
-      setArchitectName(next.architectName);
-      setProjectDate(next.projectDate);
-      setActiveTemplate(next.activeTemplate);
-      setConnectivity(next.connectivityCarrier as any);
-      setLandingZone(next.landingZonePattern as any);
-      setNvaFirewall(next.firewallProvider as any);
-      setWafSolution((next.wafSolution || 'Azure WAF on Application Gateway') as any);
-      setNodeSku(next.targetNodeSku);
-      setDecoupledStorageTB(next.decoupledStorageTB);
-      setDrEngine(next.drConfig.engine);
-      setDrRpoMinutes(next.drConfig.rpoMinutes);
-      setDrRtoMinutes(next.drConfig.rtoMinutes);
-      setDrStrategy(next.drConfig.strategy);
-      setMgmtCidrInput(next.sddcMgmtCidr);
+  // Ref to hold the latest wizardState to prevent stale closures and avoid side effects inside setWizardState updater
+  const wizardStateRef = useRef<WizardState>(wizardState);
+  useEffect(() => {
+    wizardStateRef.current = wizardState;
+  }, [wizardState]);
 
-      if (next.targetPlatform.includes('avs')) {
+  // Synchronize legacy scalar state variables and canvas topology from canonical WizardState
+  const syncLegacyFromWizard = (next: WizardState) => {
+    setCustomerName(next.customerName);
+    setArchitectName(next.architectName);
+    setProjectDate(next.projectDate);
+    setActiveTemplate(next.activeTemplate);
+    setConnectivity(next.connectivityCarrier as any);
+    setLandingZone(next.landingZonePattern as any);
+    setNvaFirewall(next.firewallProvider as any);
+
+    // Map WAF Solution fallback dynamically based on target platform
+    const platformWaf = next.targetPlatform === 'gcve'
+      ? 'Google Cloud Armor WAF'
+      : next.targetPlatform === 'vmc-aws'
+      ? 'AWS WAF'
+      : 'Azure WAF on Application Gateway';
+    setWafSolution((next.wafSolution || platformWaf) as any);
+
+    setNodeSku(next.targetNodeSku);
+    setDecoupledStorageTB(next.decoupledStorageTB);
+    setDrEngine(next.drConfig.engine);
+    setDrRpoMinutes(next.drConfig.rpoMinutes);
+    setDrRtoMinutes(next.drConfig.rtoMinutes);
+    setDrStrategy(next.drConfig.strategy);
+    setMgmtCidrInput(next.sddcMgmtCidr);
+
+    // Explicit and complete cloudPlatform mapping
+    switch (next.targetPlatform) {
+      case 'avs-gen1':
         setCloudPlatform('Azure VMware Solution');
-        setAvsGen(next.targetPlatform === 'avs-gen2' ? 'Gen 2' : 'Gen 1');
-      } else if (next.targetPlatform.includes('vmc')) {
+        setAvsGen('Gen 1');
+        break;
+      case 'avs-gen2':
+        setCloudPlatform('Azure VMware Solution');
+        setAvsGen('Gen 2');
+        break;
+      case 'nc2-azure':
+        setCloudPlatform('Azure VMware Solution');
+        break;
+      case 'vmc-aws':
         setCloudPlatform('VMware Cloud on AWS');
-      } else if (next.targetPlatform.includes('gcve')) {
+        break;
+      case 'gcve':
         setCloudPlatform('Google Cloud VMware Engine');
-      }
+        break;
+      case 'azure-native':
+        setCloudPlatform('Azure VMware Solution');
+        break;
+      default:
+        setCloudPlatform('Azure VMware Solution');
+        break;
+    }
 
-      setTopologyEnvironments((currentEnvs) => {
-        return currentEnvs.map((env) => {
-          if (env.tier === 'source' || env.id === 'env-onprem-vmware' || env.id === 'env-source-onprem') {
-            const totalHosts = next.clusters.reduce((acc, c) => acc + c.hostCount, 0);
-            const totalCores = next.clusters.reduce((acc, c) => acc + c.hostCount * c.sockets * c.coresPerSocket, 0);
-            const totalRam = next.clusters.reduce((acc, c) => acc + c.hostCount * c.ramGB, 0);
-            const totalStorage = next.clusters.reduce((acc, c) => acc + c.hostCount * c.storageTB, 0);
-            return {
-              ...env,
-              hostCount: totalHosts,
-              nodeSku: next.hardwareSku,
-              totalVcpu: totalCores * 2,
-              totalRamGB: totalRam,
-              storageTB: totalStorage,
-              cidrBlock: next.sourceMgmtCidr,
-              platform: next.sourcePlatform === 'nutanix' ? 'Nutanix AHV' : 'VMware vSphere'
-            };
-          }
-          if (env.tier === 'target' || env.id === 'env-avs-sddc' || env.id === 'env-target-cloud') {
-            return {
-              ...env,
-              hostCount: next.targetNodeCount,
-              nodeSku: next.targetNodeSku,
-              storageTB: next.decoupledStorageTB,
-              cidrBlock: next.sddcMgmtCidr,
-              platform:
-                next.targetPlatform === 'vmc-aws'
-                  ? 'VMware Cloud on AWS'
-                  : next.targetPlatform === 'gcve'
-                  ? 'Google Cloud VMware Engine'
-                  : next.targetPlatform === 'nc2-azure'
-                  ? 'Nutanix NC2 on Azure'
-                  : 'Azure VMware Solution'
-            };
-          }
-          return env;
-        });
+    // Rebuild topologyEnvironments dynamically to sync with WizardState
+    setTopologyEnvironments((currentEnvs) => {
+      return currentEnvs.map((env) => {
+        if (env.tier === 'source' || env.id === 'env-onprem-vmware' || env.id === 'env-source-onprem') {
+          const totalHosts = next.clusters.reduce((acc, c) => acc + c.hostCount, 0);
+          const totalCores = next.clusters.reduce((acc, c) => acc + c.hostCount * c.sockets * c.coresPerSocket, 0);
+          const totalRam = next.clusters.reduce((acc, c) => acc + c.hostCount * c.ramGB, 0);
+          const totalStorage = next.clusters.reduce((acc, c) => acc + c.hostCount * c.storageTB, 0);
+          return {
+            ...env,
+            hostCount: totalHosts,
+            nodeSku: next.hardwareSku,
+            totalVcpu: totalCores * 2,
+            totalRamGB: totalRam,
+            storageTB: totalStorage,
+            cidrBlock: next.sourceMgmtCidr,
+            platform: next.sourcePlatform === 'nutanix' ? 'Nutanix AHV' : 'VMware vSphere'
+          };
+        }
+        if (env.tier === 'target' || env.id === 'env-avs-sddc' || env.id === 'env-target-cloud') {
+          return {
+            ...env,
+            hostCount: next.targetNodeCount,
+            nodeSku: next.targetNodeSku,
+            storageTB: next.decoupledStorageTB,
+            cidrBlock: next.sddcMgmtCidr,
+            platform:
+              next.targetPlatform === 'vmc-aws'
+                ? 'VMware Cloud on AWS'
+                : next.targetPlatform === 'gcve'
+                ? 'Google Cloud VMware Engine'
+                : next.targetPlatform === 'nc2-azure'
+                ? 'Nutanix NC2 on Azure'
+                : 'Azure VMware Solution'
+          };
+        }
+        return env;
       });
-
-      return next;
     });
   };
 
-  const handleApplyIndustryTemplate = (templateChoice: ArchitectureTemplateChoice) => {
-    const { state: updated, clearedNotices } = sanitizeWizardStateForTemplate(wizardState, templateChoice);
-    handleWizardStateChange(() => updated);
+  // Pure handler: Computes next state, updates state & ref, then calls sync helper outside setter
+  const handleWizardStateChange = (updater: (prev: WizardState) => WizardState) => {
+    const next = updater(wizardStateRef.current);
+    wizardStateRef.current = next;
+    setWizardState(next);
+    syncLegacyFromWizard(next);
+  };
+
+  // Rebuild topology environments and links cleanly when a template is applied
+  const rebuildTopologyForTemplate = (nextState: WizardState) => {
+    const baseEnvs = getDefaultEnvironmentsForTemplate(nextState.activeTemplate);
+    const baseLinks = getDefaultInterconnectLinksForTemplate(nextState.activeTemplate);
+
+    const updatedEnvs = baseEnvs.map((env) => {
+      if (env.tier === 'source' || env.id === 'env-onprem-vmware' || env.id === 'env-source-onprem') {
+        const primarySource = nextState.sources?.[0];
+        return {
+          ...env,
+          platform: (nextState.sourcePlatform === 'nutanix' ? 'Nutanix AHV' : 'VMware vSphere') as CloudPlatformType,
+          cidrBlock: nextState.sourceMgmtCidr || env.cidrBlock,
+          nodeSku: nextState.hardwareSku || env.nodeSku
+        };
+      }
+      if (env.tier === 'target' || env.id === 'env-avs-sddc' || env.id === 'env-target-cloud') {
+        return {
+          ...env,
+          nodeSku: nextState.targetNodeSku,
+          hostCount: nextState.targetNodeCount,
+          storageTB: nextState.decoupledStorageTB,
+          cidrBlock: nextState.sddcMgmtCidr,
+          platform: (
+            nextState.targetPlatform === 'vmc-aws'
+              ? 'VMware Cloud on AWS'
+              : nextState.targetPlatform === 'gcve'
+              ? 'Google Cloud VMware Engine'
+              : nextState.targetPlatform === 'nc2-azure'
+              ? 'Nutanix NC2 on Azure'
+              : 'Azure VMware Solution'
+          ) as CloudPlatformType
+        };
+      }
+      return env;
+    });
+
+    setTopologyEnvironments(updatedEnvs);
+    setInterconnectLinks(baseLinks);
+  };
+
+  const executeApplyTemplate = (templateChoice: ArchitectureTemplateChoice) => {
+    const { state: updated, notices } = applyTemplateToWizardState(wizardStateRef.current, templateChoice);
+    wizardStateRef.current = updated;
+    setWizardState(updated);
+    syncLegacyFromWizard(updated);
+    rebuildTopologyForTemplate(updated);
+
     const tmplName = CANONICAL_TEMPLATES.find(t => t.id === templateChoice)?.title || templateChoice;
-    if (clearedNotices.length > 0) {
-      setSaveSuccessNotice(`Applied "${tmplName}" template. Note: ${clearedNotices[0]}`);
+    if (notices.length > 0) {
+      setSaveSuccessNotice(`Applied "${tmplName}" template. Note: ${notices[0]}`);
     } else {
       setSaveSuccessNotice(`Applied "${tmplName}" architecture baseline.`);
     }
     setTimeout(() => setSaveSuccessNotice(null), 4500);
   };
 
-  // Update Node SKU options when cloud platform changes
-  useEffect(() => {
-    if (cloudPlatform === 'Azure VMware Solution') {
-      setNodeSku('AV36P');
-    } else if (cloudPlatform === 'VMware Cloud on AWS') {
-      setNodeSku('i4i.metal');
+  const handleApplyIndustryTemplate = (templateChoice: ArchitectureTemplateChoice) => {
+    if (checkHasUserCustomizations()) {
+      const activeTmplId = CHOICE_TO_TEMPLATE_ID_MAP[templateChoice];
+      setPendingTemplateSwitch(activeTmplId);
+      setShowTemplateSwitchModal(true);
     } else {
-      setNodeSku('ve1-standard-72');
+      executeApplyTemplate(templateChoice);
     }
-  }, [cloudPlatform]);
+  };
+
+  // Correct Node SKU only if current SKU is invalid for the platform
+  useEffect(() => {
+    const platformSkus = TARGET_NODE_SKU_CATALOGUE.filter(s => s.platform === wizardState.targetPlatform).map(s => s.sku);
+    if (platformSkus.length > 0 && !platformSkus.includes(wizardState.targetNodeSku)) {
+      const fallbackSku = platformSkus[0];
+      setNodeSku(fallbackSku);
+      handleWizardStateChange((prev) => ({
+        ...prev,
+        targetNodeSku: fallbackSku
+      }));
+    }
+  }, [wizardState.targetPlatform]);
 
   // Single Source of Truth (SSOT): Canonical metrics derived dynamically from topologyEnvironments
   const topologyMetrics = useMemo(() => {
@@ -1364,11 +1458,17 @@ export const DesignGeneratorPage: React.FC = () => {
         const updated = { ...n, ...partial };
         // Automatically scale vCPU and RAM if host count changes and totalVcpu wasn't explicitly supplied
         if (partial.hostCount !== undefined && partial.totalVcpu === undefined) {
-          const sku = updated.nodeSku || '';
-          const coresPerHost = sku.includes('64') || sku.includes('i4i') ? 64 : sku.includes('72') || sku.includes('ve1') ? 72 : 36;
-          const ramPerHost = sku.includes('1024') || sku.includes('i4i') ? 1024 : sku.includes('768') || sku.includes('AN36P') ? 768 : 576;
-          updated.totalVcpu = updated.hostCount * coresPerHost;
-          updated.totalRamGB = updated.hostCount * ramPerHost;
+          const skuMatch = TARGET_NODE_SKU_CATALOGUE.find(s => s.sku === updated.nodeSku);
+          if (skuMatch) {
+            updated.totalVcpu = updated.hostCount * skuMatch.logicalThreads;
+            updated.totalRamGB = updated.hostCount * skuMatch.ramGB;
+          } else {
+            console.warn(`[handleUpdateNodeSpec] SKU "${updated.nodeSku}" not found in TARGET_NODE_SKU_CATALOGUE.`);
+            const fallbackCores = 36;
+            const fallbackRam = 576;
+            updated.totalVcpu = updated.hostCount * fallbackCores;
+            updated.totalRamGB = updated.hostCount * fallbackRam;
+          }
         }
         return updated;
       })
@@ -1377,62 +1477,27 @@ export const DesignGeneratorPage: React.FC = () => {
 
   const getAvailableSkusForPlatform = (platform: CloudPlatformType): string[] => {
     if (platform === 'Nutanix AHV') {
-      return [
-        'NX-8170-G9 All-NVMe (Dual Intel Xeon)',
-        'NX-3170-G9 All-Flash (Intel Xeon)',
-        'NX-8155-G9 Dense Storage (Dual Intel Xeon)',
-        'NX-1065-G8 Edge / ROBO'
-      ];
+      return ['NX-8170-G9', 'NX-3170-G9', 'NX-8155-G9', 'NX-1065-G8'];
     }
     if (platform === 'Nutanix NC2 on Azure') {
-      return [
-        'AN36P (36 cores, 768GB RAM, 19.2TB NVMe)',
-        'AN36 (36 cores, 576GB RAM, 15.3TB NVMe)',
-        'AN64 (64 cores, 1024GB RAM, 30.7TB NVMe)'
-      ];
+      return TARGET_NODE_SKU_CATALOGUE.filter((s) => s.platform === 'nc2-azure').map((s) => s.sku);
     }
     if (platform === 'Azure VMware Solution') {
-      return [
-        'AV36P (36 cores, 576GB RAM, 15.3TB NVMe)',
-        'AV64 (64 cores, 1024GB RAM, 30.7TB NVMe)',
-        'AV48 (48 cores, 768GB RAM)',
-        'AV52 (52 cores, 1536GB RAM)',
-        'AV36 (36 cores, 576GB RAM)'
-      ];
+      return TARGET_NODE_SKU_CATALOGUE.filter((s) => s.platform === 'avs-gen1' || s.platform === 'avs-gen2').map((s) => s.sku);
     }
     if (platform === 'VMware Cloud on AWS') {
-      return [
-        'i4i.metal (64 cores, 1024GB RAM, 30TB NVMe)',
-        'i3en.metal (96 cores, 768GB RAM, 45TB NVMe)',
-        'm7i.metal-24xl (96 cores, 384GB RAM)'
-      ];
+      return TARGET_NODE_SKU_CATALOGUE.filter((s) => s.platform === 'vmc-aws').map((s) => s.sku);
     }
     if (platform === 'Google Cloud VMware Engine') {
-      return [
-        've1-standard-72 (72 cores, 768GB RAM, 19.2TB NVMe)',
-        've2-standard-128 (128 cores, 2048GB RAM, 38.4TB NVMe)'
-      ];
+      return TARGET_NODE_SKU_CATALOGUE.filter((s) => s.platform === 'gcve').map((s) => s.sku);
     }
     if (platform === 'AWS Native') {
-      return [
-        'AWS Native Multi-AZ VPC Hub (EKS / EC2)',
-        'c6i.metal (128 vCPU, 256GB RAM)',
-        'r6i.metal (128 vCPU, 1024GB RAM)'
-      ];
+      return ['c6i.metal', 'r6i.metal'];
     }
     if (platform === 'GCP Native') {
-      return [
-        'GCP Shared VPC Host Project (GKE / Cloud SQL)',
-        'c2-standard-60 Compute Cluster',
-        'm1-ultramem-160 Memory Optimized'
-      ];
+      return ['c2-standard-60', 'm1-ultramem-160'];
     }
-    return [
-      'Dell PowerEdge R750 (ESXi 8.0u2, NVMe)',
-      'Cisco UCS B200 M5 (ESXi 8.0)',
-      'HPE ProLiant DL380 Gen10 (ESXi 8.0)',
-      'Custom Enterprise Bare-Metal Host'
-    ];
+    return ['PowerEdge-R750'];
   };
 
   // User Customizations detection for Template Switch Guardrail
@@ -1471,88 +1536,12 @@ export const DesignGeneratorPage: React.FC = () => {
   };
 
   const applyTemplateSwitch = (template: ArchitectureTemplateId) => {
-    setActiveTemplate(template);
-    const newEnvs = getDefaultEnvironmentsForTemplate(template);
-    const newLinks = getDefaultInterconnectLinksForTemplate(template);
-    setTopologyEnvironments(newEnvs);
-    setInterconnectLinks(newLinks);
+    // Reverse map template ID to architecture template choice if available
+    const choice = (Object.keys(CHOICE_TO_TEMPLATE_ID_MAP) as ArchitectureTemplateChoice[]).find(
+      (k) => CHOICE_TO_TEMPLATE_ID_MAP[k] === template
+    ) || 'vmware-to-avs';
 
-    if (template === 'nutanix-onprem') {
-      setCloudPlatform('Azure VMware Solution');
-      setDrEngine('Nutanix Protection Domains (NearSync)');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(30);
-      setDrStrategy('Warm Standby (Full Cluster)');
-    } else if (template === 'nutanix-to-nc2') {
-      setCloudPlatform('Azure VMware Solution');
-      setDrEngine('Nutanix Move / Prism Pairing');
-      setNodeSku('AN36P');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(60);
-      setDrStrategy('Pilot Light (3-Node Minimum)');
-    } else if (template === 'vmware-to-nc2') {
-      setCloudPlatform('Azure VMware Solution');
-      setDrEngine('Nutanix Move Cross-Hypervisor');
-      setNodeSku('AN36P');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(60);
-      setDrStrategy('Pilot Light (3-Node Minimum)');
-    } else if (template === 'avs') {
-      setCloudPlatform('Azure VMware Solution');
-      setDrEngine('VMware SRM + vSphere Replication');
-      setNodeSku('AV36P');
-      setDrRpoMinutes(5);
-      setDrRtoMinutes(20);
-      setDrStrategy('Pilot Light (3-Node Minimum)');
-    } else if (template === 'vmc-aws') {
-      setCloudPlatform('VMware Cloud on AWS');
-      setDrEngine('VMware HCX Bulk / Replication');
-      setNodeSku('i4i.metal');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(30);
-      setDrStrategy('Pilot Light (3-Node Minimum)');
-    } else if (template === 'gcve') {
-      setCloudPlatform('Google Cloud VMware Engine');
-      setDrEngine('VMware HCX / Google Cloud Interconnect');
-      setNodeSku('ve1-standard-72');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(30);
-      setDrStrategy('Pilot Light (3-Node Minimum)');
-    } else if (template === 'aws-native') {
-      setCloudPlatform('VMware Cloud on AWS');
-      setDrEngine('AWS Direct Connect + AWS DMS');
-      setNodeSku('AWS Native VPC Hub');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(30);
-      setDrStrategy('Warm Standby (Full Cluster)');
-    } else if (template === 'gcp-native') {
-      setCloudPlatform('Google Cloud VMware Engine');
-      setDrEngine('Google Cloud Partner Interconnect');
-      setNodeSku('Shared VPC Host Project');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(30);
-      setDrStrategy('Warm Standby (Full Cluster)');
-    } else if (template === 'multi-cloud') {
-      setCloudPlatform('Azure VMware Solution');
-      setDrEngine('Multi-Cloud Cross-Replication');
-      setNodeSku('AV36P');
-      setDrRpoMinutes(15);
-      setDrRtoMinutes(45);
-      setDrStrategy('Hot Standby (Full Cluster)');
-    }
-
-    setWizardState((prev) => ({
-      ...prev,
-      activeTemplate: template,
-      targetPlatform:
-        template === 'nutanix-onprem' || template === 'nutanix-to-nc2' || template === 'vmware-to-nc2'
-          ? 'nc2-azure'
-          : template === 'vmc-aws' || template === 'aws-native'
-          ? 'vmc-aws'
-          : template === 'gcve' || template === 'gcp-native'
-          ? 'gcve'
-          : 'avs-gen1'
-    }));
+    executeApplyTemplate(choice);
   };
 
   // Safe wrapper that enforces the customization check
@@ -2412,9 +2401,15 @@ export const DesignGeneratorPage: React.FC = () => {
   };
 
   // Target SKU spec
-  const selectedTargetSku = TARGET_NODE_SKU_CATALOGUE.find(
-    (s) => s.sku === wizardState.targetNodeSku
-  ) || TARGET_NODE_SKU_CATALOGUE[0];
+  const selectedTargetSku = (() => {
+    const found = TARGET_NODE_SKU_CATALOGUE.find((s) => s.sku === wizardState.targetNodeSku);
+    if (!found) {
+      console.warn(
+        `[DesignGeneratorPage] targetNodeSku "${wizardState.targetNodeSku}" not found in TARGET_NODE_SKU_CATALOGUE. Falling back to default SKU "${TARGET_NODE_SKU_CATALOGUE[0].sku}".`
+      );
+    }
+    return found || TARGET_NODE_SKU_CATALOGUE[0];
+  })();
 
   // Live Sizing Metrics
   const liveTotalCapacity = calculateTotalInfrastructureCapacity(

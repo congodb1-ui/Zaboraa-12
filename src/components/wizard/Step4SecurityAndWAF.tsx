@@ -62,7 +62,27 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
     return () => window.removeEventListener('zaboraa:admin-params-changed', handler);
   }, []);
 
-  // Safe fallback getters for security state
+  // WAF Solutions filtered by cloud platform
+  const getWafSolutions = () => {
+    const isAws = wizardState.targetPlatform === 'vmc-aws';
+    const isGcp = wizardState.targetPlatform === 'gcve';
+    const isAzure = !isAws && !isGcp;
+
+    const list: string[] = [];
+    if (isAzure) {
+      list.push('Azure WAF on Application Gateway');
+    }
+    if (isAws) {
+      list.push('AWS WAF on Application Load Balancer', 'AWS WAF');
+    }
+    if (isGcp) {
+      list.push('Google Cloud Armor (Managed WAF & DDoS)', 'Google Cloud Armor');
+    }
+    list.push('Cloudflare Magic Transit & Edge WAF', 'F5 BIG-IP Advanced WAF');
+    return list;
+  };
+
+  const allowedWafSolutions = getWafSolutions();
   const externalFw = wizardState.externalFirewall || {
     status: 'enabled',
     vendor: 'Palo Alto Networks',
@@ -405,6 +425,16 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
                   {availableVendors.map(vendor => (
                     <option key={vendor} value={vendor}>{vendor}</option>
                   ))}
+                  {!availableVendors.includes(externalFw.vendor as any) && externalFw.vendor && (
+                    (() => {
+                      console.warn('Dropdown value not in list', 'externalFirewallVendor', externalFw.vendor);
+                      return (
+                        <option key={externalFw.vendor} value={externalFw.vendor}>
+                          {externalFw.vendor} (custom)
+                        </option>
+                      );
+                    })()
+                  )}
                 </select>
               </div>
 
@@ -474,6 +504,16 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
                           {m.displayName} — {m.throughputGbps} Gbps ({m.maxSessions} sessions)
                         </option>
                       ))}
+                      {!externalModels.some(m => m.model === externalFw.model) && externalFw.model && (
+                        (() => {
+                          console.warn('Dropdown value not in list', 'externalFirewallModel', externalFw.model);
+                          return (
+                            <option key={externalFw.model} value={externalFw.model}>
+                              {externalFw.model} (custom)
+                            </option>
+                          );
+                        })()
+                      )}
                     </select>
 
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 font-mono">
@@ -634,6 +674,16 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
                   {availableVendors.map(vendor => (
                     <option key={vendor} value={vendor}>{vendor}</option>
                   ))}
+                  {!availableVendors.includes(internalFw.vendor as any) && internalFw.vendor && (
+                    (() => {
+                      console.warn('Dropdown value not in list', 'internalFirewallVendor', internalFw.vendor);
+                      return (
+                        <option key={internalFw.vendor} value={internalFw.vendor}>
+                          {internalFw.vendor} (custom)
+                        </option>
+                      );
+                    })()
+                  )}
                 </select>
                 <p className="text-[10px] text-slate-500">
                   Different vendors can be chosen for external perimeter and internal segmentation.
@@ -706,6 +756,16 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
                           {m.displayName} — {m.throughputGbps} Gbps ({m.maxSessions} sessions)
                         </option>
                       ))}
+                      {!internalModels.some(m => m.model === internalFw.model) && internalFw.model && (
+                        (() => {
+                          console.warn('Dropdown value not in list', 'internalFirewallModel', internalFw.model);
+                          return (
+                            <option key={internalFw.model} value={internalFw.model}>
+                              {internalFw.model} (custom)
+                            </option>
+                          );
+                        })()
+                      )}
                     </select>
 
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 font-mono">
@@ -1094,11 +1154,21 @@ export const Step4SecurityAndWAF: React.FC<Step4SecurityAndWAFProps> = ({
                 }))}
                 className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-rose-400"
               >
-                <option value="Azure WAF on Application Gateway">Azure WAF on Application Gateway (v2)</option>
-                <option value="AWS WAF on Application Load Balancer">AWS WAF on Application Load Balancer</option>
-                <option value="Google Cloud Armor (Managed WAF & DDoS)">Google Cloud Armor (Managed WAF & DDoS)</option>
-                <option value="Cloudflare Magic Transit & Edge WAF">Cloudflare Enterprise Edge WAF</option>
-                <option value="F5 BIG-IP Advanced WAF">F5 BIG-IP Advanced WAF Virtual Edition</option>
+                {allowedWafSolutions.map((waf) => (
+                  <option key={waf} value={waf}>
+                    {waf}
+                  </option>
+                ))}
+                {!allowedWafSolutions.includes(wizardState.securityNvaConfig.wafSolution) && wizardState.securityNvaConfig.wafSolution && (
+                  (() => {
+                    console.warn('Dropdown value not in list', 'wafSolution', wizardState.securityNvaConfig.wafSolution);
+                    return (
+                      <option key={wizardState.securityNvaConfig.wafSolution} value={wizardState.securityNvaConfig.wafSolution}>
+                        {wizardState.securityNvaConfig.wafSolution} (custom)
+                      </option>
+                    );
+                  })()
+                )}
               </select>
             </div>
 

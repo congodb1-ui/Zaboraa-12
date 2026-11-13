@@ -1,3 +1,16 @@
+import {
+  ALLOWED_DR_ENGINES,
+  ALLOWED_STORAGE_PROVIDERS,
+  ALLOWED_FIREWALLS,
+  ALLOWED_INTERCONNECTS,
+  ALLOWED_LANDING_ZONES,
+  ALLOWED_WAF_SOLUTIONS,
+  ALLOWED_VDI_PLATFORMS,
+  ALLOWED_MIGRATION_TOOLS,
+  ALLOWED_NODE_SKUS
+} from '../data/templateStrings';
+import { CANONICAL_TEMPLATES, getCompatibilityForPlatform } from './architectureCompatibilityRules';
+
 export type ParameterStatus = 'mandatory' | 'optional' | 'hidden';
 
 export interface ParameterControlMeta {
@@ -260,16 +273,26 @@ export interface AdminTemplateDef {
   sourceTech: string;
   targetTech: string;
   nodeSku: string;
+  defaultSku?: string;
   recommendedNodes: number;
+  defaultNodeCount?: number;
   interconnect: string;
+  defaultInterconnect?: string;
   security: string;
   storage: string;
+  defaultStorage?: string;
   storageTB: number;
+  defaultStorageTB?: number;
   firewall: string;
+  defaultFirewall?: string;
   landingZone: string;
+  defaultLandingZone?: string;
   drEngine: string;
+  defaultDrEngine?: string;
   drRpoMinutes?: number;
   drRtoMinutes?: number;
+  drStrategy?: string;
+  strategy?: string;
   recommendedMigrationTool: string;
   isCustom?: boolean;
   enabled?: boolean;
@@ -355,6 +378,7 @@ export const DEFAULT_ADMIN_TEMPLATES: AdminTemplateDef[] = [
     drEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
     drRpoMinutes: 5,
     drRtoMinutes: 20,
+    drStrategy: 'Pilot Light (3-Node Minimum)',
     recommendedMigrationTool: 'VMware HCX Enterprise',
     enabled: true
   },
@@ -381,6 +405,7 @@ export const DEFAULT_ADMIN_TEMPLATES: AdminTemplateDef[] = [
     drEngine: 'Nutanix Protection Domains (NearSync & Metro Availability)',
     drRpoMinutes: 15,
     drRtoMinutes: 60,
+    drStrategy: 'Pilot Light (3-Node Minimum)',
     recommendedMigrationTool: 'Nutanix Move',
     enabled: true
   },
@@ -407,6 +432,7 @@ export const DEFAULT_ADMIN_TEMPLATES: AdminTemplateDef[] = [
     drEngine: 'Nutanix Protection Domains (NearSync & Metro Availability)',
     drRpoMinutes: 15,
     drRtoMinutes: 60,
+    drStrategy: 'Pilot Light (3-Node Minimum)',
     recommendedMigrationTool: 'Nutanix Move',
     enabled: true
   },
@@ -433,6 +459,7 @@ export const DEFAULT_ADMIN_TEMPLATES: AdminTemplateDef[] = [
     drEngine: 'Zerto Continuous Data Protection (CDP)',
     drRpoMinutes: 15,
     drRtoMinutes: 30,
+    drStrategy: 'Pilot Light (3-Node Minimum)',
     recommendedMigrationTool: 'VMware HCX Enterprise',
     enabled: true
   },
@@ -451,40 +478,42 @@ export const DEFAULT_ADMIN_TEMPLATES: AdminTemplateDef[] = [
     nodeSku: 'i4i.metal',
     recommendedNodes: 3,
     interconnect: 'AWS Direct Connect (10 Gbps)',
-    security: 'AWS Network Firewall & Fortinet FortiGate',
+    security: 'Fortinet FortiGate-VM',
     storage: 'Amazon FSx for NetApp ONTAP (NFS Datastore)',
     storageTB: 150,
-    firewall: 'AWS Network Firewall & Fortinet FortiGate',
-    landingZone: 'AWS Transit Gateway (TGW) SDDC Peering',
+    firewall: 'Fortinet FortiGate-VM',
+    landingZone: 'AWS Transit Gateway (TGW) Hub',
     drEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
     drRpoMinutes: 15,
     drRtoMinutes: 30,
+    drStrategy: 'Pilot Light (3-Node Minimum)',
     recommendedMigrationTool: 'VMware HCX Enterprise',
     enabled: true
   },
   {
     id: 'custom-path',
     title: 'Hybrid Extension & Burst',
-    provider: 'Multi-Cloud',
+    provider: 'Microsoft Azure',
     badge: 'Hybrid Mesh',
     subtitle: 'Datacenter Burst + L2 Network Stretch',
     description: 'Multi-datacenter hybrid mesh: dynamically burst workloads across on-premises clusters and hyperscaler landing zones with Layer 2 stretch.',
-    targetProvider: 'hybrid',
-    targetPlatform: 'hybrid-mesh',
+    targetProvider: 'azure',
+    targetPlatform: 'avs-gen2',
     sourcePlatform: 'vmware',
     sourceTech: 'Hybrid Enterprise SDDC',
     targetTech: 'Multi-Cloud Stretched SDDC Fabric',
-    nodeSku: 'AV64 / i4i.metal Heterogeneous',
+    nodeSku: 'AV64',
     recommendedNodes: 4,
-    interconnect: 'Multi-Cloud Interconnect Mesh (10 Gbps)',
-    security: 'Distributed NVA Mesh & WAF',
-    storage: 'Decoupled Multi-Cloud Storage',
-    storageTB: 100,
-    firewall: 'Multi-Cloud Next-Gen Firewall',
-    landingZone: 'Hybrid Mesh Hub & Spoke',
-    drEngine: 'Cross-Cloud Disaster Recovery Matrix',
+    interconnect: 'Azure ExpressRoute FastPath (10 Gbps)',
+    security: 'Palo Alto Networks VM-Series',
+    storage: 'Azure NetApp Files (ANF NFS Datastore)',
+    storageTB: 80,
+    firewall: 'Palo Alto Networks VM-Series',
+    landingZone: 'Azure Virtual WAN Hub-and-Spoke',
+    drEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
     drRpoMinutes: 15,
     drRtoMinutes: 45,
+    drStrategy: 'Warm Standby (Full Cluster)',
     recommendedMigrationTool: 'VMware HCX Enterprise',
     enabled: true
   }
@@ -512,24 +541,68 @@ export function getAdminControlState(): AdminControlStudioState {
     }
     const parsed = JSON.parse(raw);
 
-    // Merge templates safely ensuring required fields exist
+    // Merge templates safely ensuring required fields exist and validating per-field options
     let templates: AdminTemplateDef[] = DEFAULT_ADMIN_TEMPLATES;
     if (Array.isArray(parsed.templates) && parsed.templates.length > 0) {
       templates = parsed.templates.map((tpl: any) => {
-        const fallback = DEFAULT_ADMIN_TEMPLATES.find((t) => t.id === tpl.id);
-        return {
-          targetProvider: 'azure',
-          targetPlatform: 'avs-gen2',
-          sourcePlatform: 'vmware',
-          storageTB: 100,
-          firewall: 'Palo Alto Networks VM-Series',
-          landingZone: 'Azure Virtual WAN Hub-and-Spoke',
-          drEngine: 'VMware Site Recovery Manager (SRM)',
-          recommendedMigrationTool: 'VMware HCX Enterprise',
+        const fallback = DEFAULT_ADMIN_TEMPLATES.find((t) => t.id === tpl.id) || DEFAULT_ADMIN_TEMPLATES[0];
+        const merged = {
           enabled: true,
           ...fallback,
           ...tpl
         };
+
+        const canonical = CANONICAL_TEMPLATES.find((c) => c.id === merged.id);
+        const platform = merged.targetPlatform || (canonical?.targetPlatform) || 'avs-gen2';
+        const compat = getCompatibilityForPlatform(platform);
+
+        const corrections: string[] = [];
+
+        // Validate targetPlatform
+        const validPlatforms = ['avs-gen2', 'nc2-azure', 'gcve', 'vmc-aws'];
+        if (!validPlatforms.includes(merged.targetPlatform)) {
+          corrections.push(`targetPlatform (${merged.targetPlatform} -> ${canonical?.targetPlatform || 'avs-gen2'})`);
+          merged.targetPlatform = (canonical?.targetPlatform || 'avs-gen2') as any;
+        }
+
+        const validCompat = getCompatibilityForPlatform(merged.targetPlatform);
+
+        // Validate firewall
+        if (merged.firewall && (!validCompat.allowedFirewalls || !validCompat.allowedFirewalls.includes(merged.firewall))) {
+          corrections.push(`firewall (${merged.firewall} -> ${canonical?.defaultFirewall || 'Palo Alto Networks VM-Series'})`);
+          merged.firewall = canonical?.defaultFirewall || 'Palo Alto Networks VM-Series';
+        }
+
+        // Validate landingZone against target platform compatibility allowed landing zones
+        const allowedLzs = (validCompat as any).allowedLandingZones || (validCompat as any).landingZones || [];
+        if (merged.landingZone && (!allowedLzs || !allowedLzs.includes(merged.landingZone))) {
+          corrections.push(`landingZone (${merged.landingZone} -> ${canonical?.defaultLandingZone || ALLOWED_LANDING_ZONES[0]})`);
+          merged.landingZone = canonical?.defaultLandingZone || ALLOWED_LANDING_ZONES[0];
+        }
+
+        // Validate drEngine
+        if (merged.drEngine && (!validCompat.allowedDrEngines || !validCompat.allowedDrEngines.includes(merged.drEngine))) {
+          corrections.push(`drEngine (${merged.drEngine} -> ${canonical?.defaultDrEngine || 'VMware Site Recovery Manager (SRM) + vSphere Replication'})`);
+          merged.drEngine = canonical?.defaultDrEngine || 'VMware Site Recovery Manager (SRM) + vSphere Replication';
+        }
+
+        // Validate storage
+        if (merged.storage && (!validCompat.allowedStorageProviders || !validCompat.allowedStorageProviders.includes(merged.storage))) {
+          corrections.push(`storage (${merged.storage} -> ${canonical?.defaultStorage || 'Azure NetApp Files (ANF NFS Datastore)'})`);
+          merged.storage = canonical?.defaultStorage || 'Azure NetApp Files (ANF NFS Datastore)';
+        }
+
+        // Validate recommendedMigrationTool
+        if (merged.recommendedMigrationTool && (!validCompat.allowedMigrationTools || !validCompat.allowedMigrationTools.includes(merged.recommendedMigrationTool as any))) {
+          corrections.push(`recommendedMigrationTool (${merged.recommendedMigrationTool} -> ${canonical?.recommendedMigrationTool || 'VMware HCX Enterprise'})`);
+          merged.recommendedMigrationTool = canonical?.recommendedMigrationTool || 'VMware HCX Enterprise';
+        }
+
+        if (corrections.length > 0) {
+          console.warn(`[getAdminControlState] Corrected invalid fields for template "${merged.id}": ${corrections.join(', ')}`);
+        }
+
+        return merged;
       });
     }
 

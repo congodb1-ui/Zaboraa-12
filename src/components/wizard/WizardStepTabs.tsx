@@ -4,15 +4,6 @@ import { WizardState, ArchitectureTemplateChoice } from '../../types/wizardState
 import { getAdminControlState, AdminTemplateDef } from '../../utils/adminParameterControls';
 import { useCustomization } from '../../context/CustomizationContext';
 
-export interface IndustryTemplatePreset {
-  id: string;
-  title: string;
-  subtitle: string;
-  tag: string;
-  tagColor: string;
-  apply: (prevState: WizardState) => WizardState;
-}
-
 interface WizardStepTabsProps {
   currentStep: number;
   onSelectStep: (step: number) => void;

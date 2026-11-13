@@ -19,6 +19,15 @@ import {
   EngineeringAssumptions
 } from '../utils/architectureCalculator';
 
+export const CHOICE_TO_TEMPLATE_ID_MAP: Record<ArchitectureTemplateChoice, ArchitectureTemplateId> = {
+  'vmware-to-avs': 'avs',
+  'vmware-to-nc2': 'vmware-to-nc2',
+  'nutanix-to-nc2': 'nutanix-to-nc2',
+  'vmware-to-gcve': 'gcve',
+  'vmware-to-vmc': 'vmc-aws',
+  'custom-path': 'multi-cloud'
+};
+
 export interface WizardClusterSpec {
   id: string;
   name: string;
@@ -175,8 +184,8 @@ export function createDefaultSourceItem(
         name: customName || 'Primary Nutanix AHV On-Premises',
         platform: 'nutanix-onprem',
         hypervisorVersion: 'AOS 6.8 LTS (AHV)',
-        hardwareVendor: 'Supermicro',
-        hardwareSku: 'NX-8170-G9 All-NVMe Block',
+        hardwareVendor: 'Nutanix',
+        hardwareSku: 'NX-8170-G9',
         mgmtCidr: '10.20.0.0/16',
         vcenterFqdn: 'prism-central.corp.internal:9440',
         workloadVmsCount: 240,
@@ -330,32 +339,88 @@ export function createDefaultSourceItem(
 export function createDefaultTargetItem(
   role: 'Production' | 'Disaster Recovery' = 'Production',
   customName?: string,
-  platform: 'avs-gen1' | 'avs-gen2' | 'vmc-aws' | 'gcve' | 'nc2-azure' | 'azure-native' = 'avs-gen2'
+  platform: 'avs-gen1' | 'avs-gen2' | 'vmc-aws' | 'gcve' | 'nc2-azure' | 'azure-native' = 'avs-gen2',
+  templateDefaults?: {
+    nodeSku?: string;
+    nodeCount?: number;
+    decoupledStorageTB?: number;
+    decoupledStorageProvider?: string;
+    migrationTool?: 'VMware HCX Enterprise' | 'Nutanix Move' | 'AWS MGN' | 'Azure Migrate' | 'None';
+    drEngine?: string;
+    drRpoMinutes?: number;
+    drRtoMinutes?: number;
+    drStrategy?: string;
+    interconnectCircuitType?: string;
+    layer2Extension?: boolean;
+    region?: string;
+  }
 ): TargetInfrastructureItem {
   const isDr = role === 'Disaster Recovery';
+
+  const defaultRegion = platform === 'vmc-aws'
+    ? (isDr ? 'us-west-2 (Secondary DR)' : 'us-east-1 (Primary)')
+    : platform === 'gcve'
+    ? (isDr ? 'europe-west1 (Secondary DR)' : 'us-central1 (Primary)')
+    : platform === 'nc2-azure'
+    ? (isDr ? 'Azure West US 2 (Secondary)' : 'Azure East US (Primary)')
+    : (isDr ? 'Azure East US 2 (Secondary)' : 'Azure East US (Primary)');
+
+  const defaultSku = platform === 'avs-gen1' ? 'AV36P'
+    : platform === 'avs-gen2' ? 'AV64'
+    : platform === 'nc2-azure' ? 'AN36P'
+    : platform === 'gcve' ? 've1-standard-72'
+    : platform === 'vmc-aws' ? 'i4i.metal'
+    : 'AV36P';
+
+  const defaultStorageProvider = platform === 'vmc-aws'
+    ? 'Amazon FSx for NetApp ONTAP (NFS Datastore)'
+    : platform === 'gcve'
+    ? 'Google Cloud NetApp Volumes (GCNV NFS Datastore)'
+    : platform === 'nc2-azure'
+    ? 'Native Nutanix Distributed Storage Fabric (DSF)'
+    : 'Azure NetApp Files (ANF NFS Datastore)';
+
+  const defaultMigrationTool = platform === 'nc2-azure'
+    ? 'Nutanix Move'
+    : 'VMware HCX Enterprise';
+
+  const defaultDrEngine = platform === 'nc2-azure'
+    ? 'Nutanix Protection Domains (NearSync & Metro Availability)'
+    : platform === 'gcve'
+    ? 'Zerto Continuous Data Protection (CDP)'
+    : 'VMware Site Recovery Manager (SRM) + vSphere Replication';
+
+  const defaultInterconnect = platform === 'vmc-aws'
+    ? 'AWS Direct Connect (10 Gbps)'
+    : platform === 'gcve'
+    ? 'Google Cloud Dedicated Interconnect (10 Gbps)'
+    : platform === 'nc2-azure'
+    ? 'Azure ExpressRoute Dedicated Circuit (10 Gbps)'
+    : 'Azure ExpressRoute FastPath (10 Gbps)';
+
   return {
     id: `tgt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     name: customName || (isDr ? 'Secondary Disaster Recovery SDDC' : 'Primary Production SDDC'),
     platform,
     role,
-    region: isDr ? 'Azure East US 2 (Secondary)' : 'Azure East US (Primary)',
-    nodeSku: platform === 'avs-gen1' ? 'AV36P' : platform === 'avs-gen2' ? 'AV64' : 'AV36P',
-    nodeCount: isDr ? 3 : 4,
+    region: templateDefaults?.region || defaultRegion,
+    nodeSku: templateDefaults?.nodeSku || defaultSku,
+    nodeCount: templateDefaults?.nodeCount !== undefined ? templateDefaults.nodeCount : (isDr ? 3 : 4),
     sddcMgmtCidr: isDr ? '10.244.0.0/22' : '10.240.0.0/22',
     decoupledStorageEnabled: true,
-    decoupledStorageTB: isDr ? 60 : 120,
-    decoupledStorageProvider: 'Azure NetApp Files (ANF NFS Datastore)',
+    decoupledStorageTB: templateDefaults?.decoupledStorageTB !== undefined ? templateDefaults.decoupledStorageTB : (isDr ? 60 : 120),
+    decoupledStorageProvider: templateDefaults?.decoupledStorageProvider || defaultStorageProvider,
     migrationRequired: !isDr,
-    migrationTool: !isDr ? 'VMware HCX Enterprise' : 'None',
+    migrationTool: !isDr ? (templateDefaults?.migrationTool || defaultMigrationTool) : 'None',
     drRequired: isDr,
-    drEngine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
-    drRpoMinutes: 5,
-    drRtoMinutes: 20,
-    drStrategy: 'Pilot Light (3-Node Minimum)',
+    drEngine: templateDefaults?.drEngine || defaultDrEngine,
+    drRpoMinutes: templateDefaults?.drRpoMinutes !== undefined ? templateDefaults.drRpoMinutes : (isDr ? 5 : 15),
+    drRtoMinutes: templateDefaults?.drRtoMinutes !== undefined ? templateDefaults.drRtoMinutes : (isDr ? 20 : 30),
+    drStrategy: templateDefaults?.drStrategy || (isDr ? 'Pilot Light (3-Node Minimum)' : 'Pilot Light (3-Node Minimum)'),
     connectivitySelection: 'dedicated',
-    interconnectCircuitType: 'Azure ExpressRoute FastPath (10 Gbps)',
+    interconnectCircuitType: templateDefaults?.interconnectCircuitType || defaultInterconnect,
     circuitBandwidth: '1 Gbps',
-    layer2Extension: true
+    layer2Extension: templateDefaults?.layer2Extension !== undefined ? templateDefaults.layer2Extension : true
   };
 }
 
@@ -796,7 +861,7 @@ export function createDefaultWizardState(): WizardState {
 
     drEnabled: true,
     drConfig: {
-      engine: 'VMware SRM + vSphere Replication',
+      engine: 'VMware Site Recovery Manager (SRM) + vSphere Replication',
       rpoMinutes: 5,
       rtoMinutes: 20,
       strategy: 'Pilot Light (3-Node Minimum)'

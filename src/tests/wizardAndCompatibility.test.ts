@@ -3,6 +3,7 @@ import {
   CANONICAL_TEMPLATES,
   getCompatibilityForPlatform,
   sanitizeWizardStateForTemplate,
+  applyTemplateToWizardState,
   validateWizardStep
 } from '../utils/architectureCompatibilityRules';
 import {
@@ -10,6 +11,7 @@ import {
   WizardState,
   reconcileTargetsForObjective
 } from '../types/wizardStateAdapter';
+import { getAdminControlState } from '../utils/adminParameterControls';
 
 describe('Wizard & Architecture Compatibility Engine', () => {
   it('provides all 5 core hyperscaler templates plus hybrid paths', () => {
@@ -327,5 +329,83 @@ describe('Wizard & Architecture Compatibility Engine', () => {
     const underQuorumCheck = validateWizardStep(5, state);
     expect(underQuorumCheck.isValid).toBe(false);
     expect(underQuorumCheck.errors[0]).toContain('minimum cluster quorum of at least 3');
+  });
+
+  it('ADDENDUM test: custom-path differs from vmware-to-avs in objective, DR strategy and L2 extension', () => {
+    const avsTpl = CANONICAL_TEMPLATES.find(t => t.id === 'vmware-to-avs')!;
+    const customTpl = CANONICAL_TEMPLATES.find(t => t.id === 'custom-path')!;
+
+    expect(customTpl.targetPlatform).toBe('avs-gen2');
+    expect(customTpl.drStrategy).toBe('Warm Standby (Full Cluster)');
+    expect(customTpl.drStrategy).not.toEqual(avsTpl.drStrategy);
+
+    const initial = createDefaultWizardState();
+    const { state: appliedAvs } = applyTemplateToWizardState(initial, 'vmware-to-avs');
+    const { state: appliedCustom } = applyTemplateToWizardState(initial, 'custom-path');
+
+    expect(appliedCustom.objective).toBe('extend-dc');
+    expect(appliedCustom.objective).not.toEqual(appliedAvs.objective);
+    expect(appliedCustom.interconnectConfig.layer2Extension).toBe(true);
+    expect(appliedCustom.drConfig.strategy).toBe('Warm Standby (Full Cluster)');
+    expect(appliedCustom.drConfig.strategy).not.toEqual(appliedAvs.drConfig.strategy);
+  });
+
+  it('ADDENDUM test: getAdminControlState corrects invalid localStorage template values', () => {
+    const mockInvalidTemplates = [
+      {
+        id: 'vmware-to-avs',
+        targetPlatform: 'hybrid-mesh', // invalid platform
+        firewall: 'AWS Network Firewall & Fortinet FortiGate', // invalid firewall string
+        landingZone: 'Non-Existent LZ String', // invalid LZ string
+        drEngine: 'VMware SRM' // invalid DR string
+      }
+    ];
+
+    const store: Record<string, string> = {};
+    const originalGetItem = globalThis.localStorage?.getItem;
+    const originalSetItem = globalThis.localStorage?.setItem;
+
+    // Simulate localStorage environment
+    const fakeLocalStorage = {
+      getItem: (key: string) => store[key] || null,
+      setItem: (key: string, val: string) => { store[key] = val; },
+      removeItem: (key: string) => { delete store[key]; }
+    };
+
+    Object.defineProperty(globalThis, 'window', { value: { localStorage: fakeLocalStorage, dispatchEvent: () => {} }, writable: true });
+    Object.defineProperty(globalThis, 'localStorage', { value: fakeLocalStorage, writable: true });
+
+    localStorage.setItem('zaboraa_admin_param_controls', JSON.stringify({ templates: mockInvalidTemplates }));
+
+    const adminState = getAdminControlState();
+    const avs = adminState.templates.find(t => t.id === 'vmware-to-avs')!;
+
+    expect(avs.targetPlatform).toBe('avs-gen2');
+    expect(avs.firewall).toBe('Palo Alto Networks VM-Series');
+    expect(avs.landingZone).toBe('Azure Virtual WAN Hub-and-Spoke');
+    expect(avs.drEngine).toBe('VMware Site Recovery Manager (SRM) + vSphere Replication');
+  });
+
+  it('ADDENDUM test: applying all 6 templates updates all template-owned fields and targets[]', () => {
+    const initial = createDefaultWizardState();
+    const templateChoices = [
+      'vmware-to-avs',
+      'vmware-to-nc2',
+      'nutanix-to-nc2',
+      'vmware-to-gcve',
+      'vmware-to-vmc',
+      'custom-path'
+    ] as const;
+
+    for (const choice of templateChoices) {
+      const { state: res } = applyTemplateToWizardState(initial, choice);
+      expect(res.templateChoice).toBe(choice);
+      expect(res.targets).toBeDefined();
+      expect(res.targets!.length).toBeGreaterThan(0);
+      const prodTarget = res.targets!.find(t => t.role === 'Production') || res.targets![0];
+      expect(prodTarget.platform).toBe(res.targetPlatform);
+      expect(prodTarget.nodeSku).toBe(res.targetNodeSku);
+      expect(prodTarget.interconnectCircuitType).toBe(res.interconnectConfig.type);
+    }
   });
 });

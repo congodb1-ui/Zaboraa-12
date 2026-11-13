@@ -28,10 +28,7 @@ export const Auth: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: getAuthRedirectUrl() },
-    });
+    // GIS button render used for authentication
   };
 
   const handleLogout = async () => {

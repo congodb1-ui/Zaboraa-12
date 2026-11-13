@@ -456,19 +456,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
+      const intendedPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const isAdminLogin = intendedPath.startsWith('/admin') || intendedPath.startsWith('/console');
+
       let allowedList = ALLOWED_EMAILS.map(e => e.trim().toLowerCase()).filter(Boolean);
       if (allowedList.length === 0) {
         console.error("ALLOWED_EMAILS is empty");
-        allowedList = ["congodb1@gmail.com"];
+        allowedList = ["congodb1@gmail.com", "wasim@zaboraa.com"];
       }
 
-      console.log("[auth] allowlist check", { email, allowed: allowedList, sessionHasUser: !!data.session?.user });
-
-      if (!allowedList.includes(email)) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setAuthError('not on allow list');
-        return null;
+      if (isAdminLogin) {
+        console.log("[auth] admin allowlist check", { email, allowed: allowedList, intendedPath });
+        if (!allowedList.includes(email)) {
+          await supabase.auth.signOut();
+          setUser(null);
+          setAuthError('not on allow list');
+          return null;
+        }
       }
 
       let profile: AuthUserProfile | null = null;
@@ -478,7 +482,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Notice: Error building profile, returning fallback session profile:', profileErr);
         const errMsg = profileErr?.message || profileErr?.error_description || String(profileErr);
         setAuthError(`Sign-in failed: ${errMsg}`);
-        const lower = lowerEmail;
+        const lower = email;
         const isEmailAdmin = allowedList.includes(email);
         profile = {
           uid: data.session.user.id,
@@ -495,7 +499,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSubscriptionTierState(profile.licenseTier);
       saveLocalStoredUser(profile);
 
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && isAdminLogin) {
         window.location.href = '/admin';
       }
       return profile;

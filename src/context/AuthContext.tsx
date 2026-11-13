@@ -141,28 +141,24 @@ export function loadGoogleGsiScript(): Promise<void> {
   return scriptLoadingPromise;
 }
 
-export function base64urlEncode(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const base64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-export async function generateNoncePair(): Promise<{ rawNonce: string; hashedNonce: string }> {
-  const array = new Uint8Array(32);
+export function generateRawNonce(): string {
+  const array = new Uint8Array(16);
   const cryptoObj = typeof window !== 'undefined' && window.crypto ? window.crypto : globalThis.crypto;
   cryptoObj.getRandomValues(array);
-  const rawNonce = base64urlEncode(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
+export async function hashNonceToHex(rawNonce: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(rawNonce);
+  const cryptoObj = typeof window !== 'undefined' && window.crypto ? window.crypto : globalThis.crypto;
   const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
-  const hashedNonce = base64urlEncode(new Uint8Array(hashBuffer));
-
-  return { rawNonce, hashedNonce };
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+let activeRawNonce: string | null = null;
+let activeHashedNonce: string | null = null;
+let isGisInitialized = false;
 
 /**
  * SECURITY: an email address must never grant admin rights. Anyone can sign up with
@@ -448,7 +444,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthError(null);
     try {
       if (!supabase || !isSupabaseConfigured) {
-        setAuthError('Supabase authentication is not configured.');
+        setAuthError('Sign-in failed: Supabase authentication is not configured.');
         return null;
       }
 
@@ -459,18 +455,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        const errMsg = error.message || '';
-        const lowerMsg = errMsg.toLowerCase();
-        if (
-          lowerMsg.includes('signup') ||
-          lowerMsg.includes('not allowed') ||
-          lowerMsg.includes('nonce') ||
-          lowerMsg.includes('allow')
-        ) {
-          setAuthError('not on allow list');
-        } else {
-          setAuthError(errMsg || 'not on allow list');
-        }
+        setAuthError(`Sign-in failed: ${error.message || 'Unknown error'}`);
         return null;
       }
 
@@ -502,18 +487,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return profile;
     } catch (err: any) {
-      const msg = err?.message || '';
-      const lowerMsg = msg.toLowerCase();
-      if (
-        lowerMsg.includes('signup') ||
-        lowerMsg.includes('not allowed') ||
-        lowerMsg.includes('nonce') ||
-        lowerMsg.includes('allow')
-      ) {
-        setAuthError('not on allow list');
-      } else {
-        setAuthError(msg || 'not on allow list');
-      }
+      const msg = err?.message || 'Unknown error';
+      setAuthError(`Sign-in failed: ${msg}`);
       return null;
     }
   }, [mapSupabaseUserToProfile]);
@@ -528,19 +503,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const { rawNonce, hashedNonce } = await generateNoncePair();
+      if (!activeRawNonce || !activeHashedNonce) {
+        activeRawNonce = generateRawNonce();
+        activeHashedNonce = await hashNonceToHex(activeRawNonce);
+      }
+
+      const currentRaw = activeRawNonce;
+      const currentHashed = activeHashedNonce;
 
       if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-        (window as any).google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response: any) => {
-            if (response?.credential) {
-              await handleSignInWithIdToken(response.credential, rawNonce);
-            }
-          },
-          nonce: hashedNonce,
-          auto_select: false
-        });
+        if (!isGisInitialized) {
+          (window as any).google.accounts.id.initialize({
+            client_id: clientId,
+            callback: async (response: any) => {
+              if (response?.credential) {
+                await handleSignInWithIdToken(response.credential, currentRaw);
+              }
+            },
+            nonce: currentHashed
+          });
+          isGisInitialized = true;
+        }
 
         element.innerHTML = '';
         (window as any).google.accounts.id.renderButton(element, {

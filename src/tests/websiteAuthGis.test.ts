@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import {
-  generateNoncePair,
+  generateRawNonce,
+  hashNonceToHex,
   loadGoogleGsiScript,
   ALLOWED_EMAILS
 } from '../context/AuthContext';
@@ -48,19 +49,22 @@ describe('Website Auth Google Identity Services (GIS) Suite', () => {
     expect(authorizeCount).toBe(0);
   });
 
-  it('2. Nonce generation: SHA-256 hashedNonce != rawNonce and both are base64url encoded', async () => {
-    const { rawNonce, hashedNonce } = await generateNoncePair();
-    expect(rawNonce).toBeDefined();
-    expect(hashedNonce).toBeDefined();
-    expect(typeof rawNonce).toBe('string');
-    expect(typeof hashedNonce).toBe('string');
-    expect(rawNonce.length).toBeGreaterThan(30);
-    expect(hashedNonce.length).toBeGreaterThan(30);
-    expect(hashedNonce).not.toBe(rawNonce);
+  it('2. Nonce contract: hashedNonce equals lowercase-hex SHA-256 of rawNonce', async () => {
+    const rawNonce = generateRawNonce();
+    const hashedHex = await hashNonceToHex(rawNonce);
 
-    // Verify base64url characters (no +, /, or =)
-    expect(rawNonce).not.toMatch(/[+/=]/);
-    expect(hashedNonce).not.toMatch(/[+/=]/);
+    expect(rawNonce).toBeDefined();
+    expect(hashedHex).toBeDefined();
+    expect(typeof rawNonce).toBe('string');
+    expect(typeof hashedHex).toBe('string');
+    expect(rawNonce).toMatch(/^[0-9a-f]{32}$/);
+    expect(hashedHex).toMatch(/^[0-9a-f]{64}$/);
+
+    // Verify manually with SubtleCrypto digest
+    const encoder = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', encoder.encode(rawNonce));
+    const expectedHex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    expect(hashedHex).toBe(expectedHex);
   });
 
   it('3. GIS initialization & signInWithIdToken nonce contract with google.accounts.id mock', async () => {
@@ -97,8 +101,8 @@ describe('Website Auth Google Identity Services (GIS) Suite', () => {
       }
     };
 
-    const { rawNonce, hashedNonce } = await generateNoncePair();
-    expect(hashedNonce).not.toBe(rawNonce);
+    const rawNonce = generateRawNonce();
+    const hashedHex = await hashNonceToHex(rawNonce);
 
     // Simulate initialize call
     (globalThis as any).google.accounts.id.initialize({
@@ -110,13 +114,13 @@ describe('Website Auth Google Identity Services (GIS) Suite', () => {
           nonce: rawNonce
         });
       },
-      nonce: hashedNonce
+      nonce: hashedHex
     });
 
     expect(initializeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         client_id: 'mock-google-client-id.apps.googleusercontent.com',
-        nonce: hashedNonce
+        nonce: hashedHex
       })
     );
 

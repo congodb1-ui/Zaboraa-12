@@ -83,12 +83,8 @@ function saveLocalStoredUser(profile: AuthUserProfile | null) {
 }
 
 export const ADMIN_EMAILS = [
-  'admin@zaboraa.com',
   'congodb1@gmail.com',
-  'congodb4@gmail.com',
-  'congodb1992@gmail.com',
-  'wasim.sayyed@zaboraa-cloud.com',
-  'anansari678@gmail.com'
+  'wasim@zaboraa.com'
 ];
 export const ALLOWED_EMAILS = ADMIN_EMAILS;
 
@@ -223,23 +219,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // RPC may not be available in mock/local preview
         }
 
-        // Authoritative Check 2: Supabase public.admins table allowlist
-        if (role !== 'admin' && sbUser.email) {
-          try {
-            const { data: adminRow } = await supabase
-              .from('admins')
-              .select('email')
-              .or(`user_id.eq.${sbUser.id},email.eq.${sbUser.email.toLowerCase()}`)
-              .maybeSingle();
-            if (adminRow) {
-              role = 'admin';
-              tier = 'enterprise';
-            }
-          } catch {
-            // admins table might not exist in preview
-          }
-        }
-
         const { data, error } = await supabase
           .from('profiles')
           .select('id, email, role, subscription_tier, full_name, avatar_url')
@@ -294,7 +273,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           // Profile does not exist yet (e.g. first Google sign in) - Persist immediately to Supabase
           try {
-            const isEmailAdmin = sbUser.email?.toLowerCase().trim() === 'congodb1@gmail.com';
+            const userEmailClean = sbUser.email?.toLowerCase().trim() || '';
+            const isEmailAdmin = ALLOWED_EMAILS.map(e => e.toLowerCase().trim()).includes(userEmailClean);
             const initialRole = (isEmailAdmin || role === 'admin') ? 'admin' : (role || 'user');
             const initialTier = (isEmailAdmin || role === 'admin') ? 'enterprise' : tier;
 
@@ -499,7 +479,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const errMsg = profileErr?.message || profileErr?.error_description || String(profileErr);
         setAuthError(`Sign-in failed: ${errMsg}`);
         const lower = lowerEmail;
-        const isEmailAdmin = lower === 'congodb1@gmail.com';
+        const isEmailAdmin = allowedList.includes(email);
         profile = {
           uid: data.session.user.id,
           email: data.session.user.email || lower,

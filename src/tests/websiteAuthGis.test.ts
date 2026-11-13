@@ -135,8 +135,8 @@ describe('Website Auth Google Identity Services (GIS) Suite', () => {
     });
   });
 
-  it('4. Allowed email in different case (CONGODB4@GMAIL.COM) is matched against ALLOWED_EMAILS', () => {
-    const testEmail = 'CONGODB4@GMAIL.COM';
+  it('4. Allowed email in different case (WASIM@ZABORAA.COM) is matched against ALLOWED_EMAILS', () => {
+    const testEmail = 'WASIM@ZABORAA.COM';
     const lowerInput = testEmail.toLowerCase().trim();
     const allowedLower = ALLOWED_EMAILS.map(e => e.toLowerCase().trim());
     expect(allowedLower.includes(lowerInput)).toBe(true);
